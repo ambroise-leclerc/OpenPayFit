@@ -1,0 +1,10 @@
+.header {
+  padding: 1rem;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  gap: 1rem;
+}
+
+.main {
+  padding: 1rem;
+}

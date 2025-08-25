@@ -100,7 +100,7 @@ describe('Employee API Endpoints', () => {
       expect(res.statusCode).toEqual(204);
     });
 
-    it('should return 403 if user tries to delete an employee from another user\'s company', async () => {
+    it("should return 403 if user tries to delete an employee from another user's company", async () => {
         // Re-create an employee for the test
         const tempEmployee = await prisma.employee.create({data: {firstName: 'Temp', lastName: 'Emp', email: 'temp@del.com', grossSalary: 1, companyId: company2.id}});
         const res = await request(app)

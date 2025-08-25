@@ -1,4 +1,5 @@
 import { PrismaClient, User, Company } from '../generated/prisma';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -8,10 +9,11 @@ describe('Company and Employee CRUD operations', () => {
 
   beforeAll(async () => {
     // Create a user to associate with the company
+    const hashedPassword = await bcrypt.hash('testpassword', 10);
     user = await prisma.user.create({
       data: {
         email: `test-user-${Date.now()}@example.com`,
-        password: 'testpassword', // In a real app, this should be hashed
+        password: hashedPassword,
       },
     });
   });
