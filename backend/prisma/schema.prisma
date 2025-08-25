@@ -12,10 +12,33 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   name      String?
   password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  companies Company[] // Un utilisateur peut posséder plusieurs entreprises
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Company {
+  id        String     @id @default(cuid())
+  name      String
+  owner     User       @relation(fields: [ownerId], references: [id])
+  ownerId   String     // Clé étrangère vers User
+  employees Employee[] // Une entreprise a plusieurs employés
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Employee {
+  id          String   @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String   @unique
+  grossSalary Float
+  company     Company  @relation(fields: [companyId], references: [id])
+  companyId   String   // Clé étrangère vers Company
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }

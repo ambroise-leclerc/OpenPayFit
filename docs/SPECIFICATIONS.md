@@ -4,7 +4,7 @@ Ce document détaille les spécifications techniques (modèles de données et AP
 
 ---
 
-### 1. Authentification
+### 1. Authentification [IMPLÉMENTÉE]
 
 #### Modèles de Données
 
@@ -30,9 +30,9 @@ Ce document détaille les spécifications techniques (modèles de données et AP
 
 ---
 
-### 2. Gestion Entreprise & Employés
+### 2. Gestion Entreprise & Employés [EN COURS]
 
-#### Modèles de Données
+#### Modèles de Données [IMPLÉMENTÉS]
 
 *   **`Company`**
     *   `id`: UUID
@@ -48,25 +48,38 @@ Ce document détaille les spécifications techniques (modèles de données et AP
     *   `grossSalary`: Float (Salaire brut mensuel)
     *   `companyId`: UUID (Relation avec `Company`)
 
-#### Endpoints API (Protégés par authentification)
+#### Endpoints API (Protégés par authentification) [PARTIELLEMENT IMPLÉMENTÉS]
+
+*   `GET /api/companies`
+    *   **Réponse** : `[ { "id": "...", "name": "...", ... } ]`
+    *   **Statut** : Implémenté
+
+*   `POST /api/companies`
+    *   **Body** : `{ "name": "..." }`
+    *   **Réponse** : `{ "id": "...", "name": "...", ... }` (L'entreprise créée)
+    *   **Statut** : Implémenté
 
 *   `GET /api/employees`
     *   **Réponse** : `[ { "id": "...", "firstName": "...", ... } ]`
+    *   **Statut** : À faire
 
 *   `POST /api/employees`
     *   **Body** : `{ "firstName": "...", "lastName": "...", ... }`
-    *   **Réponse** : `{ "id": "...", ... }` (L'employé créé)
+    *   **Réponse** : `{ "id": "...", "firstName": "...", ... }` (L'employé créé)
+    *   **Statut** : À faire
 
 *   `PUT /api/employees/:id`
     *   **Body** : `{ "firstName": "...", ... }` (Champs à mettre à jour)
     *   **Réponse** : `{ "id": "...", ... }` (L'employé mis à jour)
+    *   **Statut** : À faire
 
 *   `DELETE /api/employees/:id`
     *   **Réponse** : `204 No Content`
+    *   **Statut** : À faire
 
 ---
 
-### 3. Moteur de Paie (MVP)
+### 3. Moteur de Paie (MVP) [À FAIRE]
 
 #### Modèles de Données
 

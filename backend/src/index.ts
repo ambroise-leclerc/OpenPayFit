@@ -1,16 +1,18 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
-import authRouter from './api/auth'; // Import the auth router
+import authRouter from './api/auth';
+import companiesRouter from './api/companies';
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middlewares
 app.use(cors());
-app.use(express.json()); // Enable parsing of JSON request bodies
+app.use(express.json());
 
 // API Routes
 app.use('/api/auth', authRouter);
+app.use('/api/companies', companiesRouter);
 
 // Health check route
 app.get('/', (req: Request, res: Response) => {
