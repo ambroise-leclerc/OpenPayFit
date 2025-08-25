@@ -19,6 +19,11 @@ app.get('/', (req: Request, res: Response) => {
   res.send('Hello, OpenPayFit Backend!');
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+// Start the server only if this file is run directly
+if (require.main === module) {
+  app.listen(port, () => {
+    console.log(`Server is running on http://localhost:${port}`);
+  });
+}
+
+export default app; // Export for testing

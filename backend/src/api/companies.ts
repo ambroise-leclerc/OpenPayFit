@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import prisma from '../lib/db';
+import employeesRouter from './employees';
 
 const router = Router();
 
@@ -43,5 +44,9 @@ router.post('/', async (req, res) => {
     res.status(500).json({ error: 'Failed to create company' });
   }
 });
+
+// Mount the employees router for nested routes
+// This will handle all routes starting with /api/companies/:companyId/employees
+router.use('/:companyId/employees', employeesRouter);
 
 export default router;
