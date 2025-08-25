@@ -15,7 +15,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/companies', companiesRouter);
 
 // Health check route
-app.get('/', (req: Request, res: Response) => {
+app.get('/', (_req: Request, res: Response) => {
   res.send('Hello, OpenPayFit Backend!');
 });
 

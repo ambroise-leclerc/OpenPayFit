@@ -19,7 +19,7 @@ export default function RegisterPage() {
       auth.login(data.token);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -29,7 +29,7 @@ export default function RegisterPage() {
       <form onSubmit={handleSubmit}>
         <div>
           <label>Nom:</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} />
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div>
           <label>Email:</label>

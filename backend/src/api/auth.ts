@@ -5,8 +5,12 @@ import prisma from '../lib/db';
 
 const router = Router();
 
-// TODO: Move this to an environment variable (.env) for production
-const JWT_SECRET = 'YOUR_SUPER_SECRET_KEY_CHANGE_ME_IN_ENV';
+// JWT secret should be set via environment variable for security
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET environment variable is not set.');
+}
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -28,7 +32,7 @@ router.post('/register', async (req, res) => {
     });
 
     // Generate a token for the new user
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
       expiresIn: '1h', // Token expires in 1 hour
     });
 
@@ -68,7 +72,7 @@ router.post('/login', async (req, res) => {
         }
 
         // Generate a token
-        const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+        const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
             expiresIn: '1h',
         });
 

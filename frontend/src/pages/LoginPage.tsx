@@ -18,7 +18,7 @@ export default function LoginPage() {
       auth.login(data.token);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 

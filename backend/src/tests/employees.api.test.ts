@@ -6,7 +6,7 @@ import jwt from 'jsonwebtoken';
 import { User, Company, Employee } from '../generated/prisma';
 
 // Le secret JWT doit être le même que dans le middleware
-const JWT_SECRET = 'YOUR_SUPER_SECRET_KEY_CHANGE_ME_IN_ENV';
+const JWT_SECRET = process.env.JWT_SECRET as string;
 
 describe('Employee API Endpoints', () => {
   let user1: User, user2: User, company1: Company, company2: Company, token1: string, token2: string, employee1: Employee;

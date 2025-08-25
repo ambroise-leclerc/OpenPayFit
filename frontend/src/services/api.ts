@@ -1,6 +1,24 @@
 const API_URL = 'http://localhost:3000/api';
 
-export async function registerUser(userData) {
+// Define the registration data interface
+export interface RegisterUserData {
+  name: string;
+  email: string;
+  password: string;
+}
+
+// Define the login credentials interface
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+// Define API response interfaces
+export interface AuthResponse {
+  token: string;
+}
+
+export async function registerUser(userData: RegisterUserData): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/auth/register`, {
     method: 'POST',
     headers: {
@@ -17,7 +35,7 @@ export async function registerUser(userData) {
   return response.json();
 }
 
-export async function loginUser(credentials) {
+export async function loginUser(credentials: LoginCredentials): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/auth/login`, {
     method: 'POST',
     headers: {
