@@ -32,9 +32,9 @@ Ce document décrit les grandes phases de développement pour atteindre le MVP (
 1.  **Schéma de Données - Entreprise & Employé (Backend)** [x]
     *   **Action :** Définir les modèles `Company` et `Employee` et leurs relations.
 
-2.  **API CRUD pour les Employés (Backend)** [ ]
+2.  **API CRUD pour les Employés (Backend)** [x]
     *   **Action :** Créer les routes d'API sécurisées (CRUD : Create, Read, Update, Delete) pour les employés.
-    *   **Avancement :** Middleware d'authentification créé. Routes `POST /api/companies` et `GET /api/companies` implémentées. Les routes pour les employés sont à faire.
+    *   **Avancement :** Terminé. Les routes sont implémentées dans `src/api/employees.ts` et couvertes par des tests.
 
 3.  **Tableau de Bord et Gestion des Employés (Frontend)** [ ]
     *   **Action :** Créer une page "Tableau de bord" privée.
