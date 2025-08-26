@@ -1,5 +1,16 @@
 # OpenPayFit
 
+[![Pipeline CI/CD](https://github.com/votre-org/OpenPayFit/workflows/Pipeline%20CI/CD/badge.svg)](https://github.com/votre-org/OpenPayFit/actions)
+[![Tests Backend](https://github.com/votre-org/OpenPayFit/workflows/Pipeline%20CI/CD/badge.svg?job=backend-tests)](https://github.com/votre-org/OpenPayFit/actions)
+[![Tests Frontend](https://github.com/votre-org/OpenPayFit/workflows/Pipeline%20CI/CD/badge.svg?job=frontend-tests)](https://github.com/votre-org/OpenPayFit/actions)
+[![Audit Sécurité](https://github.com/votre-org/OpenPayFit/workflows/Pipeline%20CI/CD/badge.svg?job=security-audit)](https://github.com/votre-org/OpenPayFit/actions)
+[![Qualité Code](https://github.com/votre-org/OpenPayFit/workflows/Pipeline%20CI/CD/badge.svg?job=lint)](https://github.com/votre-org/OpenPayFit/actions)
+[![codecov](https://codecov.io/gh/votre-org/OpenPayFit/branch/main/graph/badge.svg)](https://codecov.io/gh/votre-org/OpenPayFit)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node.js Version](https://img.shields.io/badge/node.js-18+-green.svg)](https://nodejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8+-blue.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19+-61DAFB.svg)](https://reactjs.org/)
+
 Une alternative open-source moderne à PayFit pour la gestion RH et paie, conçue pour offrir aux entreprises un contrôle total sur leurs données et processus.
 
 ## Vue d'ensemble

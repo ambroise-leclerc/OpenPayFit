@@ -1,0 +1,57 @@
+name: Rapport de bug
+description: Signalez un bug pour nous aider à améliorer OpenPayFit
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de remplir ce rapport de bug !
+  
+  - type: input
+    id: contact
+    attributes:
+      label: Coordonnées
+      description: Comment pouvons-nous vous contacter si nous avons besoin de plus d'informations ?
+      placeholder: ex. email@example.com
+    validations:
+      required: false
+  
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: Que s'est-il passé ?
+      description: Décrivez-nous également ce que vous attendiez qu'il se passe.
+      placeholder: Dites-nous ce que vous observez !
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: Quelle version du logiciel utilisez-vous ?
+      options:
+        - 1.0.0 (Par défaut)
+        - branche main
+        - branche develop
+    validations:
+      required: true
+  
+  - type: dropdown
+    id: browsers
+    attributes:
+      label: Sur quels navigateurs rencontrez-vous le problème ?
+      multiple: true
+      options:
+        - Firefox
+        - Chrome
+        - Safari
+        - Microsoft Edge
+  
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs pertinents
+      description: Veuillez copier-coller toute sortie de log pertinente. Elle sera automatiquement formatée en code.
+      render: shell
