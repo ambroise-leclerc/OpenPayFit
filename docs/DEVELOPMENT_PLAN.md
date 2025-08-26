@@ -36,10 +36,13 @@ Ce document décrit les grandes phases de développement pour atteindre le MVP (
     *   **Action :** Créer les routes d'API sécurisées (CRUD : Create, Read, Update, Delete) pour les employés.
     *   **Avancement :** Terminé. Les routes sont implémentées dans `src/api/employees.ts` et couvertes par des tests.
 
-3.  **Tableau de Bord et Gestion des Employés (Frontend)** [ ]
-    *   **Action :** Créer une page "Tableau de bord" privée.
-    *   **Fonctionnalités :** Afficher la liste des employés, ajouter/modifier un employé via un formulaire.
-    *   **Avancement :** Composant `ProtectedRoute` créé et intégré au routeur. L'interface de gestion des entreprises/employés est à faire.
+3.  **Tableau de Bord et Gestion des Employés (Frontend)** [~]
+    *   **Action :** Créer une page "Tableau de bord" privée pour gérer les entreprises et les employés.
+    *   **Avancement :**
+        *   [x] Sécurisation de la route `/dashboard` (correction).
+        *   [ ] Mise à jour du service `api.ts` avec les fonctions pour les entreprises et employés.
+        *   [ ] Construction de la page `DashboardPage.tsx` pour afficher les données.
+        *   [ ] Création des composants React (`EmployeeList`, `EmployeeForm`) pour la gestion.
 
 ---
 

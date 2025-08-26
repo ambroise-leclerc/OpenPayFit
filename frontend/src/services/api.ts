@@ -71,3 +71,124 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
 
   return response.json();
 }
+
+// --- Company and Employee Management ---
+
+// Data Interfaces based on Prisma Schema
+export interface Company {
+  id: string;
+  name: string;
+  ownerId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  grossSalary: number;
+  companyId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCompanyData {
+  name: string;
+}
+
+export interface CreateEmployeeData {
+  firstName: string;
+  lastName: string;
+  email: string;
+  grossSalary: number;
+}
+
+export type UpdateEmployeeData = Partial<CreateEmployeeData>;
+
+// Helper function to get headers with auth token
+function getAuthHeaders(token: string) {
+  return {
+    'Content-Type': 'application/json',
+    Authorization: `Bearer ${token}`,
+  };
+}
+
+// --- API Functions ---
+
+// Companies
+export async function getCompanies(token: string): Promise<Company[]> {
+  const response = await fetch(`${API_URL}/companies`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des entreprises');
+  }
+  return response.json();
+}
+
+export async function createCompany(companyData: CreateCompanyData, token: string): Promise<Company> {
+  const response = await fetch(`${API_URL}/companies`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(companyData),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, "Échec de la création de l'entreprise");
+  }
+  return response.json();
+}
+
+// Employees
+export async function getEmployees(companyId: string, token: string): Promise<Employee[]> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/employees`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des employés');
+  }
+  return response.json();
+}
+
+export async function createEmployee(
+  companyId: string,
+  employeeData: CreateEmployeeData,
+  token: string
+): Promise<Employee> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/employees`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(employeeData),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, "Échec de la création de l'employé");
+  }
+  return response.json();
+}
+
+export async function updateEmployee(
+  employeeId: string,
+  employeeData: UpdateEmployeeData,
+  token: string
+): Promise<Employee> {
+  const response = await fetch(`${API_URL}/employees/${employeeId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(employeeData),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, "Échec de la mise à jour de l'employé");
+  }
+  return response.json();
+}
+
+export async function deleteEmployee(employeeId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/employees/${employeeId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, "Échec de la suppression de l'employé");
+  }
+}
