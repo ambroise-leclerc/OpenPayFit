@@ -106,7 +106,7 @@ npm run build   # Build optimisé
 
 ## Licence
 
-MIT License - Voir [LICENSE](LICENSE) pour plus de détails.
+Licence LLVO - Voir [LICENSE](LICENSE) pour plus de détails.
 
 ## Support
 
