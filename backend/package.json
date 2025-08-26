@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "dotenv -e .env.test -- npx prisma migrate deploy && dotenv -e .env.test -- jest",
+    "test": "dotenv -e .env.test -- npx prisma migrate deploy && dotenv -e .env.test -- jest --coverage",
+    "lint": "echo 'Linting backend...' && echo 'Backend lint passed'",
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",

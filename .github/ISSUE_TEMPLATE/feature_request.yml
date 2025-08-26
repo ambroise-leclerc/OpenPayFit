@@ -1,0 +1,56 @@
+name: Demande de fonctionnalité
+description: Suggérez une idée pour OpenPayFit
+title: "[Fonctionnalité]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de nous suggérer une nouvelle fonctionnalité !
+  
+  - type: textarea
+    id: problem
+    attributes:
+      label: Votre demande de fonctionnalité est-elle liée à un problème ?
+      description: Une description claire et concise du problème rencontré.
+      placeholder: Je suis toujours frustré quand...
+    validations:
+      required: true
+  
+  - type: textarea
+    id: solution
+    attributes:
+      label: Décrivez la solution que vous souhaiteriez
+      description: Une description claire et concise de ce que vous voulez qu'il se passe.
+    validations:
+      required: true
+  
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Décrivez les alternatives que vous avez considérées
+      description: Une description claire et concise des solutions ou fonctionnalités alternatives que vous avez envisagées.
+    validations:
+      required: false
+  
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priorité
+      description: À quel point cette fonctionnalité est-elle importante pour vous ?
+      options:
+        - Faible
+        - Moyenne
+        - Élevée
+        - Critique
+    validations:
+      required: true
+  
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code de conduite
+      description: En soumettant cette issue, vous acceptez de suivre notre Code de conduite
+      options:
+        - label: J'accepte de suivre le Code de conduite de ce projet
+          required: true
