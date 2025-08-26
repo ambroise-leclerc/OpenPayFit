@@ -18,8 +18,26 @@ export default function RegisterPage() {
       const data = await registerUser({ name, email, password });
       auth.login(data.token);
       navigate('/dashboard');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } catch (err: unknown) {
+      // Try to extract user-friendly error message
+      let message = 'Échec de l\'inscription. Veuillez vérifier vos informations.';
+      
+      if (err instanceof Error) {
+        // If it's a known validation error from our API, show it
+        if (err.message.includes('already exists') || err.message.includes('existe déjà')) {
+          message = 'Cette adresse email est déjà utilisée.';
+        } else if (err.message.includes('required') || err.message.includes('requis')) {
+          message = 'Tous les champs sont requis.';
+        } else if (err.message.includes('invalid') || err.message.includes('invalide')) {
+          message = 'Informations invalides. Veuillez vérifier vos données.';
+        }
+        // For other API errors, use the server message if it seems user-friendly
+        else if (err.message.length < 100 && !err.message.includes('fetch')) {
+          message = err.message;
+        }
+      }
+      
+      setError(message);
     }
   };
 

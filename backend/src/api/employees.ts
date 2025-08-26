@@ -49,13 +49,19 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
     return res.status(400).json({ error: 'All employee fields are required' });
   }
 
+  // Validate grossSalary
+  const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
+  if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
+    return res.status(400).json({ error: 'grossSalary must be a valid non-negative number' });
+  }
+
   try {
     const newEmployee = await prisma.employee.create({
       data: {
         firstName,
         lastName,
         email,
-        grossSalary: parseFloat(grossSalary),
+        grossSalary: parsedGrossSalary,
         companyId: companyId,
       },
     });
@@ -80,10 +86,20 @@ router.put('/:employeeId', async (req: Request<EmployeeParams>, res: Response) =
   const { employeeId } = req.params;
   const { firstName, lastName, email, grossSalary } = req.body;
 
+  // Validate grossSalary if it is provided
+  let updateData: any = { firstName, lastName, email };
+  if (grossSalary !== undefined) {
+    const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
+    if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
+      return res.status(400).json({ error: 'grossSalary must be a valid non-negative number' });
+    }
+    updateData.grossSalary = parsedGrossSalary;
+  }
+
   try {
     const updatedEmployee = await prisma.employee.update({
       where: { id: employeeId },
-      data: { firstName, lastName, email, grossSalary: grossSalary != null ? parseFloat(grossSalary) : undefined },
+      data: updateData,
     });
     res.json(updatedEmployee);
   } catch (error) {

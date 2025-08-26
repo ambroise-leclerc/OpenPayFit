@@ -17,8 +17,9 @@ export default function LoginPage() {
       const data = await loginUser({ email, password });
       auth.login(data.token);
       navigate('/dashboard');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+    } catch {
+      // Use generic message for security - don't expose API details
+      setError('Email ou mot de passe incorrect');
     }
   };
 
