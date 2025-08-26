@@ -19,22 +19,40 @@ export default function RegisterPage() {
       auth.login(data.token);
       navigate('/dashboard');
     } catch (err: unknown) {
-      // Try to extract user-friendly error message
+      // Try to extract user-friendly error message using error codes when possible
       let message = 'Échec de l\'inscription. Veuillez vérifier vos informations.';
       
-      if (err instanceof Error) {
-        // If it's a known validation error from our API, show it
-        if (err.message.includes('already exists') || err.message.includes('existe déjà')) {
+      // Check for structured error response with error codes
+      const errorCode =
+        // Check if error has a code property
+        (typeof err === 'object' && err !== null && 'code' in err && (err as Record<string, unknown>).code) ||
+        null;
+
+      switch (errorCode) {
+        case 'EMAIL_EXISTS':
+        case 'P2002': // Prisma unique constraint error
           message = 'Cette adresse email est déjà utilisée.';
-        } else if (err.message.includes('required') || err.message.includes('requis')) {
+          break;
+        case 'REQUIRED_FIELDS':
           message = 'Tous les champs sont requis.';
-        } else if (err.message.includes('invalid') || err.message.includes('invalide')) {
+          break;
+        case 'INVALID_DATA':
           message = 'Informations invalides. Veuillez vérifier vos données.';
-        }
-        // For other API errors, use the server message if it seems user-friendly
-        else if (err.message.length < 100 && !err.message.includes('fetch')) {
-          message = err.message;
-        }
+          break;
+        default:
+          // Fallback to message parsing for backward compatibility
+          if (err instanceof Error) {
+            if (err.message.includes('already exists') || err.message.includes('existe déjà')) {
+              message = 'Cette adresse email est déjà utilisée.';
+            } else if (err.message.includes('required') || err.message.includes('requis')) {
+              message = 'Tous les champs sont requis.';
+            } else if (err.message.includes('invalid') || err.message.includes('invalide')) {
+              message = 'Informations invalides. Veuillez vérifier vos données.';
+            } else if (err.message.length < 100 && !err.message.includes('fetch')) {
+              message = err.message;
+            }
+          }
+          break;
       }
       
       setError(message);

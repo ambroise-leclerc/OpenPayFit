@@ -1,3 +1,13 @@
+// Base64url decode function for JWT
+function base64UrlDecode(str: string): string {
+  // Replace URL-safe characters and add padding if necessary
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  return atob(base64);
+}
+
 // Simple JWT token validation utilities
 export function isTokenExpired(token: string): boolean {
   try {
@@ -5,8 +15,8 @@ export function isTokenExpired(token: string): boolean {
     const parts = token.split('.');
     if (parts.length !== 3) return true;
 
-    // Decode the payload (second part)
-    const payload = JSON.parse(atob(parts[1]));
+    // Decode the payload (second part) using base64url decoding
+    const payload = JSON.parse(base64UrlDecode(parts[1]));
     
     // Check if token has expiration time
     if (!payload.exp) return false;
@@ -22,7 +32,6 @@ export function isTokenExpired(token: string): boolean {
 
 export function isTokenValid(token: string | null): boolean {
   if (!token) return false;
-  if (token.length < 10) return false; // Basic length check
-  if (!token.includes('.')) return false; // Should have dots
+  if (!token.includes('.')) return false; // Should have dots for JWT structure
   return !isTokenExpired(token);
 }
