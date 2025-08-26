@@ -5,10 +5,14 @@ export default function Layout() {
   return (
     <div>
       <header className={styles.header}>
-        <Link to="/">Accueil</Link>
-        <Link to="/login">Connexion</Link>
-        <Link to="/register">Inscription</Link>
-        <Link to="/dashboard">Tableau de Bord</Link>
+        <nav className={styles.nav} aria-label="Navigation principale">
+          <ul className={styles.navList}>
+            <li><Link to="/">Accueil</Link></li>
+            <li><Link to="/login">Connexion</Link></li>
+            <li><Link to="/register">Inscription</Link></li>
+            <li><Link to="/dashboard">Tableau de Bord</Link></li>
+          </ul>
+        </nav>
       </header>
       <main className={styles.main}>
         <Outlet />

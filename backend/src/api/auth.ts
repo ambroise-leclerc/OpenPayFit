@@ -33,7 +33,7 @@ router.post('/register', async (req, res) => {
 
     // Generate a token for the new user
     const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
-      expiresIn: '1h', // Token expires in 1 hour
+      expiresIn: '8h', // Token expires in 8 hours
     });
 
     res.status(201).json({ token });
@@ -73,7 +73,7 @@ router.post('/login', async (req, res) => {
 
         // Generate a token
         const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
-            expiresIn: '1h',
+            expiresIn: '8h',
         });
 
         res.status(200).json({ token });

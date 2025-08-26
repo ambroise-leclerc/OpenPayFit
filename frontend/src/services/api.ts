@@ -30,7 +30,7 @@ export async function registerUser(userData: RegisterUserData): Promise<AuthResp
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to register');
+    throw new Error(errorData.error || 'Échec de l\'inscription');
   }
 
   return response.json();
@@ -47,7 +47,7 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to login');
+    throw new Error(errorData.error || 'Échec de la connexion');
   }
 
   return response.json();
