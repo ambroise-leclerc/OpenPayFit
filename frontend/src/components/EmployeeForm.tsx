@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import type { CreateEmployeeData } from '../services/api';
 
-interface EmployeeFormProps {
-  // onSubmit: (employeeData: CreateEmployeeData) => void; // Future implementation
-  // initialData?: Employee; // For editing
-}
+// TODO: Define props for this component, e.g., for submitting the form
+// interface EmployeeFormProps {
+//   onSubmit: (employeeData: CreateEmployeeData) => void;
+//   initialData?: Employee;
+// }
 
 const initialFormState: CreateEmployeeData = {
   firstName: '',
@@ -13,7 +14,7 @@ const initialFormState: CreateEmployeeData = {
   grossSalary: 0,
 };
 
-export default function EmployeeForm({}: EmployeeFormProps) {
+export default function EmployeeForm() {
   const [formData, setFormData] = useState<CreateEmployeeData>(initialFormState);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
