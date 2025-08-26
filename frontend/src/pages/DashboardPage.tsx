@@ -38,17 +38,12 @@ export default function DashboardPage() {
     if (token && selectedCompany) {
       const fetchEmployees = async () => {
         try {
-          // A small loader for employees list
-          // setLoading(true)
           const fetchedEmployees = await getEmployees(selectedCompany.id, token);
           setEmployees(fetchedEmployees);
           setError(null);
         } catch (err) {
           setError((err as Error).message);
         }
-        // finally {
-        //   setLoading(false)
-        // }
       };
       fetchEmployees();
     } else {
@@ -85,8 +80,8 @@ export default function DashboardPage() {
             ))}
           </select>
         ) : (
-          <p>Vous n'avez pas encore d'entreprise. Créez-en une !</p>
           // TODO: Add a "Create Company" button/form
+          <p>Vous n'avez pas encore d'entreprise. Créez-en une !</p>
         )}
       </section>
 

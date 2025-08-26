@@ -32,3 +32,9 @@ yarn-error.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+# Coverage reports
+coverage/
+@coverage/
+.nyc_output/
+*.lcov

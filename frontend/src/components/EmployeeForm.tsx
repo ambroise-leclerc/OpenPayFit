@@ -28,8 +28,7 @@ export default function EmployeeForm() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     // onSubmit(formData);
-    console.log('Submitting:', formData);
-    alert('Fonctionnalité à implémenter');
+    // Fonctionnalité à implémenter
   };
 
   return (
