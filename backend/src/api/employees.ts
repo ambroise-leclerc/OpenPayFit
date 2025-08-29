@@ -17,6 +17,10 @@ const router = Router({ mergeParams: true });
 router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction) => {
   const { companyId } = req.params;
 
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   if (!companyId) {
     return res.status(400).json({ error: 'Company ID is required' });
   }
@@ -30,7 +34,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
       return res.status(404).json({ error: 'Company not found' });
     }
 
-    if (company.ownerId !== req.userId) {
+    if (company.ownerId !== req.user.id) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -42,17 +46,17 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
 
 // POST /api/companies/:companyId/employees
 router.post('/', async (req: Request<CompanyParams>, res: Response) => {
-  const { firstName, lastName, email, grossSalary } = req.body;
+  const { firstName, lastName, email, baseHourlyRate } = req.body;
   const { companyId } = req.params;
 
-  if (!firstName || !lastName || !email || grossSalary == null) {
+  if (!firstName || !lastName || !email || baseHourlyRate == null) {
     return res.status(400).json({ error: 'All employee fields are required' });
   }
 
-  // Validate grossSalary
-  const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
-  if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
-    return res.status(400).json({ error: 'grossSalary must be a valid non-negative number' });
+  // Validate baseHourlyRate
+  const parsedBaseHourlyRate = typeof baseHourlyRate === 'number' ? baseHourlyRate : parseFloat(baseHourlyRate);
+  if (!Number.isFinite(parsedBaseHourlyRate) || parsedBaseHourlyRate < 0) {
+    return res.status(400).json({ error: 'baseHourlyRate must be a valid non-negative number' });
   }
 
   try {
@@ -61,7 +65,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
         firstName,
         lastName,
         email,
-        grossSalary: parsedGrossSalary,
+        baseHourlyRate: parsedBaseHourlyRate,
         companyId: companyId,
       },
     });
@@ -84,16 +88,16 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
 // PUT /api/companies/:companyId/employees/:employeeId
 router.put('/:employeeId', async (req: Request<EmployeeParams>, res: Response) => {
   const { employeeId } = req.params;
-  const { firstName, lastName, email, grossSalary } = req.body;
+  const { firstName, lastName, email, baseHourlyRate } = req.body;
 
-  // Validate grossSalary if it is provided
+  // Validate baseHourlyRate if it is provided
   let updateData: any = { firstName, lastName, email };
-  if (grossSalary !== undefined) {
-    const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
-    if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
-      return res.status(400).json({ error: 'grossSalary must be a valid non-negative number' });
+  if (baseHourlyRate !== undefined) {
+    const parsedBaseHourlyRate = typeof baseHourlyRate === 'number' ? baseHourlyRate : parseFloat(baseHourlyRate);
+    if (!Number.isFinite(parsedBaseHourlyRate) || parsedBaseHourlyRate < 0) {
+      return res.status(400).json({ error: 'baseHourlyRate must be a valid non-negative number' });
     }
-    updateData.grossSalary = parsedGrossSalary;
+    updateData.baseHourlyRate = parsedBaseHourlyRate;
   }
 
   try {

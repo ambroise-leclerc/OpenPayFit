@@ -1,27 +1,17 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// JWT secret should be set via environment variable for security
-const JWT_SECRET = process.env.JWT_SECRET;
-
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is not set.');
-}
-
-export function authenticateToken(req: Request, res: Response, next: NextFunction) {
+export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+  const token = authHeader && authHeader.split(' ')[1];
 
-  if (token == null) {
-    return res.sendStatus(401); // No token, unauthorized
-  }
+  if (token == null) return res.sendStatus(401);
 
-  jwt.verify(token, JWT_SECRET as string, (err: any, payload: any) => {
+  jwt.verify(token, process.env.JWT_SECRET!, (err: any, user: any) => {
     if (err) {
-      return res.sendStatus(403); // Token is no longer valid
+      return res.sendStatus(403);
     }
-
-    req.userId = payload.userId;
+    req.user = user;
     next();
   });
-}
+};

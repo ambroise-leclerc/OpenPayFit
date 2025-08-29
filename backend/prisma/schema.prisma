@@ -32,13 +32,29 @@ model Company {
 }
 
 model Employee {
-  id          String   @id @default(cuid())
-  firstName   String
-  lastName    String
-  email       String   @unique
-  grossSalary Float
-  company     Company  @relation(fields: [companyId], references: [id])
-  companyId   String   // Clé étrangère vers Company
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String    @id @default(cuid())
+  firstName      String
+  lastName       String
+  email          String    @unique
+  baseHourlyRate Float     @default(0) // Taux horaire de base
+  company        Company   @relation(fields: [companyId], references: [id])
+  companyId      String // Clé étrangère vers Company
+  payslips       Payslip[] // Un employé a plusieurs fiches de paie
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}
+
+model Payslip {
+  id                  String   @id @default(cuid())
+  periodStartDate     DateTime
+  periodEndDate       DateTime
+  normalHoursWorked   Float
+  overtimeHoursWorked Float
+  grossSalary         Float
+  netSalary           Float
+  totalContributions  Float
+  employee            Employee @relation(fields: [employeeId], references: [id])
+  employeeId          String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 }

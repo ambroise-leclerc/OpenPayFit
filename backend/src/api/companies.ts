@@ -11,9 +11,12 @@ router.use(authenticateToken);
 // GET /api/companies
 // Gets all companies for the authenticated user
 router.get('/', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   try {
     const companies = await prisma.company.findMany({
-      where: { ownerId: req.userId },
+      where: { ownerId: req.user.id },
     });
     res.json(companies);
   } catch (error) {
@@ -25,6 +28,9 @@ router.get('/', async (req, res) => {
 // POST /api/companies
 // Creates a new company for the authenticated user
 router.post('/', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
   const { name } = req.body;
 
   if (!name) {
@@ -35,7 +41,7 @@ router.post('/', async (req, res) => {
     const newCompany = await prisma.company.create({
       data: {
         name,
-        ownerId: req.userId!,
+        ownerId: req.user.id!,
       },
     });
     res.status(201).json(newCompany);
