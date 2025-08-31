@@ -2,6 +2,14 @@ import prisma from '../lib/db';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
 
+// Function to clean database in correct order (respecting foreign keys)
+export async function cleanDatabase() {
+  await prisma.payslip.deleteMany({});
+  await prisma.employee.deleteMany({});
+  await prisma.company.deleteMany({});
+  await prisma.user.deleteMany({});
+}
+
 // Function to create a test user
 export async function createTestUser(userData: Partial<{ email: string; name: string; password: string; }> = {}) {
   const defaultData = { email: 'test@test.com', name: 'Test User', password: 'password123' };

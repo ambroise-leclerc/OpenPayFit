@@ -102,7 +102,7 @@ export interface CreateEmployeeData {
   firstName: string;
   lastName: string;
   email: string;
-  grossSalary: number;
+  baseHourlyRate: number;
 }
 
 export type UpdateEmployeeData = Partial<CreateEmployeeData>;
@@ -117,16 +117,42 @@ function getAuthHeaders(token: string) {
 
 // --- API Functions ---
 
-// Companies
-export async function getCompanies(token: string): Promise<Company[]> {
-  const response = await fetch(`${API_URL}/companies`, {
-    headers: getAuthHeaders(token),
-  });
-  if (!response.ok) {
-    await handleErrorResponse(response, 'Échec de la récupération des entreprises');
+async function request(endpoint: string, options: RequestInit = {}) {
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
   }
-  return response.json();
+
+  const res = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(errorData.error || errorData.message || 'An error occurred');
+  }
+
+  if (res.status === 204) {
+    return;
+  }
+
+  return res.json();
 }
+
+export const getCompanies = () => request('/companies');
+
+export const getEmployeesForCompany = (companyId: string) => request(`/companies/${companyId}/employees`);
+
+export const runPayroll = (payrollData: any) => {
+  return request('/payroll/run', {
+    method: 'POST',
+    body: JSON.stringify(payrollData),
+  });
+};
+
 
 export async function createCompany(companyData: CreateCompanyData, token: string): Promise<Company> {
   const response = await fetch(`${API_URL}/companies`, {
@@ -135,7 +161,7 @@ export async function createCompany(companyData: CreateCompanyData, token: strin
     body: JSON.stringify(companyData),
   });
   if (!response.ok) {
-    await handleErrorResponse(response, "Échec de la création de l'entreprise");
+    await handleErrorResponse(response, "Échec de la création de l\'entreprise");
   }
   return response.json();
 }
@@ -162,7 +188,7 @@ export async function createEmployee(
     body: JSON.stringify(employeeData),
   });
   if (!response.ok) {
-    await handleErrorResponse(response, "Échec de la création de l'employé");
+    await handleErrorResponse(response, "Échec de la création de l\'employé");
   }
   return response.json();
 }
@@ -178,7 +204,7 @@ export async function updateEmployee(
     body: JSON.stringify(employeeData),
   });
   if (!response.ok) {
-    await handleErrorResponse(response, "Échec de la mise à jour de l'employé");
+    await handleErrorResponse(response, "Échec de la mise à jour de l\'employé");
   }
   return response.json();
 }
@@ -189,6 +215,6 @@ export async function deleteEmployee(employeeId: string, token: string): Promise
     headers: getAuthHeaders(token),
   });
   if (!response.ok) {
-    await handleErrorResponse(response, "Échec de la suppression de l'employé");
+    await handleErrorResponse(response, "Échec de la suppression de l\'employé");
   }
 }

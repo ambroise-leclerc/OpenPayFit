@@ -47,17 +47,17 @@ Ce document décrit les grandes phases de développement pour atteindre le MVP (
 
 ---
 
-### Phase 3 : Moteur de Paie (MVP) [À FAIRE]
+### Phase 3 : Moteur de Paie (MVP) [EN COURS]
 
 **Objectif :** Mettre en place la logique de base pour calculer une paie simple.
 
-1.  **Schéma de Données - Fiche de Paie (Backend)** [ ]
+1.  **Schéma de Données - Fiche de Paie (Backend)** [x]
     *   **Action :** Créer un modèle `Payslip` lié à un `Employee` et une période.
 
-2.  **Logique de Calcul (Backend)** [ ]
+2.  **Logique de Calcul (Backend)** [x]
     *   **Action :** Créer un module de paie avec une logique de calcul simplifiée pour le MVP (ex: `net = brut - 25%`).
 
-3.  **API de Paie (Backend)** [ ]
+3.  **API de Paie (Backend)** [x]
     *   **Action :** Créer une route `POST /api/payroll/run` pour lancer un cycle de paie.
 
 4.  **Interface de Paie (Frontend)** [ ]
