@@ -100,7 +100,7 @@ describe('🏢 Companies API - Guide du système multi-tenant', () => {
       const response = await request(app)
         .get('/api/companies')
         .set('Authorization', 'Bearer invalidtoken123')
-        .expect(401);
+        .expect(403); // Token invalide = 403
 
       // Le middleware auth renvoie 403 pour token invalide
       expect(response.status).toBe(403);

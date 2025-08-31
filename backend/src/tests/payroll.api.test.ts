@@ -1,9 +1,13 @@
 import request from 'supertest';
 import app from '../index';
 import prisma from '../lib/db';
-import { createTestUser, createTestCompany, createTestEmployee } from './test-utils';
+import { createTestUser, createTestCompany, createTestEmployee, cleanDatabase } from './test-utils';
 
 describe('POST /api/payroll/run', () => {
+  beforeEach(async () => {
+    await cleanDatabase();
+  });
+  
   afterAll(async () => {
     await prisma.$disconnect();
   });
