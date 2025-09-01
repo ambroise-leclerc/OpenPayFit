@@ -72,4 +72,45 @@ router.post('/run', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/payroll/payslips/employee/:employeeId
+router.get('/payslips/employee/:employeeId', authenticateToken, async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { employeeId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // 1. Verify the employee exists and belongs to a company owned by the user
+    const employee = await prisma.employee.findFirst({
+      where: {
+        id: employeeId,
+        company: {
+          ownerId: userId,
+        },
+      },
+    });
+
+    if (!employee) {
+      return res.status(404).json({ error: 'Employé non trouvé ou non autorisé.' });
+    }
+
+    // 2. Fetch payslips for the employee
+    const payslips = await prisma.payslip.findMany({
+      where: {
+        employeeId: employeeId,
+      },
+      orderBy: {
+        periodStartDate: 'desc',
+      },
+    });
+
+    res.status(200).json(payslips);
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération des fiches de paie:', error);
+    res.status(500).json({ error: 'Erreur interne du serveur.' });
+  }
+});
+
 export default router;
