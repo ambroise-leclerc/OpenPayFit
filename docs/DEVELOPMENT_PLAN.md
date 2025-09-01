@@ -65,14 +65,14 @@ Ce document décrit les grandes phases de développement pour atteindre le MVP (
 
 ---
 
-### Phase 4 et Au-delà : Visualisation et Évolution [À FAIRE]
+### Phase 4 et Au-delà : Visualisation et Évolution [EN COURS]
 
 **Objectif :** Permettre aux utilisateurs de voir les résultats et planifier la suite.
 
-1.  **Visualisation des Fiches de Paie** [ ]
+1.  **Visualisation des Fiches de Paie** [x]
     *   **Action :** Créer une page dédiée pour voir les détails d'une fiche de paie.
 
-2.  **Génération de PDF** [ ]
+2.  **Génération de PDF** [x]
     *   **Action :** Intégrer une librairie pour générer une version PDF de la fiche de paie.
 
 3.  **Prochaines Étapes Possibles** [ ]

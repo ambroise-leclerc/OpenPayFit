@@ -20,7 +20,8 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

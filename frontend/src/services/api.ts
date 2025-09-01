@@ -153,6 +153,8 @@ export const runPayroll = (payrollData: any) => {
   });
 };
 
+export const getEmployeePayslips = (employeeId: string) => request(`/payroll/payslips/employee/${employeeId}`);
+
 
 export async function createCompany(companyData: CreateCompanyData, token: string): Promise<Company> {
   const response = await fetch(`${API_URL}/companies`, {
@@ -217,4 +219,22 @@ export async function deleteEmployee(employeeId: string, token: string): Promise
   if (!response.ok) {
     await handleErrorResponse(response, "Échec de la suppression de l\'employé");
   }
+}
+
+export async function downloadPayslipPDF(payslipId: string): Promise<Blob> {
+  const token = localStorage.getItem('token');
+  const headers: HeadersInit = {};
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}/payroll/payslips/${payslipId}/pdf`, {
+    headers,
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Failed to download PDF');
+  }
+
+  return response.blob();
 }

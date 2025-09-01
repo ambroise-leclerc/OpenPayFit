@@ -2,6 +2,7 @@ import { Router } from 'express';
 import prisma from '../lib/db';
 import { authenticateToken } from '../middleware/auth';
 import { calculatePayroll } from '../services/payrollService';
+import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 const router = Router();
 
@@ -109,6 +110,81 @@ router.get('/payslips/employee/:employeeId', authenticateToken, async (req, res)
 
   } catch (error) {
     console.error('Erreur lors de la récupération des fiches de paie:', error);
+    res.status(500).json({ error: 'Erreur interne du serveur.' });
+  }
+});
+
+// GET /api/payroll/payslips/:payslipId/pdf
+router.get('/payslips/:payslipId/pdf', authenticateToken, async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { payslipId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    // 1. Verify the payslip exists and belongs to an employee of a company owned by the user
+    const payslip = await prisma.payslip.findFirst({
+      where: {
+        id: payslipId,
+        employee: {
+          company: {
+            ownerId: userId,
+          },
+        },
+      },
+      include: {
+        employee: {
+          include: {
+            company: true,
+          },
+        },
+      },
+    });
+
+    if (!payslip) {
+      return res.status(404).json({ error: 'Fiche de paie non trouvée ou non autorisée.' });
+    }
+
+    // 2. Generate PDF
+    const pdfDoc = await PDFDocument.create();
+    const page = pdfDoc.addPage();
+    const { width, height } = page.getSize();
+    const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 12;
+
+    let y = height - 50;
+    const drawText = (text: string, x: number, yPos: number) => {
+      page.drawText(text, { x, y: yPos, font, size: fontSize });
+      return yPos - 20; // Move down for the next line
+    };
+
+    y = drawText(`Fiche de Paie - ${new Date(payslip.periodStartDate).toLocaleString('default', { month: 'long', year: 'numeric' })}`, 50, y);
+    y -= 20; // Add extra space
+
+    y = drawText(`Entreprise: ${payslip.employee.company.name}`, 50, y);
+    y = drawText(`Employé: ${payslip.employee.firstName} ${payslip.employee.lastName}`, 50, y);
+    y -= 20;
+
+    y = drawText(`Période du ${new Date(payslip.periodStartDate).toLocaleDateString()} au ${new Date(payslip.periodEndDate).toLocaleDateString()}`, 50, y);
+    y -= 20;
+
+    y = drawText(`Heures normales: ${payslip.normalHoursWorked.toFixed(2)}`, 50, y);
+    y = drawText(`Heures supplémentaires: ${payslip.overtimeHoursWorked.toFixed(2)}`, 50, y);
+    y -= 20;
+
+    y = drawText(`Salaire Brut: ${payslip.grossSalary.toFixed(2)} €`, 50, y);
+    y = drawText(`Cotisations: ${payslip.totalContributions.toFixed(2)} €`, 50, y);
+    y = drawText(`Salaire Net: ${payslip.netSalary.toFixed(2)} €`, 50, y);
+
+    // 3. Send PDF
+    const pdfBytes = await pdfDoc.save();
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=payslip-${payslip.id}.pdf`);
+    res.send(Buffer.from(pdfBytes));
+
+  } catch (error) {
+    console.error('Erreur lors de la génération du PDF de la fiche de paie:', error);
     res.status(500).json({ error: 'Erreur interne du serveur.' });
   }
 });

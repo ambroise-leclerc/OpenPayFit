@@ -1,4 +1,5 @@
 import type { Employee } from '../services/api';
+import { Link } from 'react-router-dom';
 
 interface EmployeeListProps {
   employees: Employee[];
@@ -32,6 +33,9 @@ export default function EmployeeList({ employees }: EmployeeListProps) {
             <td>
               <button>Modifier</button>
               <button>Supprimer</button>
+              <Link to={`/employees/${employee.id}/payslips`}>
+                <button>Fiches de paie</button>
+              </Link>
             </td>
           </tr>
         ))}
