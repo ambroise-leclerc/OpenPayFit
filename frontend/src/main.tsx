@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage';
 import PayrollPage from './pages/PayrollPage';
 import EmployeePayslipsPage from './pages/EmployeePayslipsPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import CreateCompanyPage from './pages/CreateCompanyPage';
 
 const router = createBrowserRouter([
   {
@@ -51,6 +52,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <EmployeePayslipsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'company/new',
+        element: (
+          <ProtectedRoute>
+            <CreateCompanyPage />
           </ProtectedRoute>
         ),
       },

@@ -1,5 +1,6 @@
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import DashboardPage from './DashboardPage';
 import { AuthContext } from '../contexts/AuthContext';
 import * as api from '../services/api';
@@ -21,9 +22,11 @@ const mockEmployees: Employee[] = [
 describe('DashboardPage', () => {
   const renderWithAuth = (ui: React.ReactElement) => {
     return render(
-      <AuthContext.Provider value={{ token: 'fake-token', login: vi.fn(), logout: vi.fn() }}>
-        {ui}
-      </AuthContext.Provider>
+      <MemoryRouter>
+        <AuthContext.Provider value={{ token: 'fake-token', login: vi.fn(), logout: vi.fn() }}>
+          {ui}
+        </AuthContext.Provider>
+      </MemoryRouter>
     );
   };
 

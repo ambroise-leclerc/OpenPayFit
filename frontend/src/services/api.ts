@@ -88,7 +88,7 @@ export interface Employee {
   firstName: string;
   lastName: string;
   email: string;
-  grossSalary: number;
+  baseHourlyRate: number;
   companyId: string;
   createdAt: string;
   updatedAt: string;

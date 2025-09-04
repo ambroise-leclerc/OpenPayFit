@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getCompanies, getEmployees } from '../services/api';
 import type { Company, Employee } from '../services/api';
@@ -13,43 +14,44 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (token) {
-      const fetchCompanies = async () => {
-        try {
-          setLoading(true);
-          const fetchedCompanies = await getCompanies(token);
-          setCompanies(fetchedCompanies);
-          if (fetchedCompanies.length > 0) {
-            setSelectedCompany(fetchedCompanies[0]);
-          }
-          setError(null);
-        } catch (err) {
-          setError((err as Error).message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchCompanies();
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token && selectedCompany) {
-      const fetchEmployees = async () => {
-        try {
-          const fetchedEmployees = await getEmployees(selectedCompany.id, token);
-          setEmployees(fetchedEmployees);
-          setError(null);
-        } catch (err) {
-          setError((err as Error).message);
-        }
-      };
-      fetchEmployees();
-    } else {
-      setEmployees([]);
+  const fetchCompanies = useCallback(async () => {
+    if (!token) return;
+    try {
+      setLoading(true);
+      const fetchedCompanies = await getCompanies(token);
+      setCompanies(fetchedCompanies);
+      if (fetchedCompanies.length > 0 && !selectedCompany) {
+        setSelectedCompany(fetchedCompanies[0]);
+      }
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setLoading(false);
     }
   }, [token, selectedCompany]);
+
+  const fetchEmployees = useCallback(async () => {
+    if (!token || !selectedCompany) {
+      setEmployees([]);
+      return;
+    }
+    try {
+      const fetchedEmployees = await getEmployees(selectedCompany.id, token);
+      setEmployees(fetchedEmployees);
+      setError(null);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }, [token, selectedCompany]);
+
+  useEffect(() => {
+    fetchCompanies();
+  }, [fetchCompanies]);
+
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
 
   const handleCompanyChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     const companyId = event.target.value;
@@ -57,7 +59,7 @@ export default function DashboardPage() {
     setSelectedCompany(company);
   };
 
-  if (loading) {
+  if (loading && companies.length === 0) {
     return <div>Chargement...</div>;
   }
 
@@ -80,8 +82,12 @@ export default function DashboardPage() {
             ))}
           </select>
         ) : (
-          // TODO: Add a "Create Company" button/form
-          <p>Vous n'avez pas encore d'entreprise. Créez-en une !</p>
+          <div>
+            <p>Vous n'avez pas encore d'entreprise. Créez-en une !</p>
+            <Link to="/company/new">
+              <button>Créer une entreprise</button>
+            </Link>
+          </div>
         )}
       </section>
 
@@ -93,7 +99,10 @@ export default function DashboardPage() {
             <h2>Employés de {selectedCompany.name}</h2>
             <EmployeeList employees={employees} />
             <hr />
-            <EmployeeForm />
+            <EmployeeForm
+              companyId={selectedCompany.id}
+              onEmployeeCreated={fetchEmployees}
+            />
           </div>
         ) : (
           companies.length > 0 && <p>Sélectionnez une entreprise pour voir ses employés.</p>
