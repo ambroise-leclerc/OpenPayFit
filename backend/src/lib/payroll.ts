@@ -7,32 +7,44 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
-import { createId } from '@paralleldrive/cuid2';
+import { randomUUID } from 'crypto';
 
 // Utiliser la base de données appropriée selon l'environnement
 const dbFileName = process.env.NODE_ENV === 'test' ? 'test.db' : 'dev.db';
 const dbPath = path.join(__dirname, '../../prisma', dbFileName);
 
-// Singleton pour la connexion à la base de données
-let dbInstance: Database.Database | null = null;
+// Connections à la base de données (une pour lecture, une pour écriture)
+let dbReadInstance: Database.Database | null = null;
+let dbWriteInstance: Database.Database | null = null;
 
 /**
- * Récupère ou crée une connexion singleton à la base de données
+ * Récupère ou crée une connexion à la base de données
  */
 function getDatabase(readonly: boolean = false): Database.Database {
-  if (!dbInstance || !dbInstance.open) {
-    dbInstance = new Database(dbPath, { readonly });
+  if (readonly) {
+    if (!dbReadInstance || !dbReadInstance.open) {
+      dbReadInstance = new Database(dbPath, { readonly: true });
+    }
+    return dbReadInstance;
+  } else {
+    if (!dbWriteInstance || !dbWriteInstance.open) {
+      dbWriteInstance = new Database(dbPath, { readonly: false });
+    }
+    return dbWriteInstance;
   }
-  return dbInstance;
 }
 
 /**
- * Ferme la connexion à la base de données (utile pour les tests)
+ * Ferme les connexions à la base de données (utile pour les tests)
  */
 export function closeDatabaseConnection(): void {
-  if (dbInstance && dbInstance.open) {
-    dbInstance.close();
-    dbInstance = null;
+  if (dbReadInstance && dbReadInstance.open) {
+    dbReadInstance.close();
+    dbReadInstance = null;
+  }
+  if (dbWriteInstance && dbWriteInstance.open) {
+    dbWriteInstance.close();
+    dbWriteInstance = null;
   }
 }
 
@@ -119,7 +131,7 @@ export function createPayslip(
 ): Payslip {
   const db = getDatabase();
 
-  const id = createId();
+  const id = randomUUID();
   const deductions = calculateDeductions(grossSalary);
   const netSalary = calculateNetSalary(grossSalary);
   const createdAt = new Date().toISOString();

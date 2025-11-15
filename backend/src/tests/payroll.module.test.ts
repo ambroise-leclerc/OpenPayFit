@@ -13,7 +13,7 @@ import {
 } from '../lib/payroll';
 import Database, { type Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
-import { createId } from '@paralleldrive/cuid2';
+import { randomUUID } from 'crypto';
 
 const dbPath = path.join(__dirname, '../../prisma/test.db');
 
@@ -33,7 +33,7 @@ function setupTestDatabase() {
 }
 
 function createTestUser(db: DatabaseType, email: string, password: string = 'password123'): string {
-  const id = createId();
+  const id = randomUUID();
   db.prepare(`
     INSERT INTO User (id, email, password, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
@@ -42,7 +42,7 @@ function createTestUser(db: DatabaseType, email: string, password: string = 'pas
 }
 
 function createTestCompany(db: DatabaseType, name: string, ownerId: string): string {
-  const id = createId();
+  const id = randomUUID();
   db.prepare(`
     INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
@@ -58,7 +58,7 @@ function createTestEmployee(
   grossSalary: number,
   companyId: string
 ): string {
-  const id = createId();
+  const id = randomUUID();
   db.prepare(`
     INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))

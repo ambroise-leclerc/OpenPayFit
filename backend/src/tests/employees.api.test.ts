@@ -3,7 +3,7 @@ import request from 'supertest';
 import app from '../index'; // On importe l'app Express
 import prisma from '../lib/db';
 import jwt from 'jsonwebtoken';
-import { User, Company, Employee } from '../generated/prisma';
+import type { User, Company, Employee } from '@prisma/client';
 
 // Le secret JWT doit être le même que dans le middleware
 const JWT_SECRET = process.env.JWT_SECRET as string;

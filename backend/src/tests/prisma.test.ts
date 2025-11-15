@@ -1,4 +1,5 @@
-import { PrismaClient, User, Company } from '../generated/prisma';
+import { PrismaClient } from '@prisma/client';
+import type { User, Company, Employee } from '@prisma/client';
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
@@ -23,7 +24,7 @@ describe('Company and Employee CRUD operations', () => {
     // This is a safe cleanup strategy for the test data we created.
     const testEmployeeEmails = await prisma.employee.findMany({ where: { email: { contains: '@testcorp.com' } } });
     if (testEmployeeEmails.length > 0) {
-        await prisma.employee.deleteMany({ where: { email: { in: testEmployeeEmails.map(e => e.email) } } });
+        await prisma.employee.deleteMany({ where: { email: { in: testEmployeeEmails.map((e: Employee) => e.email) } } });
     }
     
     const testCompany = await prisma.company.findFirst({ where: { ownerId: user.id } });
