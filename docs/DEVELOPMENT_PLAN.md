@@ -42,8 +42,9 @@ Ce document décrit les grandes phases de développement pour atteindre le MVP (
         *   [x] Sécurisation de la route `/dashboard`.
         *   [x] Mise à jour du service `api.ts` avec les fonctions pour les entreprises et employés.
         *   [x] Construction de la page `DashboardPage.tsx` pour afficher les données.
-        *   [x] Création des composants React (`EmployeeList`, `EmployeeForm`).
+        *   [x] Création des composants React (`EmployeeList`, `EmployeeForm`, `CompanyForm`).
         *   [x] Ajout de tests d'intégration avec Vitest et React Testing Library.
+        *   [x] Correction de bugs sur la création d'entreprise et d'employés, et clarification de la logique de paie (utilisation du taux horaire de base).
 
 ---
 
@@ -56,6 +57,7 @@ Ce document décrit les grandes phases de développement pour atteindre le MVP (
 
 2.  **Logique de Calcul (Backend)** [x]
     *   **Action :** Créer un module de paie avec une logique de calcul simplifiée pour le MVP (ex: `net = brut - 25%`).
+    *   **Note :** La logique de calcul a été clarifiée pour se baser sur le `baseHourlyRate` de l'employé, conformément aux standards français.
 
 3.  **API de Paie (Backend)** [x]
     *   **Action :** Créer une route `POST /api/payroll/run` pour lancer un cycle de paie.

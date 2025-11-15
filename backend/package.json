@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "dotenv -e .env.test -- npx prisma migrate deploy && dotenv -e .env.test -- jest --coverage --runInBand",
+    "test:generate-pdf": "SAVE_PDF_OUTPUT=true npm test -- src/tests/payslip-generation.e2e.test.ts",
     "lint": "echo 'Linting backend...' && echo 'Backend lint passed'",
     "build": "tsc",
     "start": "node dist/index.js",
