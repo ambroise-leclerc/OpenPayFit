@@ -178,6 +178,47 @@ h2 {
   color: #4CAF50;
 }
 
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.detailLink {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.detailLink:hover {
+  background-color: #eff6ff;
+  text-decoration: underline;
+}
+
+.pdfButton {
+  background-color: #059669;
+  color: white;
+  border: none;
+  padding: 0.375rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.pdfButton:hover:not(:disabled) {
+  background-color: #047857;
+}
+
+.pdfButton:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 1rem;

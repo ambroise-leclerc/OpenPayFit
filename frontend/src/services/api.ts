@@ -291,3 +291,46 @@ export async function getPayslipById(payslipId: string, token: string): Promise<
 
   return response.json();
 }
+
+/**
+ * Télécharge le PDF d'une fiche de paie
+ * @param payslipId - ID de la fiche de paie
+ * @param token - Token d'authentification
+ */
+export async function downloadPayslipPDF(payslipId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/payslips/${payslipId}/pdf`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec du téléchargement du PDF');
+  }
+
+  // Récupérer le nom du fichier depuis les headers
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = 'fiche-paie.pdf';
+
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+
+  // Créer un blob à partir de la réponse
+  const blob = await response.blob();
+
+  // Créer un lien de téléchargement et le déclencher
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+
+  // Nettoyer
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}

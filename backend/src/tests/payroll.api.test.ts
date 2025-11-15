@@ -334,4 +334,84 @@ describe('Payroll API Endpoints', () => {
       expect(res.body.error).toContain('non trouvée');
     });
   });
+
+  describe('GET /api/payslips/:id/pdf', () => {
+    let payslipId: string;
+
+    beforeAll(async () => {
+      // Créer une fiche de paie pour les tests
+      await request(app)
+        .post('/api/payslips/run')
+        .set('Authorization', `Bearer ${token1}`)
+        .send({
+          companyId: company1Id,
+          period: '2025-10'
+        });
+
+      // Récupérer l'ID d'une fiche de paie
+      const payslipsRes = await request(app)
+        .get(`/api/payslips`)
+        .query({ companyId: company1Id, period: '2025-10' })
+        .set('Authorization', `Bearer ${token1}`);
+
+      payslipId = payslipsRes.body[0].id;
+    });
+
+    it('should generate and return a PDF for a payslip', async () => {
+      const res = await request(app)
+        .get(`/api/payslips/${payslipId}/pdf`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.headers['content-type']).toBe('application/pdf');
+      expect(res.headers['content-disposition']).toContain('attachment');
+      expect(res.headers['content-disposition']).toContain('.pdf');
+
+      // Vérifier que le body contient des données (PDF)
+      expect(res.body).toBeDefined();
+      expect(Buffer.byteLength(res.body)).toBeGreaterThan(0);
+    });
+
+    it('should include employee name in PDF filename', async () => {
+      const res = await request(app)
+        .get(`/api/payslips/${payslipId}/pdf`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(res.statusCode).toEqual(200);
+      // Vérifier que le filename contient les éléments de base d'une fiche de paie
+      expect(res.headers['content-disposition']).toContain('fiche-paie');
+      expect(res.headers['content-disposition']).toContain('2025-10');
+      expect(res.headers['content-disposition']).toContain('.pdf');
+      // Le fichier devrait contenir un nom d'employé (Alice ou Bob selon l'ordre)
+      const hasEmployeeName =
+        res.headers['content-disposition'].includes('Alice') ||
+        res.headers['content-disposition'].includes('Bob');
+      expect(hasEmployeeName).toBe(true);
+    });
+
+    it('should reject request without authentication', async () => {
+      const res = await request(app)
+        .get(`/api/payslips/${payslipId}/pdf`);
+
+      expect(res.statusCode).toEqual(401);
+    });
+
+    it('should reject request for payslip not owned by user', async () => {
+      const res = await request(app)
+        .get(`/api/payslips/${payslipId}/pdf`)
+        .set('Authorization', `Bearer ${token2}`);
+
+      expect(res.statusCode).toEqual(403);
+      expect(res.body.error).toContain('interdit');
+    });
+
+    it('should return 404 for non-existent payslip', async () => {
+      const res = await request(app)
+        .get(`/api/payslips/non-existent-id/pdf`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(res.statusCode).toEqual(404);
+      expect(res.body.error).toContain('non trouvée');
+    });
+  });
 });

@@ -1,0 +1,287 @@
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.loading {
+  text-align: center;
+  padding: 3rem;
+  font-size: 1.1rem;
+  color: #6b7280;
+}
+
+.error {
+  background-color: #fee;
+  color: #c00;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #fcc;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.header h1 {
+  margin: 0;
+  color: #2563eb;
+  font-size: 2rem;
+}
+
+.actions {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.downloadButton {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.downloadButton:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.downloadButton:disabled {
+  background-color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.backLink {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.backLink:hover {
+  color: #1d4ed8;
+  text-decoration: underline;
+}
+
+.backButton {
+  margin-top: 1rem;
+  background-color: #6b7280;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.backButton:hover {
+  background-color: #4b5563;
+}
+
+.card {
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.section {
+  margin-bottom: 2rem;
+}
+
+.section:last-child {
+  margin-bottom: 0;
+}
+
+.sectionTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #6b7280;
+  margin: 0 0 0.75rem 0;
+  letter-spacing: 0.05em;
+}
+
+.period {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.employeeInfo {
+  font-size: 1.125rem;
+  color: #111827;
+}
+
+.employeeName {
+  font-weight: 600;
+}
+
+.employeeId {
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+.divider {
+  height: 2px;
+  background-color: #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.salaryDetail {
+  background-color: #f9fafb;
+  padding: 1.5rem;
+  border-radius: 0.5rem;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.row:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  font-size: 1rem;
+  color: #374151;
+}
+
+.amount {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  font-variant-numeric: tabular-nums;
+}
+
+.deductionsSection {
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: white;
+  border-radius: 0.375rem;
+  border: 1px solid #e5e7eb;
+}
+
+.deductionsTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.netRow {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 2px solid #2563eb;
+}
+
+.netRow .label {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.netAmount {
+  font-size: 1.5rem;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.footer {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+.note {
+  background-color: #eff6ff;
+  padding: 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  color: #1e40af;
+  margin-bottom: 1rem;
+  line-height: 1.6;
+}
+
+.note strong {
+  font-weight: 600;
+}
+
+.metadata {
+  font-size: 0.875rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.id {
+  margin-top: 0.25rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header h1 {
+    font-size: 1.5rem;
+  }
+
+  .actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .downloadButton,
+  .backLink {
+    width: 100%;
+    text-align: center;
+  }
+
+  .downloadButton {
+    display: block;
+  }
+
+  .card {
+    padding: 1.5rem;
+  }
+
+  .period {
+    font-size: 1.25rem;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .netRow {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}

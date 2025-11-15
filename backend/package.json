@@ -18,11 +18,13 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.14.0",
+    "@types/pdfkit": "^0.17.3",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "pdfkit": "^0.17.2"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getCompanies,
   runPayroll,
   getPayslips,
+  downloadPayslipPDF,
   ApiError,
   type Company,
   type Payslip,
@@ -21,6 +23,7 @@ function PayrollPage() {
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [filterPeriod, setFilterPeriod] = useState<string>('');
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   // Charger les entreprises au montage du composant
   useEffect(() => {
@@ -109,6 +112,27 @@ function PayrollPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async (payslipId: string) => {
+    if (!token) return;
+
+    setDownloadingId(payslipId);
+    setError('');
+
+    try {
+      await downloadPayslipPDF(payslipId, token);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erreur lors du téléchargement du PDF';
+      setError(message);
+
+      // Déconnecter si erreur d'authentification ou d'autorisation
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
+        logout();
+      }
+    } finally {
+      setDownloadingId(null);
     }
   };
 
@@ -220,6 +244,7 @@ function PayrollPage() {
                   <th>Cotisations</th>
                   <th>Salaire net</th>
                   <th>Date de création</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -237,6 +262,19 @@ function PayrollPage() {
                       {formatCurrency(payslip.netSalary)}
                     </td>
                     <td>{formatDate(payslip.createdAt)}</td>
+                    <td className={styles.actions}>
+                      <Link to={`/payslips/${payslip.id}`} className={styles.detailLink}>
+                        Voir
+                      </Link>
+                      <button
+                        onClick={() => handleDownloadPDF(payslip.id)}
+                        disabled={downloadingId === payslip.id}
+                        className={styles.pdfButton}
+                        title="Télécharger le PDF"
+                      >
+                        {downloadingId === payslip.id ? '...' : 'PDF'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
