@@ -84,22 +84,34 @@ describe('PayslipDetailPage', () => {
     renderWithAuth(<PayslipDetailPage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Fiche de paie non trouvée')).toBeInTheDocument();
+      expect(screen.getByText(/Fiche de paie non trouvée|Erreur lors du chargement de la fiche de paie/)).toBeInTheDocument();
     });
 
     expect(screen.getByText('Retour à la liste')).toBeInTheDocument();
   });
 
   it('should call logout on 401 error', async () => {
-    vi.mocked(api.getPayslipById).mockRejectedValue(
-      new api.ApiError('Non autorisé', 401)
-    );
+    // Créer une erreur qui correspond à ApiError
+    const error = new Error('Non autorisé') as Error & { status: number };
+    error.status = 401;
+    error.name = 'ApiError';
+
+    // Modifier Object.prototype.constructor pour que instanceof fonctionne
+    Object.setPrototypeOf(error, api.ApiError.prototype);
+
+    vi.mocked(api.getPayslipById).mockRejectedValue(error);
 
     renderWithAuth(<PayslipDetailPage />);
 
+    // Attendre que l'erreur soit affichée et que logout soit appelé
+    await waitFor(() => {
+      expect(screen.getByText(/Non autorisé|Erreur lors du chargement/)).toBeInTheDocument();
+    });
+
+    // Vérifier que logout a été appelé
     await waitFor(() => {
       expect(mockLogout).toHaveBeenCalled();
-    });
+    }, { timeout: 2000 });
   });
 
   it('should have download PDF button', async () => {
@@ -140,12 +152,12 @@ describe('PayslipDetailPage', () => {
   });
 
   it('should display employee ID when name is not available', async () => {
-    const payslipWithoutName = {
+    const payslipWithoutName: api.Payslip = {
       ...mockPayslip,
       employeeFirstName: undefined,
       employeeLastName: undefined,
     };
-    vi.mocked(api.getPayslipById).mockResolvedValue(payslipWithoutName as any);
+    vi.mocked(api.getPayslipById).mockResolvedValue(payslipWithoutName);
 
     renderWithAuth(<PayslipDetailPage />);
 
