@@ -3,9 +3,12 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 // Custom error class with HTTP status code
 export class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  status: number;
+
+  constructor(message: string, status: number) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
   }
 }
 
@@ -88,7 +91,6 @@ export interface Company {
   name: string;
   ownerId: string;
   createdAt: string;
-  updatedAt?: string;
   updatedAt: string;
 }
 
@@ -100,7 +102,6 @@ export interface Employee {
   grossSalary: number;
   companyId: string;
   createdAt: string;
-  updatedAt?: string;
   updatedAt: string;
 }
 
