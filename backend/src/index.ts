@@ -14,8 +14,7 @@ app.use(express.json());
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/companies', companiesRouter);
-app.use('/api/payroll', payrollRouter);
-app.use('/api/payslips', payrollRouter); // Alias pour les fiches de paie
+app.use('/api/payslips', payrollRouter); // Routes de paie et fiches de paie
 
 // Health check route
 app.get('/', (_req: Request, res: Response) => {

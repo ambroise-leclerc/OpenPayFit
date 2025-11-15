@@ -279,8 +279,8 @@ describe('Payroll API Endpoints', () => {
 
     beforeAll(async () => {
       // Créer une fiche de paie pour les tests
-      const runRes = await request(app)
-        .post('/api/payroll/run')
+      await request(app)
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id,

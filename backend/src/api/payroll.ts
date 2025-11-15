@@ -16,25 +16,34 @@ import Database from 'better-sqlite3';
 import path from 'path';
 
 const router = express.Router();
-const dbPath = path.join(__dirname, '../../prisma/dev.db');
+
+// Utiliser la base de données appropriée selon l'environnement
+const dbFileName = process.env.NODE_ENV === 'test' ? 'test.db' : 'dev.db';
+const dbPath = path.join(__dirname, '../../prisma', dbFileName);
+
+// Singleton pour la connexion à la base de données
+let dbInstance: Database.Database | null = null;
+
+function getDatabase(readonly: boolean = false): Database.Database {
+  if (!dbInstance || !dbInstance.open) {
+    dbInstance = new Database(dbPath, { readonly });
+  }
+  return dbInstance;
+}
 
 /**
  * Vérifie si l'utilisateur est propriétaire de l'entreprise
  */
 function isCompanyOwner(companyId: string, userId: string): boolean {
-  const db = new Database(dbPath, { readonly: true });
+  const db = getDatabase(true);
 
-  try {
-    const result = db.prepare(`
-      SELECT COUNT(*) as count
-      FROM Company
-      WHERE id = ? AND ownerId = ?
-    `).get(companyId, userId) as { count: number };
+  const result = db.prepare(`
+    SELECT COUNT(*) as count
+    FROM Company
+    WHERE id = ? AND ownerId = ?
+  `).get(companyId, userId) as { count: number };
 
-    return result.count > 0;
-  } finally {
-    db.close();
-  }
+  return result.count > 0;
 }
 
 /**
@@ -43,12 +52,19 @@ function isCompanyOwner(companyId: string, userId: string): boolean {
  */
 router.post('/run', authenticateToken, (req: Request, res: Response) => {
   const { companyId, period } = req.body;
-  const userId = (req as any).userId;
+  const userId = req.userId;
 
   // Validation des paramètres
   if (!companyId || !period) {
     return res.status(400).json({
       error: 'Les paramètres companyId et period sont requis'
+    });
+  }
+
+  // S'assurer que userId est défini (devrait l'être après authenticateToken)
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Non autorisé'
     });
   }
 
@@ -95,12 +111,19 @@ router.post('/run', authenticateToken, (req: Request, res: Response) => {
  */
 router.get('/', authenticateToken, (req: Request, res: Response) => {
   const { companyId, period } = req.query;
-  const userId = (req as any).userId;
+  const userId = req.userId;
 
   // Validation du paramètre companyId
   if (!companyId || typeof companyId !== 'string') {
     return res.status(400).json({
       error: 'Le paramètre companyId est requis'
+    });
+  }
+
+  // S'assurer que userId est défini
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Non autorisé'
     });
   }
 
@@ -142,7 +165,14 @@ router.get('/', authenticateToken, (req: Request, res: Response) => {
  */
 router.get('/:id', authenticateToken, (req: Request, res: Response) => {
   const { id } = req.params;
-  const userId = (req as any).userId;
+  const userId = req.userId;
+
+  // S'assurer que userId est défini
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Non autorisé'
+    });
+  }
 
   try {
     const payslip = getPayslipById(id);

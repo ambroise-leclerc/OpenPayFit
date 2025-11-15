@@ -1,6 +1,14 @@
 // Use environment variable for API URL, fallback to localhost for development
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+// Custom error class with HTTP status code
+export class ApiError extends Error {
+  constructor(message: string, public status: number) {
+    super(message);
+    this.name = 'ApiError';
+  }
+}
+
 // Define the registration data interface
 export interface RegisterUserData {
   name: string;
@@ -37,7 +45,7 @@ async function handleErrorResponse(response: Response, fallbackMessage: string):
     // Use fallback message if parsing fails
     errorMessage = response.statusText || fallbackMessage;
   }
-  throw new Error(errorMessage);
+  throw new ApiError(errorMessage, response.status);
 }
 
 export async function registerUser(userData: RegisterUserData): Promise<AuthResponse> {
@@ -80,6 +88,7 @@ export interface Company {
   name: string;
   ownerId: string;
   createdAt: string;
+  updatedAt?: string;
   updatedAt: string;
 }
 
@@ -91,6 +100,7 @@ export interface Employee {
   grossSalary: number;
   companyId: string;
   createdAt: string;
+  updatedAt?: string;
   updatedAt: string;
 }
 
@@ -203,7 +213,10 @@ export interface Payslip {
   deductions: number;
   netSalary: number;
   employeeId: string;
+  employeeFirstName?: string;
+  employeeLastName?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface RunPayrollData {
@@ -223,7 +236,7 @@ export interface PayrollRunResult {
  * Lance le calcul de paie pour une entreprise et une période donnée
  */
 export async function runPayroll(data: RunPayrollData, token: string): Promise<PayrollRunResult> {
-  const response = await fetch(`${API_URL}/payroll/run`, {
+  const response = await fetch(`${API_URL}/payslips/run`, {
     method: 'POST',
     headers: getAuthHeaders(token),
     body: JSON.stringify(data),

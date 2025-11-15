@@ -4,6 +4,7 @@ import {
   getCompanies,
   runPayroll,
   getPayslips,
+  ApiError,
   type Company,
   type Payslip,
   type PayrollRunResult,
@@ -45,7 +46,8 @@ function PayrollPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des entreprises';
       setError(message);
-      if (message.includes('401') || message.includes('403')) {
+      // Déconnecter si erreur d'authentification ou d'autorisation
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         logout();
       }
     }
@@ -63,7 +65,8 @@ function PayrollPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des fiches de paie';
       setError(message);
-      if (message.includes('401') || message.includes('403')) {
+      // Déconnecter si erreur d'authentification ou d'autorisation
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         logout();
       }
     } finally {
@@ -100,7 +103,8 @@ function PayrollPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors de la génération de la paie';
       setError(message);
-      if (message.includes('401') || message.includes('403')) {
+      // Déconnecter si erreur d'authentification ou d'autorisation
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         logout();
       }
     } finally {
@@ -222,7 +226,11 @@ function PayrollPage() {
                 {payslips.map((payslip) => (
                   <tr key={payslip.id}>
                     <td>{payslip.payPeriod}</td>
-                    <td>{payslip.employeeId}</td>
+                    <td>
+                      {payslip.employeeFirstName && payslip.employeeLastName
+                        ? `${payslip.employeeFirstName} ${payslip.employeeLastName}`
+                        : payslip.employeeId}
+                    </td>
                     <td>{formatCurrency(payslip.grossSalary)}</td>
                     <td>{formatCurrency(payslip.deductions)}</td>
                     <td className={styles.netSalary}>

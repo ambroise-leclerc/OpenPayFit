@@ -53,6 +53,7 @@ model Payslip {
   employee    Employee @relation(fields: [employeeId], references: [id])
   employeeId  String   // Clé étrangère vers Employee
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@unique([employeeId, payPeriod]) // Un employé ne peut avoir qu'une fiche de paie par période
 }
