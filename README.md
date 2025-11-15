@@ -24,11 +24,13 @@ Pour les CTO, OpenPayFit représente une opportunité d'intégrer une solution f
 ### ✅ Implémentées
 - **Authentification sécurisée** - JWT avec hashage bcrypt
 - **Gestion multi-entreprises** - Une instance, plusieurs sociétés
-- **Base de données d'employés** - Profils complets et sécurisés
+- **CRUD complet des employés** - Création, lecture, mise à jour et suppression avec interface web
+- **Dashboard interactif** - Interface de gestion multi-entreprises et employés
+- **Tests automatisés** - Couverture complète backend (Jest) et frontend (Vitest)
+- **CI/CD** - Pipeline GitHub Actions avec tests, audit sécurité et linting
 
 ### 🚧 En développement
-- **Interface de gestion employés** - CRUD complet via interface web
-- **Moteur de paie MVP** - Calculs automatisés des salaires et cotisations
+- **Moteur de paie MVP** - Calculs automatisés des salaires et cotisations (net = brut - 25%)
 - **Génération de bulletins** - Export PDF conforme
 
 ### 🎯 Roadmap
@@ -41,10 +43,10 @@ Pour les CTO, OpenPayFit représente une opportunité d'intégrer une solution f
 
 ## Stack technique
 
-- **Backend** : Node.js, Express, TypeScript, Prisma ORM
-- **Frontend** : React 19, TypeScript, Vite
+- **Backend** : Node.js 18+, Express 5.1, TypeScript 5.9, Prisma ORM 6.14
+- **Frontend** : React 19, TypeScript 5.8, Vite 7.1, React Router 7.8
 - **Base de données** : SQLite (dev), PostgreSQL (production)
-- **Tests** : Jest, Supertest
+- **Tests** : Jest 30 + Supertest (backend), Vitest 3 + Testing Library (frontend)
 - **Déploiement** : Docker, Kubernetes ready
 
 ## Installation rapide
@@ -92,6 +94,28 @@ OpenPayFit adopte une architecture découplée moderne :
 - **Frontend SPA** responsive et accessible
 - **Tests automatisés** garantissant la fiabilité
 - **Déploiement conteneurisé** pour tous environnements
+
+### Structure du projet
+```
+OpenPayFit/
+├── backend/                 # API Node.js/Express/TypeScript
+│   ├── src/
+│   │   ├── api/            # Routes (auth, companies, employees)
+│   │   ├── middleware/     # Authentification JWT
+│   │   ├── lib/            # Client Prisma
+│   │   └── tests/          # Tests Jest
+│   └── prisma/             # Schéma et migrations
+│
+├── frontend/                # Application React 19
+│   ├── src/
+│   │   ├── components/     # Composants réutilisables
+│   │   ├── pages/          # Pages de l'application
+│   │   ├── contexts/       # AuthContext
+│   │   └── services/       # Client API
+│   └── tests/              # Tests Vitest
+│
+└── docs/                    # Documentation technique
+```
 
 ## Contribuer
 
