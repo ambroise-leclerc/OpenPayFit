@@ -29,13 +29,40 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
-    - name: Generate Prisma client
-      run: npx prisma generate
+    - name: Setup test database
+      run: |
+        node -e "
+        const Database = require('better-sqlite3');
+        const fs = require('fs');
+        const path = require('path');
 
-    - name: Run database migrations
-      run: npx prisma migrate dev --name init
-      env:
-        DATABASE_URL: "file:./test.db"
+        const testDbPath = './prisma/test.db';
+        const db = new Database(testDbPath);
+
+        // Lire et appliquer toutes les migrations
+        const migrationsDir = './prisma/migrations';
+        const migrations = fs.readdirSync(migrationsDir)
+          .filter(f => fs.statSync(path.join(migrationsDir, f)).isDirectory())
+          .sort();
+
+        for (const migration of migrations) {
+          const sqlFile = path.join(migrationsDir, migration, 'migration.sql');
+          if (fs.existsSync(sqlFile)) {
+            console.log('Applying migration:', migration);
+            const sql = fs.readFileSync(sqlFile, 'utf8');
+            try {
+              db.exec(sql);
+            } catch (err) {
+              if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
+                throw err;
+              }
+            }
+          }
+        }
+
+        db.close();
+        console.log('Test database setup complete');
+        "
 
     - name: Run tests
       run: npm test -- --coverage --watchAll=false
