@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../lib/db';
-import { Prisma } from '../generated/prisma';
+import { Prisma } from '@prisma/client';
 
 // Définition des types pour les paramètres d'URL pour plus de sécurité
 interface CompanyParams {

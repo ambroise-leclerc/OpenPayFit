@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import authRouter from './api/auth';
 import companiesRouter from './api/companies';
+import payrollRouter from './api/payroll';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,6 +14,7 @@ app.use(express.json());
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/companies', companiesRouter);
+app.use('/api/payslips', payrollRouter); // Routes de paie et fiches de paie
 
 // Health check route
 app.get('/', (_req: Request, res: Response) => {
