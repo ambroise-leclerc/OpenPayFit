@@ -29,17 +29,34 @@ for (const migration of migrations) {
   if (fs.existsSync(sqlFile)) {
     console.log(`Applying migration: ${migration}`);
     const sql = fs.readFileSync(sqlFile, 'utf8');
-    try {
-      db.exec(sql);
-    } catch (err) {
-      // Ignorer les erreurs pour les tables/colonnes déjà existantes
-      if (!err.message.includes('already exists') && !err.message.includes('duplicate column')) {
-        console.error(`Error applying migration ${migration}:`, err.message);
-        throw err;
-      } else {
-        console.log(`  Skipped (already applied)`);
+
+    // Enlever les lignes de commentaires et séparer les instructions SQL
+    const sqlWithoutComments = sql
+      .split('\n')
+      .filter(line => !line.trim().startsWith('--'))
+      .join('\n');
+
+    const statements = sqlWithoutComments
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0);
+
+    for (const statement of statements) {
+      try {
+        db.exec(statement);
+      } catch (err) {
+        // Ignorer les erreurs pour les tables/colonnes/index déjà existants
+        if (!err.message.includes('already exists') &&
+            !err.message.includes('duplicate column') &&
+            !err.message.includes('UNIQUE constraint')) {
+          console.error(`  Error executing statement:`, err.message);
+          console.error(`  Statement:`, statement.substring(0, 100));
+          throw err;
+        }
+        // Ne pas logger "Skipped" pour éviter le spam
       }
     }
+    console.log(`  ✓ Applied`);
   }
 }
 

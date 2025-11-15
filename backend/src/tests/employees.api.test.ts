@@ -1,35 +1,77 @@
 // backend/src/tests/employees.api.test.ts
 import request from 'supertest';
-import app from '../index'; // On importe l'app Express
-import prisma from '../lib/db';
+import app from '../index';
+import Database, { type Database as DatabaseType } from 'better-sqlite3';
+import path from 'path';
 import jwt from 'jsonwebtoken';
-import type { User, Company, Employee } from '@prisma/client';
+import { randomUUID } from 'crypto';
 
-// Le secret JWT doit être le même que dans le middleware
 const JWT_SECRET = process.env.JWT_SECRET as string;
+const dbPath = path.join(__dirname, '../../prisma/test.db');
+
+interface User {
+  id: string;
+  email: string;
+}
+
+interface Company {
+  id: string;
+  name: string;
+  ownerId: string;
+}
+
+interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  grossSalary: number;
+  companyId: string;
+}
 
 describe('Employee API Endpoints', () => {
+  let db: DatabaseType;
   let user1: User, user2: User, company1: Company, company2: Company, token1: string, token2: string, employee1: Employee;
 
-  beforeAll(async () => {
-    // Nettoyage de la DB de test
-    await prisma.employee.deleteMany();
-    await prisma.company.deleteMany();
-    await prisma.user.deleteMany();
+  beforeAll(() => {
+    db = new Database(dbPath);
 
-    // Création de 2 utilisateurs et 2 entreprises
-    user1 = await prisma.user.create({ data: { email: 'user1@test.com', password: 'p1' } });
-    user2 = await prisma.user.create({ data: { email: 'user2@test.com', password: 'p2' } });
-    company1 = await prisma.company.create({ data: { name: 'Company 1', ownerId: user1.id } });
-    company2 = await prisma.company.create({ data: { name: 'Company 2', ownerId: user2.id } });
+    // Nettoyage de la DB de test
+    db.exec('DELETE FROM Employee');
+    db.exec('DELETE FROM Company');
+    db.exec('DELETE FROM User');
+
+    // Création de 2 utilisateurs
+    const user1Id = randomUUID();
+    const user2Id = randomUUID();
+    db.prepare(`INSERT INTO User (id, email, password, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+      .run(user1Id, 'user1@test.com', 'p1');
+    db.prepare(`INSERT INTO User (id, email, password, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+      .run(user2Id, 'user2@test.com', 'p2');
+
+    user1 = { id: user1Id, email: 'user1@test.com' };
+    user2 = { id: user2Id, email: 'user2@test.com' };
+
+    // Création de 2 entreprises
+    const company1Id = randomUUID();
+    const company2Id = randomUUID();
+    db.prepare(`INSERT INTO Company (id, name, ownerId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+      .run(company1Id, 'Company 1', user1.id);
+    db.prepare(`INSERT INTO Company (id, name, ownerId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+      .run(company2Id, 'Company 2', user2.id);
+
+    company1 = { id: company1Id, name: 'Company 1', ownerId: user1.id };
+    company2 = { id: company2Id, name: 'Company 2', ownerId: user2.id };
 
     // Génération de tokens JWT
     token1 = jwt.sign({ userId: user1.id }, JWT_SECRET);
     token2 = jwt.sign({ userId: user2.id }, JWT_SECRET);
+
+    db.close();
   });
 
-  afterAll(async () => {
-    await prisma.$disconnect();
+  afterAll(() => {
+    // Pas de déconnexion nécessaire pour better-sqlite3
   });
 
   describe('POST /api/companies/:companyId/employees', () => {
@@ -102,9 +144,14 @@ describe('Employee API Endpoints', () => {
 
     it("should return 403 if user tries to delete an employee from another user's company", async () => {
         // Re-create an employee for the test
-        const tempEmployee = await prisma.employee.create({data: {firstName: 'Temp', lastName: 'Emp', email: 'temp@del.com', grossSalary: 1, companyId: company2.id}});
+        const tempDb = new Database(dbPath);
+        const tempEmployeeId = randomUUID();
+        tempDb.prepare(`INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+          .run(tempEmployeeId, 'Temp', 'Emp', 'temp@del.com', 1, company2.id);
+        tempDb.close();
+
         const res = await request(app)
-            .delete(`/api/companies/${company2.id}/employees/${tempEmployee.id}`)
+            .delete(`/api/companies/${company2.id}/employees/${tempEmployeeId}`)
             .set('Authorization', `Bearer ${token1}`); // User 1 token
         expect(res.statusCode).toEqual(403);
     });

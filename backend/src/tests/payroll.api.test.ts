@@ -104,10 +104,10 @@ describe('Payroll API Endpoints', () => {
     cleanupDb.close();
   });
 
-  describe('POST /api/payroll/run', () => {
+  describe('POST /api/payslips/run', () => {
     it('should successfully run payroll for a company', async () => {
       const res = await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id,
@@ -122,7 +122,7 @@ describe('Payroll API Endpoints', () => {
 
     it('should reject payroll run without authentication', async () => {
       const res = await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .send({
           companyId: company1Id,
           period: '2025-10'
@@ -133,7 +133,7 @@ describe('Payroll API Endpoints', () => {
 
     it('should reject payroll run for company not owned by user', async () => {
       const res = await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token2}`)
         .send({
           companyId: company1Id,
@@ -146,7 +146,7 @@ describe('Payroll API Endpoints', () => {
 
     it('should reject payroll run with missing parameters', async () => {
       const res = await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id
@@ -159,7 +159,7 @@ describe('Payroll API Endpoints', () => {
 
     it('should reject payroll run with invalid period format', async () => {
       const res = await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id,
@@ -173,7 +173,7 @@ describe('Payroll API Endpoints', () => {
     it('should return error when trying to generate duplicate payslips', async () => {
       // Générer les fiches de paie une première fois
       await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id,
@@ -182,7 +182,7 @@ describe('Payroll API Endpoints', () => {
 
       // Essayer de générer à nouveau pour la même période
       const res = await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id,
@@ -201,7 +201,7 @@ describe('Payroll API Endpoints', () => {
     beforeAll(async () => {
       // Générer quelques fiches de paie pour les tests
       await request(app)
-        .post('/api/payroll/run')
+        .post('/api/payslips/run')
         .set('Authorization', `Bearer ${token1}`)
         .send({
           companyId: company1Id,
