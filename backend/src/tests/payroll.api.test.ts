@@ -5,6 +5,7 @@ import Database, { type Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 import jwt from 'jsonwebtoken';
 import { randomUUID } from 'crypto';
+import fs from 'fs';
 
 const JWT_SECRET = process.env.JWT_SECRET as string;
 const dbPath = path.join(__dirname, '../../prisma/test.db');
@@ -412,6 +413,35 @@ describe('Payroll API Endpoints', () => {
 
       expect(res.statusCode).toEqual(404);
       expect(res.body.error).toContain('non trouvée');
+    });
+
+    it('[MANUEL] should generate a real PDF file for manual inspection', async () => {
+      const res = await request(app)
+        .get(`/api/payslips/${payslipId}/pdf`)
+        .set('Authorization', `Bearer ${token1}`);
+
+      expect(res.statusCode).toEqual(200);
+      expect(res.headers['content-type']).toBe('application/pdf');
+
+      // Créer le dossier de sortie s'il n'existe pas
+      const outputDir = path.join(__dirname, '../../test-output');
+      if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+      }
+
+      // Sauvegarder le PDF dans un fichier
+      const outputPath = path.join(outputDir, 'fiche-paie-test-manuel.pdf');
+      fs.writeFileSync(outputPath, res.body);
+
+      // Afficher le chemin pour l'utilisateur
+      console.log('\n📄 PDF généré pour inspection manuelle :');
+      console.log(`   ${outputPath}`);
+      console.log('   Ouvrez ce fichier pour vérifier la mise en forme\n');
+
+      // Vérifier que le fichier existe et a une taille raisonnable
+      const stats = fs.statSync(outputPath);
+      expect(stats.size).toBeGreaterThan(1000); // Au moins 1KB
+      expect(stats.size).toBeLessThan(1000000); // Moins de 1MB
     });
   });
 });
