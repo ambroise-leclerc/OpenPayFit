@@ -192,3 +192,88 @@ export async function deleteEmployee(employeeId: string, token: string): Promise
     await handleErrorResponse(response, "Échec de la suppression de l'employé");
   }
 }
+
+// --- Payroll Management ---
+
+// Payroll Data Interfaces
+export interface Payslip {
+  id: string;
+  payPeriod: string;
+  grossSalary: number;
+  deductions: number;
+  netSalary: number;
+  employeeId: string;
+  createdAt: string;
+}
+
+export interface RunPayrollData {
+  companyId: string;
+  period: string; // Format: YYYY-MM
+}
+
+export interface PayrollRunResult {
+  status: 'success' | 'error';
+  payslipsGenerated: number;
+  errors?: string[];
+}
+
+// --- Payroll API Functions ---
+
+/**
+ * Lance le calcul de paie pour une entreprise et une période donnée
+ */
+export async function runPayroll(data: RunPayrollData, token: string): Promise<PayrollRunResult> {
+  const response = await fetch(`${API_URL}/payroll/run`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec du calcul de paie');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les fiches de paie d'une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param period - (Optionnel) Période au format YYYY-MM pour filtrer les résultats
+ * @param token - Token d'authentification
+ */
+export async function getPayslips(
+  companyId: string,
+  period: string | null,
+  token: string
+): Promise<Payslip[]> {
+  const params = new URLSearchParams({ companyId });
+  if (period) {
+    params.append('period', period);
+  }
+
+  const response = await fetch(`${API_URL}/payslips?${params.toString()}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des fiches de paie');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère une fiche de paie par son ID
+ */
+export async function getPayslipById(payslipId: string, token: string): Promise<Payslip> {
+  const response = await fetch(`${API_URL}/payslips/${payslipId}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de la fiche de paie');
+  }
+
+  return response.json();
+}

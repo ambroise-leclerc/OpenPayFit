@@ -11,6 +11,7 @@ export default function Layout() {
             <li><Link to="/login">Connexion</Link></li>
             <li><Link to="/register">Inscription</Link></li>
             <li><Link to="/dashboard">Tableau de Bord</Link></li>
+            <li><Link to="/payroll">Paie</Link></li>
           </ul>
         </nav>
       </header>

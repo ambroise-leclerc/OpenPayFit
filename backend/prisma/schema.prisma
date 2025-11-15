@@ -32,13 +32,27 @@ model Company {
 }
 
 model Employee {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   firstName   String
   lastName    String
-  email       String   @unique
+  email       String     @unique
   grossSalary Float
-  company     Company  @relation(fields: [companyId], references: [id])
-  companyId   String   // Clé étrangère vers Company
+  company     Company    @relation(fields: [companyId], references: [id])
+  companyId   String     // Clé étrangère vers Company
+  payslips    Payslip[]  // Un employé peut avoir plusieurs fiches de paie
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Payslip {
+  id          String   @id @default(cuid())
+  payPeriod   String   // Format: "2025-08" (année-mois)
+  grossSalary Float    // Salaire brut pour cette période
+  deductions  Float    // Montant des cotisations sociales
+  netSalary   Float    // Salaire net après déductions
+  employee    Employee @relation(fields: [employeeId], references: [id])
+  employeeId  String   // Clé étrangère vers Employee
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, payPeriod]) // Un employé ne peut avoir qu'une fiche de paie par période
 }
