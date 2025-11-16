@@ -611,9 +611,7 @@ export async function exportCotisations(
   token: string
 ): Promise<Blob> {
   const response = await fetch(`${API_URL}/cotisations/export?format=${format}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: getAuthHeaders(token),
   });
   if (!response.ok) {
     await handleErrorResponse(response, 'Échec de l\'exportation');
