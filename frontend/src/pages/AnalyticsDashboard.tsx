@@ -31,6 +31,7 @@ import {
 import styles from './AnalyticsDashboard.module.css';
 
 // Fonction utilitaire pour exporter en CSV
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function exporterVersCSV(donnees: any[], nomFichier: string) {
   if (!donnees || donnees.length === 0) {
     alert('Aucune donnée à exporter');
@@ -72,6 +73,12 @@ function exporterVersCSV(donnees: any[], nomFichier: string) {
 
 // Couleurs pour les graphiques
 const COULEURS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
+
+// Interface pour les données de graphique en camembert
+interface DonneesPie {
+  nom: string;
+  valeur: number;
+}
 
 const AnalyticsDashboard = () => {
   const { token } = useAuth();
@@ -220,7 +227,7 @@ const AnalyticsDashboard = () => {
             id="periode"
             value={periode}
             onChange={(e) => {
-              setPeriode(e.target.value as any);
+              setPeriode(e.target.value as 'month' | 'quarter' | 'year' | '');
               setMois('');
               setTrimestre('');
             }}
@@ -342,7 +349,10 @@ const AnalyticsDashboard = () => {
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry: any) => `${entry.nom}: ${entry.valeur}`}
+                  label={(entry) => {
+                    const donnee = entry as unknown as DonneesPie;
+                    return `${donnee.nom}: ${donnee.valeur}`;
+                  }}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="valeur"
@@ -433,7 +443,10 @@ const AnalyticsDashboard = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={(entry: any) => `${entry.nom}: ${entry.valeur.toFixed(0)}€`}
+                      label={(entry) => {
+                        const donnee = entry as unknown as DonneesPie;
+                        return `${donnee.nom}: ${donnee.valeur.toFixed(0)}€`;
+                      }}
                       outerRadius={70}
                       fill="#8884d8"
                       dataKey="valeur"
