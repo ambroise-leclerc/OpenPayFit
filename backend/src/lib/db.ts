@@ -26,8 +26,26 @@ if (!prisma || shouldUseBetterSqlite) {
   const dbPath = path.join(__dirname, '../../prisma', dbFileName);
   const db = new Database(dbPath);
 
+  // Liste blanche des tables autorisées pour prévenir les injections SQL
+  const ALLOWED_TABLES = new Set([
+    'User',
+    'Company',
+    'Employee',
+    'regles_cotisation',
+    'taux_cotisation',
+    'categories_cotisation',
+    'organismes_cotisation',
+    'regles_comptables'
+  ]);
+
   // Créer un wrapper Prisma-like pour better-sqlite3
-  const createModelWrapper = (tableName: string) => ({
+  const createModelWrapper = (tableName: string) => {
+    // Valider le nom de table pour prévenir les injections SQL
+    if (!ALLOWED_TABLES.has(tableName)) {
+      throw new Error(`Table name not allowed: ${tableName}`);
+    }
+
+    return {
     create: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
     findUnique: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
     findMany: (args?: any) => {
@@ -209,7 +227,8 @@ if (!prisma || shouldUseBetterSqlite) {
     update: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
     delete: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
     deleteMany: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
-  });
+  };
+  };
 
   prisma = {
     user: createModelWrapper('User'),

@@ -11,8 +11,7 @@ import {
   genererFichePaieTexte,
   PASS_MENSUEL,
   PASS_ANNUEL,
-  ParametresCalcul,
-  ResultatCalcul
+  ParametresCalcul
 } from '../lib/moteurCotisations';
 import Database from 'better-sqlite3';
 import path from 'path';
@@ -24,7 +23,6 @@ describe('Moteur de calcul des cotisations', () => {
   let categorieSSId: string;
   let categorieRetraiteId: string;
   let organismeUrssafId: string;
-  let organismeAgircId: string;
 
   beforeAll(() => {
     // Utiliser la base de données de test
@@ -59,9 +57,6 @@ describe('Moteur de calcul des cotisations', () => {
 
     organismeUrssafId = 'org_urssaf_test';
     insertOrganisme.run(organismeUrssafId, 'URSSAF', 'URSSAF', 'Union de recouvrement des cotisations');
-
-    organismeAgircId = 'org_agirc_test';
-    insertOrganisme.run(organismeAgircId, 'AGIRC_ARRCO', 'AGIRC-ARRCO', 'Retraite complémentaire');
 
     // Créer les règles de cotisation de test
     const insertRegle = db.prepare(`
@@ -514,8 +509,8 @@ describe('Moteur de calcul des cotisations', () => {
       expect(ligne2025!.taux).toBe(0.06); // Nouveau taux
 
       // Nettoyer
-      db.exec(`DELETE FROM taux_cotisation WHERE regleId = '${regleHistoriqueId}'`);
-      db.exec(`DELETE FROM regles_cotisation WHERE id = '${regleHistoriqueId}'`);
+      db.prepare('DELETE FROM taux_cotisation WHERE regleId = ?').run(regleHistoriqueId);
+      db.prepare('DELETE FROM regles_cotisation WHERE id = ?').run(regleHistoriqueId);
     });
   });
 });

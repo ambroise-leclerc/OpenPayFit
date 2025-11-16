@@ -132,7 +132,7 @@ interface RegleAvecTaux {
 
 /**
  * Arrondit un montant à 2 décimales (centimes)
- * Utilise l'arrondi bancaire (IEEE 754 round half to even)
+ * Utilise Math.round() qui arrondit "half away from zero" (0.5 → 1, -0.5 → -1)
  *
  * @param montant - Montant à arrondir
  * @returns Montant arrondi au centime près
@@ -419,8 +419,8 @@ export async function calculerCotisations(
     // Nouveau salaire net estimé
     const nouveauSalaireNet = arrondir(salaireBrut - totalCotisationsSalariales);
 
-    // Vérifier la convergence (différence < 1 centime)
-    if (Math.abs(nouveauSalaireNet - salaireNetEstime) < 0.01 ||
+    // Vérifier la convergence (les deux valeurs doivent avoir convergé)
+    if (Math.abs(nouveauSalaireNet - salaireNetEstime) < 0.01 &&
         Math.abs(totalCotisationsSalariales - ancienTotal) < 0.01) {
       convergence = true;
     }
@@ -478,9 +478,7 @@ export function genererFichePaieTexte(resultat: ResultatCalcul): string {
   }
 
   // Afficher par catégorie
-  const categories = Array.from(parCategorie.entries());
-  for (let i = 0; i < categories.length; i++) {
-    const [categorie, lignesCat] = categories[i];
+  for (const [categorie, lignesCat] of parCategorie.entries()) {
     lignes.push(`${categorie}:`);
     lignes.push('');
 

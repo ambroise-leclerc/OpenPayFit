@@ -717,7 +717,7 @@ Certaines cotisations (CSG/CRDS) sont calculées sur le salaire net, créant une
 
 ```typescript
 const resultat = await calculerCotisations({
-  salaireBrut: votresSalaire,
+  salaireBrut: votreSalaire,
   dateReference: new Date()
 });
 
