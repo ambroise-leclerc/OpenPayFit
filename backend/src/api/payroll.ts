@@ -12,6 +12,7 @@ import {
   isPayslipOwner,
   validatePayPeriod
 } from '../lib/payroll';
+import { generatePayslipPDF, PayslipWithEmployee } from '../lib/pdfGenerator';
 import Database from 'better-sqlite3';
 import path from 'path';
 
@@ -195,6 +196,70 @@ router.get('/:id', authenticateToken, (req: Request, res: Response) => {
     console.error('Erreur lors de la récupération de la fiche de paie:', error);
     return res.status(500).json({
       error: 'Erreur lors de la récupération de la fiche de paie'
+    });
+  }
+});
+
+/**
+ * GET /api/payslips/:id/pdf
+ * Génère et télécharge un PDF pour une fiche de paie
+ */
+router.get('/:id/pdf', authenticateToken, (req: Request, res: Response) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  // S'assurer que userId est défini
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Non autorisé'
+    });
+  }
+
+  try {
+    // Récupérer la fiche de paie avec les informations complètes
+    const db = getDatabase(true);
+
+    const payslip = db.prepare(`
+      SELECT
+        p.id, p.payPeriod, p.grossSalary, p.deductions, p.netSalary, p.employeeId, p.createdAt,
+        e.firstName as employeeFirstName,
+        e.lastName as employeeLastName,
+        e.email as employeeEmail,
+        c.name as companyName
+      FROM Payslip p
+      INNER JOIN Employee e ON p.employeeId = e.id
+      INNER JOIN Company c ON e.companyId = c.id
+      WHERE p.id = ?
+    `).get(id) as PayslipWithEmployee | undefined;
+
+    if (!payslip) {
+      return res.status(404).json({
+        error: 'Fiche de paie non trouvée'
+      });
+    }
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise associée
+    if (!isPayslipOwner(id, userId)) {
+      return res.status(403).json({
+        error: 'Accès interdit : vous n\'êtes pas autorisé à consulter cette fiche de paie'
+      });
+    }
+
+    // Générer le PDF
+    const pdfDoc = generatePayslipPDF(payslip);
+
+    // Configurer les en-têtes de la réponse
+    const filename = `fiche-paie-${payslip.employeeFirstName}-${payslip.employeeLastName}-${payslip.payPeriod}.pdf`;
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+    // Pipe le PDF vers la réponse
+    pdfDoc.pipe(res);
+
+  } catch (error) {
+    console.error('Erreur lors de la génération du PDF:', error);
+    return res.status(500).json({
+      error: 'Erreur lors de la génération du PDF'
     });
   }
 });

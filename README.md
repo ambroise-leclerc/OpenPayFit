@@ -25,11 +25,13 @@ Pour les CTO, OpenPayFit représente une opportunité d'intégrer une solution f
 - **Authentification sécurisée** - JWT avec hashage bcrypt
 - **Gestion multi-entreprises** - Une instance, plusieurs sociétés
 - **Base de données d'employés** - Profils complets et sécurisés
+- **Interface de gestion employés** - CRUD complet via interface web
+- **Moteur de paie MVP** - Calculs automatisés des salaires et cotisations (taux simplifié 25%)
+- **Génération de bulletins PDF** - Export professionnel avec visualisation détaillée
+- **Visualisation des fiches de paie** - Page dédiée avec détails complets
 
 ### 🚧 En développement
-- **Interface de gestion employés** - CRUD complet via interface web
-- **Moteur de paie MVP** - Calculs automatisés des salaires et cotisations
-- **Génération de bulletins** - Export PDF conforme
+- **Amélioration du moteur de paie** - Taux de cotisation détaillés et conformes
 
 ### 🎯 Roadmap
 - **Gestion des congés et absences**
@@ -41,10 +43,10 @@ Pour les CTO, OpenPayFit représente une opportunité d'intégrer une solution f
 
 ## Stack technique
 
-- **Backend** : Node.js, Express, TypeScript, Prisma ORM
+- **Backend** : Node.js, Express, TypeScript, Prisma ORM, PDFKit
 - **Frontend** : React 19, TypeScript, Vite
 - **Base de données** : SQLite (dev), PostgreSQL (production)
-- **Tests** : Jest, Supertest
+- **Tests** : Jest, Supertest, Vitest, React Testing Library
 - **Déploiement** : Docker, Kubernetes ready
 
 ## Installation rapide
@@ -73,6 +75,34 @@ npm run dev
 ```
 
 L'application est accessible sur `http://localhost:5173` avec l'API sur `http://localhost:3000`.
+
+## Utilisation
+
+### Gestion de la paie
+
+1. **Créer une entreprise** - Depuis le tableau de bord, créez votre première entreprise
+2. **Ajouter des employés** - Renseignez les informations des employés (nom, email, salaire brut)
+3. **Générer la paie** - Depuis l'interface "Paie", sélectionnez la période et lancez le calcul
+4. **Consulter les fiches** - Visualisez les fiches de paie générées dans un tableau récapitulatif
+5. **Télécharger en PDF** - Exportez chaque fiche de paie au format PDF professionnel
+
+### API Endpoints
+
+**Paie**
+- `POST /api/payslips/run` - Lancer le calcul de paie pour une période
+- `GET /api/payslips?companyId=xxx&period=YYYY-MM` - Liste des fiches de paie
+- `GET /api/payslips/:id` - Détails d'une fiche de paie
+- `GET /api/payslips/:id/pdf` - Télécharger le PDF d'une fiche de paie
+
+**Entreprises**
+- `GET /api/companies` - Liste des entreprises
+- `POST /api/companies` - Créer une entreprise
+
+**Employés**
+- `GET /api/companies/:id/employees` - Liste des employés
+- `POST /api/companies/:id/employees` - Créer un employé
+- `PUT /api/employees/:id` - Modifier un employé
+- `DELETE /api/employees/:id` - Supprimer un employé
 
 ## Sécurité et souveraineté des données
 

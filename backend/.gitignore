@@ -4,3 +4,6 @@ node_modules
 
 /src/generated/prisma
 *.db
+
+# Test output files (PDF samples, etc.)
+test-output/

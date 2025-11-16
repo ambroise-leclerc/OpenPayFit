@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import PayrollPage from './pages/PayrollPage';
+import PayslipDetailPage from './pages/PayslipDetailPage';
 import ProtectedRoute from './components/ProtectedRoute';
 
 const router = createBrowserRouter([
@@ -42,6 +43,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PayrollPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'payslips/:id',
+        element: (
+          <ProtectedRoute>
+            <PayslipDetailPage />
           </ProtectedRoute>
         ),
       },
