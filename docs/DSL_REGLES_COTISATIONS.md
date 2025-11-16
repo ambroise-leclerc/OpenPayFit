@@ -9,7 +9,7 @@ Le DSL (Domain-Specific Language) des règles de cotisations est un format YAML 
 - ✅ **Lisibilité** : Format clair et structuré, compréhensible sans expertise technique
 - ✅ **Maintenabilité** : Facile à modifier et à mettre à jour
 - ✅ **Validation** : Validation automatique des règles avec des messages d'erreur explicites
-- ✅ **Versionning** : Historique des modifications via Git
+- ✅ **Versioning** : Historique des modifications via Git
 - ✅ **Conformité** : Respect des règles françaises de cotisations sociales
 
 ## Structure du fichier YAML

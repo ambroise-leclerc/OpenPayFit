@@ -1,5 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import * as fs from 'fs';
+import { describe, it, expect } from '@jest/globals';
 import * as path from 'path';
 import {
   AnalyseurCotisations,

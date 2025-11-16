@@ -108,7 +108,7 @@ export class AnalyseurCotisations {
     try {
       // Vérifier que le fichier existe
       if (!fs.existsSync(cheminFichier)) {
-        throw new Error(`Le fichier ${cheminFichier} n'existe pas`);
+        throw new Error('Le fichier spécifié n\'existe pas');
       }
 
       // Lire le contenu du fichier
@@ -161,16 +161,13 @@ export class AnalyseurCotisations {
    * @returns Le taux applicable ou undefined si aucun taux n'est valide
    */
   public obtenirTauxADate(regle: RegleCotisation, date: Date = new Date()): Taux | undefined {
-    const dateStr = date.toISOString().split('T')[0];
+    const dateTimestamp = date.getTime();
 
     return regle.taux.find(t => {
-      const debut = t.date_debut;
-      const fin = t.date_fin;
+      const debutTimestamp = new Date(t.date_debut).getTime();
+      const finTimestamp = t.date_fin ? new Date(t.date_fin).getTime() : Infinity;
 
-      if (fin) {
-        return dateStr >= debut && dateStr <= fin;
-      }
-      return dateStr >= debut;
+      return dateTimestamp >= debutTimestamp && dateTimestamp <= finTimestamp;
     });
   }
 
