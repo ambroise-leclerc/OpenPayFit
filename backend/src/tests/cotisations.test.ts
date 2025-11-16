@@ -5,18 +5,26 @@
  * 1. Les données sont correctement chargées depuis le fichier YAML
  * 2. Les taux officiels correspondent aux sources URSSAF/AGIRC-ARRCO
  * 3. Les calculs de cotisations sont exacts
+ *
+ * Note : NODE_ENV=test utilise la base de données test.db et charge automatiquement
+ * les données de référence via le script de seed si elles ne sont pas présentes.
  */
 
 import Database from 'better-sqlite3';
 import path from 'path';
 import { execSync } from 'child_process';
 
+// Constantes pour les tests
+const TEST_DATE = '2024-06-01'; // Date fixe pour les tests de validité des taux
+const PASS_MENSUEL = 3864; // Plafond mensuel de la Sécurité Sociale 2024
+
 describe('Cotisations sociales françaises 2024-2025', () => {
   let db: Database.Database;
 
   beforeAll(() => {
-    // Utiliser la base de données de test
-    const dbPath = path.join(__dirname, '../../prisma/test.db');
+    // Utiliser la base de données de test (configurable via TEST_DB_PATH)
+    const dbFileName = process.env.TEST_DB_PATH || 'test.db';
+    const dbPath = path.join(__dirname, '../../prisma', dbFileName);
     db = new Database(dbPath);
 
     // Charger les données de référence si elles ne sont pas déjà présentes
@@ -77,8 +85,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'SS_MALADIE_SAL'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -91,8 +99,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'SS_VIEILLESSE_PLAFONNE_SAL'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -105,8 +113,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'SS_VIEILLESSE_DEPLAFONNE_SAL'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -121,8 +129,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'SS_MALADIE_PAT'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -135,8 +143,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'SS_VIEILLESSE_PLAFONNE_PAT'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -149,8 +157,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'SS_ALLOCATIONS_FAMILIALES_PAT'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -165,8 +173,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'CHOMAGE_SAL'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -179,8 +187,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'CHOMAGE_PAT'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -206,8 +214,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'RETRAITE_COMP_T1_SAL'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -220,8 +228,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'RETRAITE_COMP_T1_PAT'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -234,8 +242,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'RETRAITE_COMP_T2_SAL'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -248,8 +256,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'RETRAITE_COMP_T2_PAT'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -264,8 +272,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'CSG_DEDUCTIBLE'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -279,8 +287,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'CSG_NON_DEDUCTIBLE'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -294,8 +302,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
           FROM regles_cotisation r
           JOIN taux_cotisation t ON r.id = t.regleId
           WHERE r.code = 'CRDS'
-            AND t.dateDebut <= date('now')
-            AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+            AND t.dateDebut <= date('${TEST_DATE}')
+            AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
         `).get() as { taux: number } | undefined;
 
         expect(regle).toBeDefined();
@@ -396,7 +404,6 @@ describe('Cotisations sociales françaises 2024-2025', () => {
   describe('Calculs de cotisations sur cas pratiques', () => {
     it('devrait calculer correctement les cotisations pour un salaire de 2500 € brut', () => {
       const salaireBrut = 2500;
-      const PASS_MENSUEL = 3864;
 
       // Cotisations salariales
       const cotisationsSalariales = db.prepare(`
@@ -405,8 +412,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
         JOIN taux_cotisation t ON r.id = t.regleId
         WHERE r.typeCotisation = 'COTISATION_SALARIALE'
           AND r.estActif = 1
-          AND t.dateDebut <= date('now')
-          AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+          AND t.dateDebut <= date('${TEST_DATE}')
+          AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
       `).all() as Array<{
         code: string;
         nom: string;
@@ -438,7 +445,6 @@ describe('Cotisations sociales françaises 2024-2025', () => {
 
     it('devrait calculer correctement les cotisations pour un salaire de 5000 € brut (cadre)', () => {
       const salaireBrut = 5000;
-      const PASS_MENSUEL = 3864;
 
       // Pour un salaire au-dessus du PASS, vérifier la tranche 2 AGIRC-ARRCO
       const tranche2 = db.prepare(`
@@ -446,8 +452,8 @@ describe('Cotisations sociales françaises 2024-2025', () => {
         FROM regles_cotisation r
         JOIN taux_cotisation t ON r.id = t.regleId
         WHERE r.code = 'RETRAITE_COMP_T2_SAL'
-          AND t.dateDebut <= date('now')
-          AND (t.dateFin IS NULL OR t.dateFin > date('now'))
+          AND t.dateDebut <= date('${TEST_DATE}')
+          AND (t.dateFin IS NULL OR t.dateFin > date('${TEST_DATE}'))
       `).get() as { taux: number; plancher: number; plafond: number } | undefined;
 
       expect(tranche2).toBeDefined();

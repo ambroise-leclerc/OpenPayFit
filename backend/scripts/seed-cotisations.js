@@ -11,7 +11,7 @@ const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
 const yaml = require('yaml');
-const { randomBytes } = require('crypto');
+const { randomUUID } = require('crypto');
 
 // Déterminer le fichier de base de données selon l'environnement
 const dbFileName = process.env.NODE_ENV === 'test' ? 'test.db' : 'dev.db';
@@ -123,13 +123,6 @@ const ORGANISMES_INFO = {
 // ====================================
 
 /**
- * Génère un ID aléatoire (mimique cuid)
- */
-function generateId() {
-  return randomBytes(12).toString('base64').replace(/[+/=]/g, '');
-}
-
-/**
  * Charge et parse le fichier YAML des cotisations
  */
 function chargerFichierYAML(cheminFichier) {
@@ -159,8 +152,14 @@ function syncCategories(cotisations) {
   const categoriesMap = new Map();
 
   const insertCategorie = db.prepare(`
-    INSERT OR REPLACE INTO categories_cotisation (id, code, nom, description, createdAt, updatedAt)
+    INSERT INTO categories_cotisation (id, code, nom, description, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+  `);
+
+  const updateCategorie = db.prepare(`
+    UPDATE categories_cotisation
+    SET nom = ?, description = ?, updatedAt = datetime('now')
+    WHERE code = ?
   `);
 
   const getCategorie = db.prepare('SELECT id FROM categories_cotisation WHERE code = ?');
@@ -177,8 +176,14 @@ function syncCategories(cotisations) {
 
     if (row) {
       categorieId = row.id;
+      // Mettre à jour la catégorie existante sans modifier createdAt
+      updateCategorie.run(
+        info?.nom || codeCategorie,
+        info?.description || null,
+        codeCategorie
+      );
     } else {
-      categorieId = generateId();
+      categorieId = randomUUID();
       insertCategorie.run(
         categorieId,
         codeCategorie,
@@ -205,8 +210,14 @@ function syncOrganismes(cotisations) {
   const organismesMap = new Map();
 
   const insertOrganisme = db.prepare(`
-    INSERT OR REPLACE INTO organismes_cotisation (id, code, nom, description, createdAt, updatedAt)
+    INSERT INTO organismes_cotisation (id, code, nom, description, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+  `);
+
+  const updateOrganisme = db.prepare(`
+    UPDATE organismes_cotisation
+    SET nom = ?, description = ?, updatedAt = datetime('now')
+    WHERE code = ?
   `);
 
   const getOrganisme = db.prepare('SELECT id FROM organismes_cotisation WHERE code = ?');
@@ -223,8 +234,14 @@ function syncOrganismes(cotisations) {
 
     if (row) {
       organismeId = row.id;
+      // Mettre à jour l'organisme existant sans modifier createdAt
+      updateOrganisme.run(
+        info?.nom || codeOrganisme,
+        info?.description || null,
+        codeOrganisme
+      );
     } else {
-      organismeId = generateId();
+      organismeId = randomUUID();
       insertOrganisme.run(
         organismeId,
         codeOrganisme,
@@ -274,7 +291,7 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
       regleId
     );
   } else {
-    regleId = generateId();
+    regleId = randomUUID();
     const insertRegle = db.prepare(`
       INSERT INTO regles_cotisation (
         id, code, nom, description, categorieId, organismeId,
@@ -311,7 +328,7 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
 
   for (const tauxData of cotisation.taux) {
     insertTaux.run(
-      generateId(),
+      randomUUID(),
       regleId,
       tauxData.taux,
       tauxData.date_debut,
@@ -330,7 +347,7 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
   `);
 
   insertCompta.run(
-    generateId(),
+    randomUUID(),
     regleId,
     cotisation.comptabilite.compte_debit,
     cotisation.comptabilite.compte_credit,
