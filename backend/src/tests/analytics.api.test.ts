@@ -98,7 +98,15 @@ describe.skip('Endpoints API Analytics (nécessite Prisma - ignoré en CI)', () 
   });
 
   afterAll(() => {
-    // Pas de déconnexion nécessaire pour better-sqlite3
+    // Nettoyage des données de test après l'exécution de tous les tests
+    bd = new Database(cheminBd);
+    bd.exec('DELETE FROM expenses');
+    bd.exec('DELETE FROM leaves');
+    bd.exec('DELETE FROM Payslip');
+    bd.exec('DELETE FROM Employee');
+    bd.exec('DELETE FROM Company');
+    bd.exec('DELETE FROM User');
+    bd.close();
   });
 
   describe('GET /api/companies/:companyId/analytics/payroll', () => {

@@ -56,7 +56,8 @@ function exporterVersCSV(donnees: any[], nomFichier: string) {
     ),
   ];
 
-  const contenuCSV = lignesCSV.join('\n');
+  // Ajouter le BOM UTF-8 pour assurer la compatibilité avec Excel
+  const contenuCSV = '\uFEFF' + lignesCSV.join('\n');
 
   // Créer un blob et télécharger
   const blob = new Blob([contenuCSV], { type: 'text/csv;charset=utf-8;' });
@@ -261,7 +262,7 @@ const AnalyticsDashboard = () => {
             >
               <option value="">Sélectionner</option>
               {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
+                <option key={i + 1} value={(i + 1).toString().padStart(2, '0')}>
                   {new Date(2000, i).toLocaleString('fr-FR', { month: 'long' })}
                 </option>
               ))}

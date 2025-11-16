@@ -31,6 +31,7 @@ router.use(async (req: Request<ParamsEntreprise>, res: Response, next: NextFunct
 
     next();
   } catch (erreur) {
+    console.error('Erreur lors de la vérification des permissions:', erreur);
     res.status(500).json({ error: 'Erreur serveur interne' });
   }
 });
@@ -222,9 +223,12 @@ router.get('/leaves', async (req: Request<ParamsEntreprise>, res: Response) => {
     }, {});
 
     // Calculer le taux d'absence (approximatif)
+    // Le calcul utilise 71% comme estimation du ratio jours ouvrés/jours calendaires.
+    // Cette approximation repose sur l'hypothèse de 5 jours ouvrés par semaine (5/7 ≈ 71%)
+    // et ne tient pas compte des jours fériés spécifiques qui varient selon les régions.
     const joursOuvresPeriode = Math.ceil(
       (dateFin.getTime() - dateDebut.getTime()) / (1000 * 60 * 60 * 24)
-    ) * 0.71; // ~71% des jours sont des jours ouvrés
+    ) * 0.71;
     const joursOuvresPotentiels = joursOuvresPeriode * employes.length;
     const tauxAbsence = joursOuvresPotentiels > 0
       ? (totalJours / joursOuvresPotentiels) * 100
@@ -265,6 +269,15 @@ router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) =>
     const idsEmployes = employes.map((e: any) => e.id);
     const mapEmployes = new Map(employes.map((e: any) => [e.id, `${e.firstName} ${e.lastName}`]));
 
+    // Valider et limiter le paramètre limit entre 1 et 100
+    let limiteParsee: number | undefined = undefined;
+    if (limit) {
+      const limiteNombre = parseInt(limit as string);
+      if (!isNaN(limiteNombre)) {
+        limiteParsee = Math.min(Math.max(1, limiteNombre), 100);
+      }
+    }
+
     // Récupérer les notes de frais dans la période
     const notesDeFrais = await prisma.expense.findMany({
       where: {
@@ -286,7 +299,7 @@ router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) =>
       orderBy: {
         amount: 'desc',
       },
-      take: limit ? parseInt(limit as string) : undefined,
+      take: limiteParsee,
     });
 
     // Calculer le montant total
