@@ -6,13 +6,15 @@ import express, { Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import {
   runPayroll,
+  runPayrollDetailed,
   getPayslipsByPeriod,
   getAllPayslips,
   getPayslipById,
+  getFichePaieDetails,
   isPayslipOwner,
   validatePayPeriod
 } from '../lib/payroll';
-import { generatePayslipPDF, PayslipWithEmployee } from '../lib/pdfGenerator';
+import { generatePayslipPDF, generateDetailedPayslipPDF, PayslipWithEmployee } from '../lib/pdfGenerator';
 import Database from 'better-sqlite3';
 import path from 'path';
 
@@ -196,6 +198,53 @@ router.get('/:id', authenticateToken, (req: Request, res: Response) => {
     console.error('Erreur lors de la récupération de la fiche de paie:', error);
     return res.status(500).json({
       error: 'Erreur lors de la récupération de la fiche de paie'
+    });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/payslips/:payslipId/details
+ * Récupère les détails complets d'une fiche de paie avec lignes de cotisations
+ */
+router.get('/companies/:companyId/payslips/:payslipId/details', authenticateToken, (req: Request, res: Response) => {
+  const { companyId, payslipId } = req.params;
+  const userId = req.userId;
+
+  // S'assurer que userId est défini
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Non autorisé'
+    });
+  }
+
+  // Vérifier que l'utilisateur est propriétaire de l'entreprise
+  if (!isCompanyOwner(companyId, userId)) {
+    return res.status(403).json({
+      error: 'Accès interdit : vous n\'êtes pas propriétaire de cette entreprise'
+    });
+  }
+
+  try {
+    const fichePaie = getFichePaieDetails(payslipId);
+
+    if (!fichePaie) {
+      return res.status(404).json({
+        error: 'Fiche de paie non trouvée'
+      });
+    }
+
+    // Vérifier que la fiche de paie appartient bien à l'entreprise
+    if (!isPayslipOwner(payslipId, userId)) {
+      return res.status(403).json({
+        error: 'Accès interdit : cette fiche de paie n\'appartient pas à cette entreprise'
+      });
+    }
+
+    return res.status(200).json(fichePaie);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des détails de la fiche de paie:', error);
+    return res.status(500).json({
+      error: 'Erreur lors de la récupération des détails de la fiche de paie'
     });
   }
 });
