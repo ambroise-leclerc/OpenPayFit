@@ -1,0 +1,484 @@
+version: "1.0"
+date_creation: "2024-11-16"
+description: "Règles de cotisations sociales françaises officielles pour 2024-2025"
+source: "URSSAF, AGIRC-ARRCO, Code de la sécurité sociale"
+
+# ====================================
+# CONSTANTES OFFICIELLES 2024
+# ====================================
+constantes:
+  PASS_ANNUEL: 46368  # Plafond Annuel de la Sécurité Sociale 2024
+  PASS_MENSUEL: 3864  # PASS mensuel (46368 / 12)
+  SMIC_HORAIRE: 11.65 # SMIC horaire brut au 1er janvier 2024
+  SMIC_MENSUEL: 1766.92 # SMIC mensuel brut (base 151,67h)
+  TAUX_ABATTEMENT_CSG: 0.9825 # Assiette CSG/CRDS = 98,25% du brut
+
+cotisations:
+  # ====================================
+  # SÉCURITÉ SOCIALE - PART SALARIALE
+  # ====================================
+
+  - code: SS_MALADIE_SAL
+    nom: "Assurance maladie, maternité, invalidité, décès - Part salariale"
+    description: "Cotisation maladie salariale (0% hors Alsace-Moselle)"
+    categorie: SECURITE_SOCIALE
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0000  # 0% depuis 2018 (hors Alsace-Moselle)
+        date_debut: "2018-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "431"
+
+  - code: SS_VIEILLESSE_PLAFONNE_SAL
+    nom: "Assurance vieillesse plafonnée - Part salariale"
+    description: "Retraite de base sur la tranche limitée à 1 PASS"
+    categorie: RETRAITE
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 46368  # 1 PASS annuel
+      plancher: null
+    taux:
+      - taux: 0.0690  # 6,90%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "431"
+
+  - code: SS_VIEILLESSE_DEPLAFONNE_SAL
+    nom: "Assurance vieillesse déplafonnée - Part salariale"
+    description: "Retraite de base sur la totalité du salaire"
+    categorie: RETRAITE
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0040  # 0,40%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "431"
+
+  # ====================================
+  # SÉCURITÉ SOCIALE - PART PATRONALE
+  # ====================================
+
+  - code: SS_MALADIE_PAT
+    nom: "Assurance maladie, maternité, invalidité, décès - Part patronale"
+    description: "Cotisation maladie patronale (taux normal 13%)"
+    categorie: SECURITE_SOCIALE
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.1300  # 13% (taux normal)
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: SS_VIEILLESSE_PLAFONNE_PAT
+    nom: "Assurance vieillesse plafonnée - Part patronale"
+    description: "Retraite de base patronale sur la tranche limitée à 1 PASS"
+    categorie: RETRAITE
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 46368  # 1 PASS annuel
+      plancher: null
+    taux:
+      - taux: 0.0855  # 8,55%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: SS_VIEILLESSE_DEPLAFONNE_PAT
+    nom: "Assurance vieillesse déplafonnée - Part patronale"
+    description: "Retraite de base patronale sur la totalité du salaire"
+    categorie: RETRAITE
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0190  # 1,90%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: SS_ALLOCATIONS_FAMILIALES_PAT
+    nom: "Allocations familiales - Part patronale"
+    description: "Cotisation allocations familiales (taux normal 3,45%)"
+    categorie: FAMILLE
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0345  # 3,45% (taux réduit, 5,25% si > 3,5 SMIC)
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: SS_ACCIDENT_TRAVAIL_PAT
+    nom: "Accidents du travail et maladies professionnelles (AT/MP)"
+    description: "Cotisation AT/MP (taux variable selon activité, moyenne 2,2%)"
+    categorie: AT_MP
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0220  # 2,2% (taux moyen, variable selon secteur)
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  # ====================================
+  # CHÔMAGE (PÔLE EMPLOI)
+  # ====================================
+
+  - code: CHOMAGE_SAL
+    nom: "Assurance chômage - Part salariale"
+    description: "Contribution chômage salariale (supprimée depuis 2018)"
+    categorie: CHOMAGE
+    organisme: POLE_EMPLOI
+    type: COTISATION_SALARIALE
+    actif: false  # Supprimée depuis 2018
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 185472  # 4 PASS
+      plancher: null
+    taux:
+      - taux: 0.0000  # 0% depuis 2018
+        date_debut: "2018-10-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: CHOMAGE_PAT
+    nom: "Assurance chômage - Part patronale"
+    description: "Contribution chômage patronale limitée à 4 PASS"
+    categorie: CHOMAGE
+    organisme: POLE_EMPLOI
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 185472  # 4 PASS (46368 × 4)
+      plancher: null
+    taux:
+      - taux: 0.0405  # 4,05%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  # ====================================
+  # RETRAITE COMPLÉMENTAIRE (AGIRC-ARRCO)
+  # ====================================
+
+  - code: RETRAITE_COMP_T1_SAL
+    nom: "Retraite complémentaire tranche 1 - Part salariale"
+    description: "AGIRC-ARRCO T1 (0 à 1 PASS) incluant CEG"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 46368  # 1 PASS
+      plancher: null
+    taux:
+      - taux: 0.0402  # 3,15% (taux contractuel) + 0,87% (CEG) = 4,02%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_T1_PAT
+    nom: "Retraite complémentaire tranche 1 - Part patronale"
+    description: "AGIRC-ARRCO T1 (0 à 1 PASS) incluant CEG"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 46368  # 1 PASS
+      plancher: null
+    taux:
+      - taux: 0.0601  # 4,72% (taux contractuel) + 1,29% (CEG) = 6,01%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_T2_SAL
+    nom: "Retraite complémentaire tranche 2 - Part salariale"
+    description: "AGIRC-ARRCO T2 (1 à 8 PASS) incluant CEG"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: 370944  # 8 PASS
+      plancher: 46368   # Au-delà de 1 PASS
+    taux:
+      - taux: 0.1026  # 8,64% (taux contractuel) + 1,62% (CEG) = 10,26%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_T2_PAT
+    nom: "Retraite complémentaire tranche 2 - Part patronale"
+    description: "AGIRC-ARRCO T2 (1 à 8 PASS) incluant CEG"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: 370944  # 8 PASS
+      plancher: 46368   # Au-delà de 1 PASS
+    taux:
+      - taux: 0.1538  # 12,95% (taux contractuel) + 2,43% (CEG) = 15,38%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  # ====================================
+  # CSG / CRDS
+  # ====================================
+  # Note : L'assiette de la CSG/CRDS est de 98,25% du salaire brut
+
+  - code: CSG_DEDUCTIBLE
+    nom: "CSG déductible"
+    description: "Contribution sociale généralisée déductible (assiette 98,25% du brut)"
+    categorie: CSG_CRDS
+    organisme: URSSAF
+    type: CHARGE_FISCALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT  # Application réelle : 98,25% du brut
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0668  # 6,80% × 98,25% = 6,68% effectif du brut
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "431"
+
+  - code: CSG_NON_DEDUCTIBLE
+    nom: "CSG non déductible"
+    description: "Contribution sociale généralisée non déductible (assiette 98,25% du brut)"
+    categorie: CSG_CRDS
+    organisme: URSSAF
+    type: CHARGE_FISCALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT  # Application réelle : 98,25% du brut
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0236  # 2,40% × 98,25% = 2,36% effectif du brut
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "431"
+
+  - code: CRDS
+    nom: "Contribution pour le remboursement de la dette sociale"
+    description: "CRDS (assiette 98,25% du brut)"
+    categorie: CSG_CRDS
+    organisme: URSSAF
+    type: CHARGE_FISCALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT  # Application réelle : 98,25% du brut
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0049  # 0,50% × 98,25% = 0,49% effectif du brut
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "431"
+
+  # ====================================
+  # FORMATION PROFESSIONNELLE
+  # ====================================
+
+  - code: FORMATION_PROFESSIONNELLE_PAT
+    nom: "Formation professionnelle - Part patronale"
+    description: "Contribution formation professionnelle (0,55% pour < 11 salariés)"
+    categorie: FORMATION
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0055  # 0,55% (entreprises < 11 salariés)
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: FORMATION_PROFESSIONNELLE_PLUS_11_PAT
+    nom: "Formation professionnelle >= 11 salariés - Part patronale"
+    description: "Contribution formation professionnelle (1% pour >= 11 salariés)"
+    categorie: FORMATION
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0100  # 1% (entreprises >= 11 salariés)
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  # ====================================
+  # AUTRES CONTRIBUTIONS
+  # ====================================
+
+  - code: CONTRIBUTION_SOLIDARITE_AUTONOMIE_PAT
+    nom: "Contribution solidarité autonomie (CSA)"
+    description: "Contribution pour l'autonomie des personnes âgées et handicapées"
+    categorie: SOLIDARITE
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0030  # 0,30%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: FNAL_TRANCHE1_PAT
+    nom: "Fonds national d'aide au logement (FNAL) - Tranche 1"
+    description: "FNAL sur les salaires jusqu'à 1 PASS (toutes entreprises)"
+    categorie: LOGEMENT
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 46368  # 1 PASS
+      plancher: null
+    taux:
+      - taux: 0.0010  # 0,10%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: FNAL_TRANCHE2_PAT
+    nom: "Fonds national d'aide au logement (FNAL) - Tranche 2"
+    description: "FNAL sur la totalité des salaires (entreprises >= 50 salariés)"
+    categorie: LOGEMENT
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0050  # 0,50%
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"

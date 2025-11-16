@@ -10,7 +10,8 @@
     "start": "node dist/index.js",
     "dev": "nodemon src/index.ts",
     "postinstall": "prisma generate || echo 'Prisma generate skipped (using better-sqlite3 directly)'",
-    "migrate": "node scripts/apply-migrations.js"
+    "migrate": "node scripts/apply-migrations.js",
+    "seed:cotisations": "node scripts/seed-cotisations.js"
   },
   "keywords": [],
   "author": "",
