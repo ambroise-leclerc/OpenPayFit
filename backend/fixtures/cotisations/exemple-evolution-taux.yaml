@@ -1,0 +1,75 @@
+version: "1.0"
+date_creation: "2024-01-01"
+description: "Exemple montrant l'évolution des taux de cotisations dans le temps"
+
+cotisations:
+  - code: CHOMAGE_SAL_EVOLUTIF
+    nom: "Assurance chômage salariale (avec évolution)"
+    categorie: CHOMAGE
+    organisme: POLE_EMPLOI
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 185472
+      plancher: null
+    taux:
+      # Ancien taux (2022-2023)
+      - taux: 0.0205
+        date_debut: "2022-01-01"
+        date_fin: "2023-12-31"
+      # Nouveau taux (2024)
+      - taux: 0.0240
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  - code: MALADIE_SAL_EVOLUTIF
+    nom: "Assurance maladie salariale (avec évolution)"
+    categorie: SECURITE_SOCIALE
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      # Taux 2020-2021
+      - taux: 0.0700
+        date_debut: "2020-01-01"
+        date_fin: "2021-12-31"
+      # Taux 2022-2023
+      - taux: 0.0750
+        date_debut: "2022-01-01"
+        date_fin: "2023-12-31"
+      # Taux actuel 2024
+      - taux: 0.0755
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: COTISATION_TEMPORAIRE
+    nom: "Cotisation temporaire (désactivée)"
+    categorie: AUTRES
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: false
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0100
+        date_debut: "2023-01-01"
+        date_fin: "2023-12-31"
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
