@@ -9,6 +9,7 @@
 
 import Database from 'better-sqlite3';
 import path from 'path';
+import { execSync } from 'child_process';
 
 describe('Cotisations sociales françaises 2024-2025', () => {
   let db: Database.Database;
@@ -17,6 +18,14 @@ describe('Cotisations sociales françaises 2024-2025', () => {
     // Utiliser la base de données de test
     const dbPath = path.join(__dirname, '../../prisma/test.db');
     db = new Database(dbPath);
+
+    // Charger les données de référence si elles ne sont pas déjà présentes
+    const count = db.prepare('SELECT COUNT(*) as count FROM regles_cotisation').get() as { count: number };
+    if (count.count === 0) {
+      // Exécuter le script de seed
+      const scriptPath = path.join(__dirname, '../../scripts/seed-cotisations.js');
+      execSync(`NODE_ENV=test node "${scriptPath}"`, { stdio: 'inherit' });
+    }
   });
 
   afterAll(() => {
