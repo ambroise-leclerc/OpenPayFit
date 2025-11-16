@@ -2,6 +2,18 @@ import { Router, Request, Response } from 'express';
 import prisma from '../lib/db';
 import { Prisma } from '@prisma/client';
 import YAML from 'yaml';
+import { ZodError } from 'zod';
+import {
+  TYPE_COTISATION_VALIDES,
+  TYPE_CALCUL_VALIDES,
+  TYPE_ASSIETTE_VALIDES,
+  isTypeCotisationValide,
+  isTypeCalculValide,
+  isTypeAssietteValide,
+  getPassMensuel,
+  MESSAGES_ERREUR,
+} from '../lib/cotisations-constants';
+import { importDataSchema } from '../lib/cotisations-schemas';
 
 const router = Router();
 
@@ -340,26 +352,22 @@ router.post('/regles', async (req: Request, res: Response) => {
   }
 
   // Validation des types enum
-  const typeCotisationValides = ['COTISATION_SALARIALE', 'COTISATION_PATRONALE', 'CHARGE_FISCALE'];
-  const typeCalculValides = ['POURCENTAGE', 'MONTANT_FIXE', 'TRANCHES'];
-  const typeAssietteValides = ['SALAIRE_BRUT', 'SALAIRE_NET', 'SALAIRE_PLAFONNE'];
-
-  if (!typeCotisationValides.includes(typeCotisation)) {
-    return res.status(400).json({ error: 'Type de cotisation invalide' });
+  if (!isTypeCotisationValide(typeCotisation)) {
+    return res.status(400).json({ error: MESSAGES_ERREUR.TYPE_COTISATION_INVALIDE });
   }
-  if (!typeCalculValides.includes(typeCalcul)) {
-    return res.status(400).json({ error: 'Type de calcul invalide' });
+  if (!isTypeCalculValide(typeCalcul)) {
+    return res.status(400).json({ error: MESSAGES_ERREUR.TYPE_CALCUL_INVALIDE });
   }
-  if (!typeAssietteValides.includes(typeAssiette)) {
-    return res.status(400).json({ error: 'Type d\'assiette invalide' });
+  if (!isTypeAssietteValide(typeAssiette)) {
+    return res.status(400).json({ error: MESSAGES_ERREUR.TYPE_ASSIETTE_INVALIDE });
   }
 
   // Validation des montants (plancher et plafond optionnels mais doivent être positifs)
   if (plancher !== undefined && plancher !== null && (typeof plancher !== 'number' || plancher < 0)) {
-    return res.status(400).json({ error: 'Le plancher doit être un nombre positif' });
+    return res.status(400).json({ error: MESSAGES_ERREUR.PLANCHER_INVALIDE });
   }
   if (plafond !== undefined && plafond !== null && (typeof plafond !== 'number' || plafond < 0)) {
-    return res.status(400).json({ error: 'Le plafond doit être un nombre positif' });
+    return res.status(400).json({ error: MESSAGES_ERREUR.PLAFOND_INVALIDE });
   }
 
   try {
@@ -415,31 +423,22 @@ router.put('/regles/:id', async (req: Request, res: Response) => {
   } = req.body;
 
   // Validation des types enum si fournis
-  if (typeCotisation) {
-    const typeCotisationValides = ['COTISATION_SALARIALE', 'COTISATION_PATRONALE', 'CHARGE_FISCALE'];
-    if (!typeCotisationValides.includes(typeCotisation)) {
-      return res.status(400).json({ error: 'Type de cotisation invalide' });
-    }
+  if (typeCotisation && !isTypeCotisationValide(typeCotisation)) {
+    return res.status(400).json({ error: MESSAGES_ERREUR.TYPE_COTISATION_INVALIDE });
   }
-  if (typeCalcul) {
-    const typeCalculValides = ['POURCENTAGE', 'MONTANT_FIXE', 'TRANCHES'];
-    if (!typeCalculValides.includes(typeCalcul)) {
-      return res.status(400).json({ error: 'Type de calcul invalide' });
-    }
+  if (typeCalcul && !isTypeCalculValide(typeCalcul)) {
+    return res.status(400).json({ error: MESSAGES_ERREUR.TYPE_CALCUL_INVALIDE });
   }
-  if (typeAssiette) {
-    const typeAssietteValides = ['SALAIRE_BRUT', 'SALAIRE_NET', 'SALAIRE_PLAFONNE'];
-    if (!typeAssietteValides.includes(typeAssiette)) {
-      return res.status(400).json({ error: 'Type d\'assiette invalide' });
-    }
+  if (typeAssiette && !isTypeAssietteValide(typeAssiette)) {
+    return res.status(400).json({ error: MESSAGES_ERREUR.TYPE_ASSIETTE_INVALIDE });
   }
 
   // Validation des montants
   if (plancher !== undefined && plancher !== null && (typeof plancher !== 'number' || plancher < 0)) {
-    return res.status(400).json({ error: 'Le plancher doit être un nombre positif' });
+    return res.status(400).json({ error: MESSAGES_ERREUR.PLANCHER_INVALIDE });
   }
   if (plafond !== undefined && plafond !== null && (typeof plafond !== 'number' || plafond < 0)) {
-    return res.status(400).json({ error: 'Le plafond doit être un nombre positif' });
+    return res.status(400).json({ error: MESSAGES_ERREUR.PLAFOND_INVALIDE });
   }
 
   try {
@@ -533,7 +532,7 @@ router.post('/regles/:regleId/taux', async (req: Request, res: Response) => {
 
   // Validation du taux (doit être entre 0 et 1 pour les pourcentages)
   if (typeof taux !== 'number' || taux < 0 || taux > 1) {
-    return res.status(400).json({ error: 'Le taux doit être un nombre entre 0 et 1' });
+    return res.status(400).json({ error: MESSAGES_ERREUR.TAUX_INVALIDE });
   }
 
   // Validation des dates
@@ -548,8 +547,12 @@ router.post('/regles/:regleId/taux', async (req: Request, res: Response) => {
     if (isNaN(dateFinParsed.getTime())) {
       return res.status(400).json({ error: 'Date de fin invalide' });
     }
-    if (dateFinParsed <= dateDebutParsed) {
-      return res.status(400).json({ error: 'La date de fin doit être postérieure à la date de début' });
+    // Vérifier que dateFin est strictement postérieure à dateDebut
+    if (dateFinParsed.getTime() === dateDebutParsed.getTime()) {
+      return res.status(400).json({ error: MESSAGES_ERREUR.DATES_EGALES });
+    }
+    if (dateFinParsed < dateDebutParsed) {
+      return res.status(400).json({ error: MESSAGES_ERREUR.DATE_FIN_ANTERIEURE });
     }
   }
 
@@ -584,7 +587,7 @@ router.put('/taux/:id', async (req: Request, res: Response) => {
 
   // Validation du taux si fourni
   if (taux !== undefined && (typeof taux !== 'number' || taux < 0 || taux > 1)) {
-    return res.status(400).json({ error: 'Le taux doit être un nombre entre 0 et 1' });
+    return res.status(400).json({ error: MESSAGES_ERREUR.TAUX_INVALIDE });
   }
 
   // Validation des dates si fournies
@@ -601,6 +604,16 @@ router.put('/taux/:id', async (req: Request, res: Response) => {
     dateFinParsed = new Date(dateFin);
     if (isNaN(dateFinParsed.getTime())) {
       return res.status(400).json({ error: 'Date de fin invalide' });
+    }
+  }
+
+  // Validation de la relation entre les dates si les deux sont fournies
+  if (dateDebutParsed && dateFinParsed) {
+    if (dateFinParsed.getTime() === dateDebutParsed.getTime()) {
+      return res.status(400).json({ error: MESSAGES_ERREUR.DATES_EGALES });
+    }
+    if (dateFinParsed < dateDebutParsed) {
+      return res.status(400).json({ error: MESSAGES_ERREUR.DATE_FIN_ANTERIEURE });
     }
   }
 
@@ -671,12 +684,17 @@ router.post('/import', async (req: Request, res: Response) => {
       parsedData = typeof data === 'string' ? JSON.parse(data) : data;
     }
 
-    // Valider la structure des données importées
-    if (!parsedData.categories && !parsedData.organismes && !parsedData.regles) {
+    // Valider le schéma des données importées avec Zod
+    const validationResult = importDataSchema.safeParse(parsedData);
+    if (!validationResult.success) {
+      const errors = validationResult.error.issues.map((err: any) => `${err.path.join('.')}: ${err.message}`);
       return res.status(400).json({
-        error: 'Les données doivent contenir au moins un des champs: categories, organismes, regles',
+        error: 'Données invalides',
+        details: errors,
       });
     }
+
+    const validatedData = validationResult.data;
 
     const result = {
       categoriesCreated: 0,
@@ -687,8 +705,8 @@ router.post('/import', async (req: Request, res: Response) => {
     };
 
     // Importer les catégories
-    if (parsedData.categories && Array.isArray(parsedData.categories)) {
-      for (const cat of parsedData.categories) {
+    if (validatedData.categories && Array.isArray(validatedData.categories)) {
+      for (const cat of validatedData.categories) {
         try {
           await prisma.categorieCotisation.create({
             data: {
@@ -709,8 +727,8 @@ router.post('/import', async (req: Request, res: Response) => {
     }
 
     // Importer les organismes
-    if (parsedData.organismes && Array.isArray(parsedData.organismes)) {
-      for (const org of parsedData.organismes) {
+    if (validatedData.organismes && Array.isArray(validatedData.organismes)) {
+      for (const org of validatedData.organismes) {
         try {
           await prisma.organismeCotisation.create({
             data: {
@@ -731,8 +749,8 @@ router.post('/import', async (req: Request, res: Response) => {
     }
 
     // Importer les règles
-    if (parsedData.regles && Array.isArray(parsedData.regles)) {
-      for (const regle of parsedData.regles) {
+    if (validatedData.regles && Array.isArray(validatedData.regles)) {
+      for (const regle of validatedData.regles) {
         try {
           // Trouver la catégorie et l'organisme par code
           const categorie = await prisma.categorieCotisation.findUnique({
@@ -937,9 +955,8 @@ router.post('/simulation', async (req: Request, res: Response) => {
         // Calculer l'assiette
         let assiette = salaireBrut;
         if (regle.typeAssiette === 'SALAIRE_PLAFONNE') {
-          // PASS mensuel 2025 : 3 864 €
-          const passMensuel = 3864;
-          assiette = Math.min(salaireBrut, regle.plafond || passMensuel);
+          // Utiliser le PASS configuré (màj annuelle dans cotisations-constants.ts)
+          assiette = Math.min(salaireBrut, regle.plafond || getPassMensuel());
         }
 
         // Appliquer le plancher si défini
