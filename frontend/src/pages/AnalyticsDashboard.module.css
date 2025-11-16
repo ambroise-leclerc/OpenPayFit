@@ -1,0 +1,299 @@
+/* Container principal */
+.container {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.container h1 {
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+/* Section des filtres */
+.filtres {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+.filtreGroupe {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 150px;
+}
+
+.filtreGroupe label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.filtreGroupe select,
+.filtreGroupe input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.filtreGroupe select:focus,
+.filtreGroupe input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.1);
+}
+
+/* Grille de widgets */
+.widgets {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 2rem;
+}
+
+/* Widget individuel */
+.widget {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.widget:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.widgetHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.widgetHeader h2 {
+  font-size: 1.3rem;
+  color: #333;
+  margin: 0;
+}
+
+.boutonExport {
+  padding: 0.5rem 1rem;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.boutonExport:hover {
+  background-color: #218838;
+}
+
+.boutonExport:active {
+  transform: translateY(1px);
+}
+
+/* Statistiques */
+.statistiques {
+  display: flex;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.stat {
+  flex: 1;
+  min-width: 150px;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border-left: 4px solid #007bff;
+}
+
+.statLabel {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.statValeur {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Tableau */
+.tableau {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.tableau h3 {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.tableau table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.tableau thead {
+  background-color: #f8f9fa;
+}
+
+.tableau th {
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #555;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.tableau td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #dee2e6;
+  color: #333;
+}
+
+.tableau tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* États de chargement et d'erreur */
+.chargement,
+.erreur,
+.message {
+  padding: 2rem;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.chargement {
+  color: #007bff;
+}
+
+.erreur {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+}
+
+.message {
+  color: #856404;
+  background-color: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 4px;
+}
+
+/* Responsive Design */
+
+/* Tablettes */
+@media (max-width: 1024px) {
+  .widgets {
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  }
+
+  .container {
+    padding: 1.5rem;
+  }
+
+  .filtres {
+    padding: 1rem;
+  }
+}
+
+/* Mobiles */
+@media (max-width: 768px) {
+  .container {
+    padding: 1rem;
+  }
+
+  .container h1 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .widgets {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+
+  .widget {
+    padding: 1rem;
+  }
+
+  .widgetHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .widgetHeader h2 {
+    font-size: 1.1rem;
+  }
+
+  .statistiques {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .stat {
+    min-width: 100%;
+  }
+
+  .filtres {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .filtreGroupe {
+    min-width: 100%;
+  }
+
+  .tableau {
+    font-size: 0.85rem;
+  }
+
+  .tableau th,
+  .tableau td {
+    padding: 0.5rem;
+  }
+
+  .statValeur {
+    font-size: 1.5rem;
+  }
+}
+
+/* Petits mobiles */
+@media (max-width: 480px) {
+  .container {
+    padding: 0.5rem;
+  }
+
+  .container h1 {
+    font-size: 1.3rem;
+  }
+
+  .widget {
+    padding: 0.75rem;
+  }
+
+  .boutonExport {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+  }
+}

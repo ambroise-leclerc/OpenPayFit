@@ -634,3 +634,169 @@ export async function importCotisations(
   }
   return response.json();
 }
+
+// --- Analytics (Indicateurs RH) Management ---
+
+// Interfaces pour les données analytics
+export interface DonneesMasseSalariale {
+  periode: string;
+  totalBrut: number;
+  totalNet: number;
+  coutTotal: number;
+  nombre: number;
+}
+
+export interface DonneesEffectifs {
+  departement: string;
+  nombre: number;
+}
+
+export interface StatistiquesConges {
+  totalJours: number;
+  tauxAbsence: number;
+  parType: Record<string, number>;
+  parStatut: Record<string, number>;
+}
+
+export interface DepenseTop {
+  id: string;
+  nomEmploye: string;
+  categorie: string;
+  montant: number;
+  date: string;
+  description: string;
+  statut: string;
+}
+
+export interface StatistiquesDepenses {
+  montantTotal: number;
+  parCategorie: Record<string, number>;
+  parStatut: Record<string, number>;
+  topDepenses: DepenseTop[];
+}
+
+// Paramètres de filtrage par période
+export interface ParamsPeriode {
+  period?: 'month' | 'quarter' | 'year';
+  year?: string;
+  month?: string;
+  quarter?: string;
+}
+
+// --- Fonctions API Analytics ---
+
+/**
+ * Récupère les données de masse salariale (payroll) pour une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param params - Paramètres de filtrage par période (optionnel)
+ * @param token - Token d'authentification
+ */
+export async function getAnalyticsMasseSalariale(
+  companyId: string,
+  params: ParamsPeriode = {},
+  token: string
+): Promise<DonneesMasseSalariale[]> {
+  const queryParams = new URLSearchParams();
+  if (params.period) queryParams.append('period', params.period);
+  if (params.year) queryParams.append('year', params.year);
+  if (params.month) queryParams.append('month', params.month);
+  if (params.quarter) queryParams.append('quarter', params.quarter);
+
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/companies/${companyId}/analytics/payroll${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des analytics de masse salariale');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les données de répartition des effectifs par département
+ * @param companyId - ID de l'entreprise
+ * @param token - Token d'authentification
+ */
+export async function getAnalyticsEffectifs(
+  companyId: string,
+  token: string
+): Promise<DonneesEffectifs[]> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/analytics/headcount`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des analytics d\'effectifs');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les statistiques de congés pour une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param params - Paramètres de filtrage par période (optionnel)
+ * @param token - Token d'authentification
+ */
+export async function getAnalyticsConges(
+  companyId: string,
+  params: ParamsPeriode = {},
+  token: string
+): Promise<StatistiquesConges> {
+  const queryParams = new URLSearchParams();
+  if (params.period) queryParams.append('period', params.period);
+  if (params.year) queryParams.append('year', params.year);
+  if (params.month) queryParams.append('month', params.month);
+  if (params.quarter) queryParams.append('quarter', params.quarter);
+
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/companies/${companyId}/analytics/leaves${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des analytics de congés');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les statistiques de notes de frais pour une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param params - Paramètres de filtrage par période (optionnel)
+ * @param limit - Limite du nombre de résultats pour topDepenses (optionnel)
+ * @param token - Token d'authentification
+ */
+export async function getAnalyticsDepenses(
+  companyId: string,
+  params: ParamsPeriode,
+  token: string,
+  limit?: number
+): Promise<StatistiquesDepenses> {
+  const queryParams = new URLSearchParams();
+  if (params.period) queryParams.append('period', params.period);
+  if (params.year) queryParams.append('year', params.year);
+  if (params.month) queryParams.append('month', params.month);
+  if (params.quarter) queryParams.append('quarter', params.quarter);
+  if (limit) queryParams.append('limit', limit.toString());
+
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/companies/${companyId}/analytics/expenses${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des analytics de dépenses');
+  }
+
+  return response.json();
+}
