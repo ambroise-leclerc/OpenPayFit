@@ -3,6 +3,8 @@ import cors from 'cors';
 import authRouter from './api/auth';
 import companiesRouter from './api/companies';
 import payrollRouter from './api/payroll';
+import cotisationsRouter from './api/cotisations';
+import { authenticateToken } from './middleware/auth';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -15,6 +17,7 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/companies', companiesRouter);
 app.use('/api/payslips', payrollRouter); // Routes de paie et fiches de paie
+app.use('/api/cotisations', authenticateToken, cotisationsRouter); // Routes des règles de cotisations (authentification requise)
 
 // Health check route
 app.get('/', (_req: Request, res: Response) => {
