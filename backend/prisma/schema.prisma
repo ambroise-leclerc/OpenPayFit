@@ -3,7 +3,6 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -56,4 +55,108 @@ model Payslip {
   updatedAt   DateTime @updatedAt
 
   @@unique([employeeId, payPeriod]) // Un employé ne peut avoir qu'une fiche de paie par période
+}
+
+// ========== Enums pour les règles de cotisations ==========
+
+// Type de cotisation : salariale, patronale ou charge fiscale
+enum TypeCotisation {
+  COTISATION_SALARIALE // Déduite du salaire brut
+  COTISATION_PATRONALE // Charge employeur
+  CHARGE_FISCALE       // Taxes et impôts
+}
+
+// Type de calcul de la cotisation
+enum TypeCalcul {
+  POURCENTAGE   // Calcul basé sur un pourcentage
+  MONTANT_FIXE  // Montant fixe
+  TRANCHES      // Calcul par tranches
+}
+
+// Type d'assiette de calcul
+enum TypeAssiette {
+  SALAIRE_BRUT      // Base salaire brut
+  SALAIRE_NET       // Base salaire net
+  SALAIRE_PLAFONNE  // Base plafonnée (PASS)
+}
+
+// ========== Modèles pour les règles de cotisations ==========
+
+// Catégorie de cotisation (Sécurité sociale, retraite, chômage, etc.)
+model CategorieCotisation {
+  id          String             @id @default(cuid())
+  code        String             @unique // Ex: "SS", "RETRAITE", "CHOMAGE"
+  nom         String             // Nom d'affichage
+  description String?            // Description optionnelle
+  regles      RegleCotisation[]  // Règles associées à cette catégorie
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("categories_cotisation")
+}
+
+// Organisme collecteur (URSSAF, AGIRC-ARRCO, etc.)
+model OrganismeCotisation {
+  id          String             @id @default(cuid())
+  code        String             @unique // Ex: "URSSAF", "AGIRC_ARRCO"
+  nom         String             // Nom de l'organisme
+  description String?            // Description optionnelle
+  regles      RegleCotisation[]  // Règles gérées par cet organisme
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@map("organismes_cotisation")
+}
+
+// Règle de cotisation ou de charge
+model RegleCotisation {
+  id                String               @id @default(cuid())
+  code              String               @unique // Ex: "SS_MALADIE_SAL"
+  nom               String               // Nom de la règle
+  description       String?              // Description optionnelle
+  categorie         CategorieCotisation  @relation(fields: [categorieId], references: [id])
+  categorieId       String               // Clé étrangère vers CategorieCotisation
+  organisme         OrganismeCotisation  @relation(fields: [organismeId], references: [id])
+  organismeId       String               // Clé étrangère vers OrganismeCotisation
+  typeCotisation    TypeCotisation       // Type: salariale, patronale, fiscale
+  typeCalcul        TypeCalcul           // Type de calcul
+  typeAssiette      TypeAssiette         // Type d'assiette
+  plancher          Float?               // Montant plancher (optionnel)
+  plafond           Float?               // Montant plafond (optionnel)
+  taux              TauxCotisation[]     // Historique des taux
+  reglesComptables  RegleComptable[]     // Règles comptables associées
+  estActif          Boolean              @default(true) // Règle active ou non
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+
+  @@map("regles_cotisation")
+}
+
+// Taux de cotisation avec historique
+model TauxCotisation {
+  id        String          @id @default(cuid())
+  regle     RegleCotisation @relation(fields: [regleId], references: [id])
+  regleId   String          // Clé étrangère vers RegleCotisation
+  taux      Float           // Taux en pourcentage (ex: 0.0755 pour 7,55%)
+  dateDebut DateTime        // Date de début d'application
+  dateFin   DateTime?       // Date de fin (null = toujours actif)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([regleId, dateDebut])
+  @@map("taux_cotisation")
+}
+
+// Règle comptable associée à une cotisation
+model RegleComptable {
+  id           String          @id @default(cuid())
+  regle        RegleCotisation @relation(fields: [regleId], references: [id])
+  regleId      String          // Clé étrangère vers RegleCotisation
+  compteDebit  String          // Compte de débit (ex: "6451")
+  compteCredit String          // Compte de crédit (ex: "431")
+  description  String?         // Description de l'écriture comptable
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@map("regles_comptables")
 }
