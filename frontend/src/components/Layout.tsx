@@ -12,6 +12,8 @@ export default function Layout() {
             <li><Link to="/register">Inscription</Link></li>
             <li><Link to="/dashboard">Tableau de Bord</Link></li>
             <li><Link to="/payroll">Paie</Link></li>
+            <li><Link to="/admin/cotisations/regles">Règles Cotisations</Link></li>
+            <li><Link to="/admin/cotisations/simulateur">Simulateur</Link></li>
           </ul>
         </nav>
       </header>

@@ -12,6 +12,8 @@ import DashboardPage from './pages/DashboardPage';
 import PayrollPage from './pages/PayrollPage';
 import PayslipDetailPage from './pages/PayslipDetailPage';
 import ProtectedRoute from './components/ProtectedRoute';
+import ReglesListPage from './pages/admin/ReglesListPage';
+import SimulateurPage from './pages/admin/SimulateurPage';
 
 const router = createBrowserRouter([
   {
@@ -51,6 +53,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <PayslipDetailPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/cotisations/regles',
+        element: (
+          <ProtectedRoute>
+            <ReglesListPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'admin/cotisations/simulateur',
+        element: (
+          <ProtectedRoute>
+            <SimulateurPage />
           </ProtectedRoute>
         ),
       },

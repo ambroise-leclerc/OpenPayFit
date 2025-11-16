@@ -334,3 +334,305 @@ export async function downloadPayslipPDF(payslipId: string, token: string): Prom
   document.body.removeChild(link);
   window.URL.revokeObjectURL(url);
 }
+
+// --- Cotisations (Contribution Rules) Management ---
+
+// Enums
+export type TypeCotisation = 'COTISATION_SALARIALE' | 'COTISATION_PATRONALE' | 'CHARGE_FISCALE';
+export type TypeCalcul = 'POURCENTAGE' | 'MONTANT_FIXE' | 'TRANCHES';
+export type TypeAssiette = 'SALAIRE_BRUT' | 'SALAIRE_NET' | 'SALAIRE_PLAFONNE';
+
+// Data Interfaces
+export interface CategorieCotisation {
+  id: string;
+  code: string;
+  nom: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrganismeCotisation {
+  id: string;
+  code: string;
+  nom: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TauxCotisation {
+  id: string;
+  regleId: string;
+  taux: number;
+  dateDebut: string;
+  dateFin?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RegleComptable {
+  id: string;
+  regleId: string;
+  compteDebit: string;
+  compteCredit: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RegleCotisation {
+  id: string;
+  code: string;
+  nom: string;
+  description?: string;
+  categorieId: string;
+  categorie?: CategorieCotisation;
+  organismeId: string;
+  organisme?: OrganismeCotisation;
+  typeCotisation: TypeCotisation;
+  typeCalcul: TypeCalcul;
+  typeAssiette: TypeAssiette;
+  plancher?: number;
+  plafond?: number;
+  taux?: TauxCotisation[];
+  reglesComptables?: RegleComptable[];
+  estActif: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRegleData {
+  code: string;
+  nom: string;
+  description?: string;
+  categorieId: string;
+  organismeId: string;
+  typeCotisation: TypeCotisation;
+  typeCalcul: TypeCalcul;
+  typeAssiette: TypeAssiette;
+  plancher?: number;
+  plafond?: number;
+  estActif?: boolean;
+}
+
+export type UpdateRegleData = Partial<CreateRegleData>;
+
+export interface SimulationResult {
+  salaireBrut: number;
+  dateSimulation: string;
+  cotisationsSalariales: number;
+  cotisationsPatronales: number;
+  chargesFiscales: number;
+  salaireNet: number;
+  coutTotal: number;
+  details: {
+    code: string;
+    nom: string;
+    categorie: string;
+    organisme: string;
+    typeCotisation: TypeCotisation;
+    assiette: number;
+    taux: number;
+    montant: number;
+  }[];
+}
+
+// --- Catégories API Functions ---
+
+export async function getCategories(token: string): Promise<CategorieCotisation[]> {
+  const response = await fetch(`${API_URL}/cotisations/categories`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des catégories');
+  }
+  return response.json();
+}
+
+export async function getCategoryById(id: string, token: string): Promise<CategorieCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/categories/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de la catégorie');
+  }
+  return response.json();
+}
+
+// --- Organismes API Functions ---
+
+export async function getOrganismes(token: string): Promise<OrganismeCotisation[]> {
+  const response = await fetch(`${API_URL}/cotisations/organismes`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des organismes');
+  }
+  return response.json();
+}
+
+export async function getOrganismeById(id: string, token: string): Promise<OrganismeCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/organismes/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de l\'organisme');
+  }
+  return response.json();
+}
+
+// --- Règles de Cotisation API Functions ---
+
+export async function getRegles(token: string): Promise<RegleCotisation[]> {
+  const response = await fetch(`${API_URL}/cotisations/regles`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des règles');
+  }
+  return response.json();
+}
+
+export async function getRegleById(id: string, token: string): Promise<RegleCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/regles/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de la règle');
+  }
+  return response.json();
+}
+
+export async function createRegle(data: CreateRegleData, token: string): Promise<RegleCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/regles`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création de la règle');
+  }
+  return response.json();
+}
+
+export async function updateRegle(
+  id: string,
+  data: UpdateRegleData,
+  token: string
+): Promise<RegleCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/regles/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour de la règle');
+  }
+  return response.json();
+}
+
+export async function deleteRegle(id: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/cotisations/regles/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de la règle');
+  }
+}
+
+// --- Taux de Cotisation API Functions ---
+
+export async function createTaux(
+  regleId: string,
+  data: { taux: number; dateDebut: string; dateFin?: string },
+  token: string
+): Promise<TauxCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/regles/${regleId}/taux`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création du taux');
+  }
+  return response.json();
+}
+
+export async function updateTaux(
+  id: string,
+  data: { taux?: number; dateDebut?: string; dateFin?: string },
+  token: string
+): Promise<TauxCotisation> {
+  const response = await fetch(`${API_URL}/cotisations/taux/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour du taux');
+  }
+  return response.json();
+}
+
+export async function deleteTaux(id: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/cotisations/taux/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression du taux');
+  }
+}
+
+// --- Simulation API Function ---
+
+export async function simulateCotisations(
+  salaireBrut: number,
+  date: string,
+  token: string
+): Promise<SimulationResult> {
+  const response = await fetch(`${API_URL}/cotisations/simulation`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ salaireBrut, date }),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la simulation');
+  }
+  return response.json();
+}
+
+// --- Import/Export API Functions ---
+
+export async function exportCotisations(
+  format: 'yaml' | 'json',
+  token: string
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}/cotisations/export?format=${format}`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'exportation');
+  }
+  return response.blob();
+}
+
+export async function importCotisations(
+  format: 'yaml' | 'json',
+  data: string,
+  token: string
+): Promise<{ categoriesCreated: number; organismesCreated: number; reglesCreated: number; tauxCreated: number; errors: string[] }> {
+  const response = await fetch(`${API_URL}/cotisations/import`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ format, data }),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'importation');
+  }
+  return response.json();
+}

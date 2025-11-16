@@ -1,85 +1,49 @@
 import { Request, Response, NextFunction } from 'express';
+import prisma from '../lib/db';
 
 /**
- * Middleware pour restreindre l'accès aux administrateurs uniquement
+ * Middleware qui vérifie que l'utilisateur authentifié a le rôle ADMIN
  *
- * IMPORTANT: Ce middleware nécessite l'ajout d'un champ `role` au modèle User.
+ * IMPORTANT : Ce middleware doit être utilisé APRÈS authenticateToken
+ * car il dépend de req.userId qui est défini par authenticateToken
  *
- * Pour l'activer :
- * 1. Ajouter un champ `role` au modèle User dans prisma/schema.prisma :
- *    ```prisma
- *    model User {
- *      id        String    @id @default(cuid())
- *      email     String    @unique
- *      name      String?
- *      password  String
- *      role      String    @default("user") // "user" ou "admin"
- *      companies Company[]
- *      createdAt DateTime  @default(now())
- *      updatedAt DateTime  @updatedAt
- *    }
- *    ```
+ * Retourne 403 Forbidden si l'utilisateur n'est pas admin
  *
- * 2. Créer et appliquer la migration :
- *    ```bash
- *    npx prisma migrate dev --name add_user_role
- *    ```
- *
- * 3. Modifier le middleware authenticateToken pour inclure le role dans req :
- *    ```typescript
- *    const user = await prisma.user.findUnique({ where: { id: payload.userId } });
- *    req.userId = user.id;
- *    req.userRole = user.role;
- *    ```
- *
- * 4. Ajouter ce middleware aux routes de cotisations dans index.ts :
- *    ```typescript
- *    import { requireAdmin } from './middleware/admin';
- *    // Pour les routes de consultation (GET) : authenticateToken uniquement
- *    // Pour les routes de modification (POST, PUT, DELETE) : authenticateToken + requireAdmin
- *    ```
- *
- * Usage recommandé :
- * - GET /api/cotisations/* : Tous les utilisateurs authentifiés
- * - POST/PUT/DELETE /api/cotisations/* : Administrateurs uniquement
+ * @example
+ * // Dans les routes :
+ * router.post('/cotisations/regles', authenticateToken, requireAdmin, async (req, res) => {
+ *   // Seuls les admins peuvent créer des règles
+ * });
  */
+export async function requireAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Vérifier que l'utilisateur est authentifié (devrait être garanti par authenticateToken)
+    if (!req.userId) {
+      return res.status(401).json({ error: 'Non autorisé' });
+    }
 
-/**
- * Vérifie que l'utilisateur connecté est un administrateur
- *
- * Ce middleware doit être utilisé après authenticateToken
- */
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-  // @ts-ignore - Le champ userRole sera ajouté à l'interface Request plus tard
-  const userRole = req.userRole;
-
-  if (!userRole) {
-    return res.status(403).json({
-      error: 'Accès refusé : rôle utilisateur non défini',
+    // Récupérer l'utilisateur depuis la base de données
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { role: true }
     });
-  }
 
-  if (userRole !== 'admin') {
-    return res.status(403).json({
-      error: 'Accès refusé : droits administrateur requis pour cette opération',
-    });
-  }
+    // Vérifier que l'utilisateur existe
+    if (!user) {
+      return res.status(401).json({ error: 'Utilisateur non trouvé' });
+    }
 
-  next();
+    // Vérifier que l'utilisateur est admin
+    if (user.role !== 'ADMIN') {
+      return res.status(403).json({
+        error: 'Accès interdit : cette action nécessite les privilèges administrateur'
+      });
+    }
+
+    // L'utilisateur est admin, continuer
+    next();
+  } catch (error) {
+    console.error('Error in requireAdmin middleware:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
 }
-
-/**
- * Extension de l'interface Express Request pour TypeScript
- *
- * À ajouter dans src/types/express.d.ts :
- * ```typescript
- * declare global {
- *   namespace Express {
- *     interface Request {
- *       userId?: string;
- *       userRole?: string;
- *     }
- *   }
- * }
- * ```
- */
