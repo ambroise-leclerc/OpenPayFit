@@ -1,5 +1,8 @@
 /**
  * Tests unitaires du moteur de calcul des cotisations
+ *
+ * Note : Ces tests utilisent better-sqlite3 directement (comme les autres tests)
+ * au lieu du client Prisma pour éviter les problèmes de génération dans le CI.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
@@ -11,184 +14,150 @@ import {
   ParametresCalcul,
   ResultatCalcul
 } from '../lib/moteurCotisations';
-import prisma from '../lib/db';
+import Database from 'better-sqlite3';
+import path from 'path';
 
 describe('Moteur de calcul des cotisations', () => {
+  let db: Database.Database;
+
   // IDs des entités de test
   let categorieSSId: string;
   let categorieRetraiteId: string;
   let organismeUrssafId: string;
-  let organismeAgirc: string;
-  let regleMaladieSalId: string;
-  let regleMaladiePatId: string;
-  let regleRetraiteId: string;
-  let regleMontantFixeId: string;
+  let organismeAgircId: string;
 
-  beforeAll(async () => {
+  beforeAll(() => {
+    // Utiliser la base de données de test
+    const dbFileName = process.env.TEST_DB_PATH || 'test.db';
+    const dbPath = path.join(__dirname, '../../prisma', dbFileName);
+    db = new Database(dbPath);
+
     // Nettoyer la base de données
-    await prisma.tauxCotisation.deleteMany();
-    await prisma.regleComptable.deleteMany();
-    await prisma.regleCotisation.deleteMany();
-    await prisma.categorieCotisation.deleteMany();
-    await prisma.organismeCotisation.deleteMany();
+    db.exec('DELETE FROM taux_cotisation');
+    db.exec('DELETE FROM regles_comptables');
+    db.exec('DELETE FROM regles_cotisation');
+    db.exec('DELETE FROM categories_cotisation');
+    db.exec('DELETE FROM organismes_cotisation');
 
     // Créer les catégories de test
-    const categorieSS = await prisma.categorieCotisation.create({
-      data: {
-        code: 'SS',
-        nom: 'Sécurité sociale',
-        description: 'Cotisations de sécurité sociale'
-      }
-    });
-    categorieSSId = categorieSS.id;
+    const insertCategorie = db.prepare(`
+      INSERT INTO categories_cotisation (id, code, nom, description, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
 
-    const categorieRetraite = await prisma.categorieCotisation.create({
-      data: {
-        code: 'RETRAITE',
-        nom: 'Retraite',
-        description: 'Cotisations retraite'
-      }
-    });
-    categorieRetraiteId = categorieRetraite.id;
+    categorieSSId = 'cat_ss_test';
+    insertCategorie.run(categorieSSId, 'SS', 'Sécurité sociale', 'Cotisations de sécurité sociale');
+
+    categorieRetraiteId = 'cat_retraite_test';
+    insertCategorie.run(categorieRetraiteId, 'RETRAITE', 'Retraite', 'Cotisations retraite');
 
     // Créer les organismes de test
-    const organismeUrssaf = await prisma.organismeCotisation.create({
-      data: {
-        code: 'URSSAF',
-        nom: 'URSSAF',
-        description: 'Union de recouvrement des cotisations'
-      }
-    });
-    organismeUrssafId = organismeUrssaf.id;
+    const insertOrganisme = db.prepare(`
+      INSERT INTO organismes_cotisation (id, code, nom, description, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
 
-    const organismeAgircArrco = await prisma.organismeCotisation.create({
-      data: {
-        code: 'AGIRC_ARRCO',
-        nom: 'AGIRC-ARRCO',
-        description: 'Retraite complémentaire'
-      }
-    });
-    organismeAgirc = organismeAgircArrco.id;
+    organismeUrssafId = 'org_urssaf_test';
+    insertOrganisme.run(organismeUrssafId, 'URSSAF', 'URSSAF', 'Union de recouvrement des cotisations');
+
+    organismeAgircId = 'org_agirc_test';
+    insertOrganisme.run(organismeAgircId, 'AGIRC_ARRCO', 'AGIRC-ARRCO', 'Retraite complémentaire');
 
     // Créer les règles de cotisation de test
+    const insertRegle = db.prepare(`
+      INSERT INTO regles_cotisation (
+        id, code, nom, description, categorieId, organismeId,
+        typeCotisation, typeCalcul, typeAssiette, plancher, plafond, estActif,
+        createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
+
+    const insertTaux = db.prepare(`
+      INSERT INTO taux_cotisation (id, regleId, taux, dateDebut, dateFin, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
 
     // 1. Cotisation maladie salariale (0,75% sur salaire brut)
-    const regleMaladieSal = await prisma.regleCotisation.create({
-      data: {
-        code: 'SS_MALADIE_SAL',
-        nom: 'Assurance maladie',
-        description: 'Cotisation maladie salariale',
-        categorieId: categorieSSId,
-        organismeId: organismeUrssafId,
-        typeCotisation: 'COTISATION_SALARIALE',
-        typeCalcul: 'POURCENTAGE',
-        typeAssiette: 'SALAIRE_BRUT',
-        plancher: null,
-        plafond: null,
-        estActif: true
-      }
-    });
-    regleMaladieSalId = regleMaladieSal.id;
-
-    await prisma.tauxCotisation.create({
-      data: {
-        regleId: regleMaladieSalId,
-        taux: 0.0075, // 0,75%
-        dateDebut: new Date('2024-01-01'),
-        dateFin: null
-      }
-    });
+    const regleMaladieSalId = 'regle_maladie_sal_test';
+    insertRegle.run(
+      regleMaladieSalId,
+      'SS_MALADIE_SAL',
+      'Assurance maladie',
+      'Cotisation maladie salariale',
+      categorieSSId,
+      organismeUrssafId,
+      'COTISATION_SALARIALE',
+      'POURCENTAGE',
+      'SALAIRE_BRUT',
+      null,
+      null,
+      1
+    );
+    insertTaux.run('taux_maladie_sal_test', regleMaladieSalId, 0.0075, '2024-01-01', null);
 
     // 2. Cotisation maladie patronale (7% sur salaire brut)
-    const regleMaladiePat = await prisma.regleCotisation.create({
-      data: {
-        code: 'SS_MALADIE_PAT',
-        nom: 'Assurance maladie',
-        description: 'Cotisation maladie patronale',
-        categorieId: categorieSSId,
-        organismeId: organismeUrssafId,
-        typeCotisation: 'COTISATION_PATRONALE',
-        typeCalcul: 'POURCENTAGE',
-        typeAssiette: 'SALAIRE_BRUT',
-        plancher: null,
-        plafond: null,
-        estActif: true
-      }
-    });
-    regleMaladiePatId = regleMaladiePat.id;
-
-    await prisma.tauxCotisation.create({
-      data: {
-        regleId: regleMaladiePatId,
-        taux: 0.07, // 7%
-        dateDebut: new Date('2024-01-01'),
-        dateFin: null
-      }
-    });
+    const regleMaladiePatId = 'regle_maladie_pat_test';
+    insertRegle.run(
+      regleMaladiePatId,
+      'SS_MALADIE_PAT',
+      'Assurance maladie',
+      'Cotisation maladie patronale',
+      categorieSSId,
+      organismeUrssafId,
+      'COTISATION_PATRONALE',
+      'POURCENTAGE',
+      'SALAIRE_BRUT',
+      null,
+      null,
+      1
+    );
+    insertTaux.run('taux_maladie_pat_test', regleMaladiePatId, 0.07, '2024-01-01', null);
 
     // 3. Cotisation retraite plafonnée (6,90% sur salaire plafonné)
-    const regleRetraite = await prisma.regleCotisation.create({
-      data: {
-        code: 'RETRAITE_BASE_SAL',
-        nom: 'Retraite de base',
-        description: 'Cotisation retraite salariale plafonnée',
-        categorieId: categorieRetraiteId,
-        organismeId: organismeUrssafId,
-        typeCotisation: 'COTISATION_SALARIALE',
-        typeCalcul: 'POURCENTAGE',
-        typeAssiette: 'SALAIRE_PLAFONNE',
-        plancher: null,
-        plafond: PASS_MENSUEL,
-        estActif: true
-      }
-    });
-    regleRetraiteId = regleRetraite.id;
-
-    await prisma.tauxCotisation.create({
-      data: {
-        regleId: regleRetraiteId,
-        taux: 0.069, // 6,90%
-        dateDebut: new Date('2024-01-01'),
-        dateFin: null
-      }
-    });
+    const regleRetraiteId = 'regle_retraite_test';
+    insertRegle.run(
+      regleRetraiteId,
+      'RETRAITE_BASE_SAL',
+      'Retraite de base',
+      'Cotisation retraite salariale plafonnée',
+      categorieRetraiteId,
+      organismeUrssafId,
+      'COTISATION_SALARIALE',
+      'POURCENTAGE',
+      'SALAIRE_PLAFONNE',
+      null,
+      PASS_MENSUEL,
+      1
+    );
+    insertTaux.run('taux_retraite_test', regleRetraiteId, 0.069, '2024-01-01', null);
 
     // 4. Cotisation à montant fixe
-    const regleMontantFixe = await prisma.regleCotisation.create({
-      data: {
-        code: 'FORFAIT_SOCIAL',
-        nom: 'Forfait social',
-        description: 'Cotisation à montant fixe',
-        categorieId: categorieSSId,
-        organismeId: organismeUrssafId,
-        typeCotisation: 'COTISATION_PATRONALE',
-        typeCalcul: 'MONTANT_FIXE',
-        typeAssiette: 'SALAIRE_BRUT',
-        plancher: null,
-        plafond: null,
-        estActif: true
-      }
-    });
-    regleMontantFixeId = regleMontantFixe.id;
-
-    await prisma.tauxCotisation.create({
-      data: {
-        regleId: regleMontantFixeId,
-        taux: 50, // 50€ fixe
-        dateDebut: new Date('2024-01-01'),
-        dateFin: null
-      }
-    });
+    const regleMontantFixeId = 'regle_forfait_test';
+    insertRegle.run(
+      regleMontantFixeId,
+      'FORFAIT_SOCIAL',
+      'Forfait social',
+      'Cotisation à montant fixe',
+      categorieSSId,
+      organismeUrssafId,
+      'COTISATION_PATRONALE',
+      'MONTANT_FIXE',
+      'SALAIRE_BRUT',
+      null,
+      null,
+      1
+    );
+    insertTaux.run('taux_forfait_test', regleMontantFixeId, 50, '2024-01-01', null);
   });
 
-  afterAll(async () => {
+  afterAll(() => {
     // Nettoyer après les tests
-    await prisma.tauxCotisation.deleteMany();
-    await prisma.regleComptable.deleteMany();
-    await prisma.regleCotisation.deleteMany();
-    await prisma.categorieCotisation.deleteMany();
-    await prisma.organismeCotisation.deleteMany();
-    await prisma.$disconnect();
+    db.exec('DELETE FROM taux_cotisation');
+    db.exec('DELETE FROM regles_comptables');
+    db.exec('DELETE FROM regles_cotisation');
+    db.exec('DELETE FROM categories_cotisation');
+    db.exec('DELETE FROM organismes_cotisation');
+    db.close();
   });
 
   describe('Constantes PASS', () => {
@@ -486,40 +455,39 @@ describe('Moteur de calcul des cotisations', () => {
   describe('calculerCotisations - Historique des taux', () => {
     it('devrait utiliser le taux en vigueur à la date de référence', async () => {
       // Créer une règle avec plusieurs taux historiques
-      const regleHistorique = await prisma.regleCotisation.create({
-        data: {
-          code: 'TEST_HISTORIQUE',
-          nom: 'Test historique',
-          categorieId: categorieSSId,
-          organismeId: organismeUrssafId,
-          typeCotisation: 'COTISATION_SALARIALE',
-          typeCalcul: 'POURCENTAGE',
-          typeAssiette: 'SALAIRE_BRUT',
-          plancher: null,
-          plafond: null,
-          estActif: true
-        }
-      });
+      const regleHistoriqueId = 'regle_historique_test';
+
+      db.prepare(`
+        INSERT INTO regles_cotisation (
+          id, code, nom, categorieId, organismeId,
+          typeCotisation, typeCalcul, typeAssiette, plancher, plafond, estActif,
+          createdAt, updatedAt
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run(
+        regleHistoriqueId,
+        'TEST_HISTORIQUE',
+        'Test historique',
+        categorieSSId,
+        organismeUrssafId,
+        'COTISATION_SALARIALE',
+        'POURCENTAGE',
+        'SALAIRE_BRUT',
+        null,
+        null,
+        1
+      );
 
       // Ancien taux (2024)
-      await prisma.tauxCotisation.create({
-        data: {
-          regleId: regleHistorique.id,
-          taux: 0.05, // 5%
-          dateDebut: new Date('2024-01-01'),
-          dateFin: new Date('2025-01-01')
-        }
-      });
+      db.prepare(`
+        INSERT INTO taux_cotisation (id, regleId, taux, dateDebut, dateFin, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run('taux_hist_2024', regleHistoriqueId, 0.05, '2024-01-01', '2025-01-01');
 
       // Nouveau taux (2025)
-      await prisma.tauxCotisation.create({
-        data: {
-          regleId: regleHistorique.id,
-          taux: 0.06, // 6%
-          dateDebut: new Date('2025-01-01'),
-          dateFin: null
-        }
-      });
+      db.prepare(`
+        INSERT INTO taux_cotisation (id, regleId, taux, dateDebut, dateFin, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+      `).run('taux_hist_2025', regleHistoriqueId, 0.06, '2025-01-01', null);
 
       // Test avec date en 2024
       const resultat2024 = await calculerCotisations({
@@ -546,12 +514,8 @@ describe('Moteur de calcul des cotisations', () => {
       expect(ligne2025!.taux).toBe(0.06); // Nouveau taux
 
       // Nettoyer
-      await prisma.tauxCotisation.deleteMany({
-        where: { regleId: regleHistorique.id }
-      });
-      await prisma.regleCotisation.delete({
-        where: { id: regleHistorique.id }
-      });
+      db.exec(`DELETE FROM taux_cotisation WHERE regleId = '${regleHistoriqueId}'`);
+      db.exec(`DELETE FROM regles_cotisation WHERE id = '${regleHistoriqueId}'`);
     });
   });
 });
