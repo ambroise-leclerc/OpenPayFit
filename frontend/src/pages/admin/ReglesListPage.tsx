@@ -49,8 +49,8 @@ function ReglesListPage() {
       setRegles(reglesData);
       setCategories(categoriesData);
       setOrganismes(organismesData);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement des données');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des donnÃ©es');
     } finally {
       setLoading(false);
     }
@@ -59,15 +59,15 @@ function ReglesListPage() {
   async function handleDelete(id: string, code: string) {
     if (!token) return;
 
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer la règle "${code}" ?`)) {
+    if (!confirm(`ï¿½tes-vous sï¿½r de vouloir supprimer la rï¿½gle "${code}" ?`)) {
       return;
     }
 
     try {
       await deleteRegle(id, token);
       await loadData();
-    } catch (err: any) {
-      alert(err.message || 'Erreur lors de la suppression');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erreur lors de la suppression');
     }
   }
 
@@ -84,14 +84,14 @@ function ReglesListPage() {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-    } catch (err: any) {
-      alert(err.message || 'Erreur lors de l\'exportation');
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Erreur lors de l\'exportation');
     }
   }
 
-  // Filtrer les règles
+  // Filtrer les rï¿½gles
   const filteredRegles = regles.filter((regle) => {
-    // Filtre par catégorie
+    // Filtre par catï¿½gorie
     if (filterCategorie && regle.categorieId !== filterCategorie) return false;
 
     // Filtre par organisme
@@ -124,7 +124,7 @@ function ReglesListPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>Règles de Cotisations</h1>
+        <h1>Rï¿½gles de Cotisations</h1>
         <div className={styles.actions}>
           <button onClick={() => handleExport('yaml')} className={styles.btnSecondary}>
             Exporter YAML
@@ -133,7 +133,7 @@ function ReglesListPage() {
             Exporter JSON
           </button>
           <Link to="/admin/cotisations/regles/new" className={styles.btnPrimary}>
-            Nouvelle règle
+            Nouvelle rï¿½gle
           </Link>
         </div>
       </div>
@@ -151,7 +151,7 @@ function ReglesListPage() {
         />
 
         <select value={filterCategorie} onChange={(e) => setFilterCategorie(e.target.value)}>
-          <option value="">Toutes les catégories</option>
+          <option value="">Toutes les catï¿½gories</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.nom}
@@ -175,7 +175,7 @@ function ReglesListPage() {
           <option value="CHARGE_FISCALE">Fiscale</option>
         </select>
 
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as 'all' | 'active' | 'inactive')}>
           <option value="all">Tous les statuts</option>
           <option value="active">Actives</option>
           <option value="inactive">Inactives</option>
@@ -200,7 +200,7 @@ function ReglesListPage() {
             {filteredRegles.length === 0 ? (
               <tr>
                 <td colSpan={7} className={styles.empty}>
-                  Aucune règle trouvée
+                  Aucune rï¿½gle trouvï¿½e
                 </td>
               </tr>
             ) : (
@@ -234,7 +234,7 @@ function ReglesListPage() {
                         Voir
                       </Link>
                       <Link to={`/admin/cotisations/regles/${regle.id}/edit`} className={styles.btnEdit}>
-                        Éditer
+                        ï¿½diter
                       </Link>
                       <button
                         onClick={() => handleDelete(regle.id, regle.code)}
@@ -252,7 +252,7 @@ function ReglesListPage() {
       </div>
 
       <div className={styles.summary}>
-        {filteredRegles.length} règle(s) affichée(s) sur {regles.length} au total
+        {filteredRegles.length} rï¿½gle(s) affichï¿½e(s) sur {regles.length} au total
       </div>
     </div>
   );
