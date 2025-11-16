@@ -11,6 +11,7 @@ import RegisterPage from './pages/RegisterPage';
 import DashboardPage from './pages/DashboardPage';
 import PayrollPage from './pages/PayrollPage';
 import PayslipDetailPage from './pages/PayslipDetailPage';
+import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
 import ReglesListPage from './pages/admin/ReglesListPage';
 import SimulateurPage from './pages/admin/SimulateurPage';
@@ -69,6 +70,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <SimulateurPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'analytics',
+        element: (
+          <ProtectedRoute>
+            <AnalyticsDashboard />
           </ProtectedRoute>
         ),
       },
