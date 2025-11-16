@@ -59,102 +59,163 @@ model Payslip {
 
 // ========== Enums pour les règles de cotisations ==========
 
-// Type de cotisation : salariale, patronale ou charge fiscale
+/// Type de cotisation : définit qui supporte la charge
+/// - COTISATION_SALARIALE : Déduite du salaire brut de l'employé (ex: CSG déductible)
+/// - COTISATION_PATRONALE : Charge supportée par l'employeur (ex: cotisation famille)
+/// - CHARGE_FISCALE : Taxes et impôts (ex: taxe d'apprentissage)
 enum TypeCotisation {
-  COTISATION_SALARIALE // Déduite du salaire brut
-  COTISATION_PATRONALE // Charge employeur
-  CHARGE_FISCALE       // Taxes et impôts
+  COTISATION_SALARIALE
+  COTISATION_PATRONALE
+  CHARGE_FISCALE
 }
 
-// Type de calcul de la cotisation
+/// Type de calcul de la cotisation
+/// - POURCENTAGE : Calcul basé sur un taux appliqué à l'assiette (le plus courant)
+/// - MONTANT_FIXE : Montant fixe indépendant du salaire (ex: forfait social)
+/// - TRANCHES : Calcul par tranches progressives (ex: certaines retraites complémentaires)
 enum TypeCalcul {
-  POURCENTAGE   // Calcul basé sur un pourcentage
-  MONTANT_FIXE  // Montant fixe
-  TRANCHES      // Calcul par tranches
+  POURCENTAGE
+  MONTANT_FIXE
+  TRANCHES
 }
 
-// Type d'assiette de calcul
+/// Type d'assiette de calcul : base sur laquelle la cotisation est calculée
+/// - SALAIRE_BRUT : Assiette = salaire brut total
+/// - SALAIRE_NET : Assiette = salaire après déduction des cotisations salariales
+/// - SALAIRE_PLAFONNE : Assiette limitée au Plafond Annuel de la Sécurité Sociale (PASS)
+///   Le PASS est fixé annuellement (ex: 46 368€ en 2025, soit 3 864€/mois)
 enum TypeAssiette {
-  SALAIRE_BRUT      // Base salaire brut
-  SALAIRE_NET       // Base salaire net
-  SALAIRE_PLAFONNE  // Base plafonnée (PASS)
+  SALAIRE_BRUT
+  SALAIRE_NET
+  SALAIRE_PLAFONNE
 }
 
 // ========== Modèles pour les règles de cotisations ==========
 
-// Catégorie de cotisation (Sécurité sociale, retraite, chômage, etc.)
+/// Catégorie de cotisation : regroupe les règles par domaine
+/// Exemples de codes standards :
+/// - "SS" : Sécurité sociale (maladie, maternité, invalidité, décès)
+/// - "RETRAITE" : Retraite de base et complémentaire
+/// - "CHOMAGE" : Assurance chômage
+/// - "AT_MP" : Accidents du travail et maladies professionnelles
+/// - "FAMILLE" : Allocations familiales
+/// - "CSG_CRDS" : Contribution sociale généralisée et CRDS
 model CategorieCotisation {
   id          String             @id @default(cuid())
-  code        String             @unique // Ex: "SS", "RETRAITE", "CHOMAGE"
-  nom         String             // Nom d'affichage
-  description String?            // Description optionnelle
-  regles      RegleCotisation[]  // Règles associées à cette catégorie
+  code        String             @unique
+  nom         String
+  description String?
+  regles      RegleCotisation[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
   @@map("categories_cotisation")
 }
 
-// Organisme collecteur (URSSAF, AGIRC-ARRCO, etc.)
+/// Organisme collecteur : entité qui collecte les cotisations
+/// Exemples de codes standards :
+/// - "URSSAF" : Union de recouvrement des cotisations de sécurité sociale et d'allocations familiales
+/// - "AGIRC_ARRCO" : Association générale des institutions de retraite des cadres -
+///                    Association pour le régime de retraite complémentaire des salariés
+/// - "POLE_EMPLOI" : Service public de l'emploi (assurance chômage)
+/// - "CPAM" : Caisse primaire d'assurance maladie
+/// - "CARSAT" : Caisse d'assurance retraite et de la santé au travail
 model OrganismeCotisation {
   id          String             @id @default(cuid())
-  code        String             @unique // Ex: "URSSAF", "AGIRC_ARRCO"
-  nom         String             // Nom de l'organisme
-  description String?            // Description optionnelle
-  regles      RegleCotisation[]  // Règles gérées par cet organisme
+  code        String             @unique
+  nom         String
+  description String?
+  regles      RegleCotisation[]
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
   @@map("organismes_cotisation")
 }
 
-// Règle de cotisation ou de charge
+/// Règle de cotisation : définit une cotisation sociale ou charge fiscale spécifique
+/// Chaque règle combine :
+/// - Une catégorie (domaine) et un organisme collecteur
+/// - Un type de cotisation (salariale/patronale/fiscale)
+/// - Un mode de calcul et une assiette
+/// - Des limites optionnelles (plancher/plafond en euros)
+///
+/// Exemples de codes :
+/// - "SS_MALADIE_SAL" : Cotisation maladie salariale
+/// - "SS_MALADIE_PAT" : Cotisation maladie patronale
+/// - "RETRAITE_BASE_SAL" : Retraite de base salariale (plafonnée)
+/// - "RETRAITE_BASE_PAT" : Retraite de base patronale
+/// - "CSG_DEDUCTIBLE" : CSG déductible (98,25% de la CSG totale)
 model RegleCotisation {
   id                String               @id @default(cuid())
-  code              String               @unique // Ex: "SS_MALADIE_SAL"
-  nom               String               // Nom de la règle
-  description       String?              // Description optionnelle
-  categorie         CategorieCotisation  @relation(fields: [categorieId], references: [id])
-  categorieId       String               // Clé étrangère vers CategorieCotisation
-  organisme         OrganismeCotisation  @relation(fields: [organismeId], references: [id])
-  organismeId       String               // Clé étrangère vers OrganismeCotisation
-  typeCotisation    TypeCotisation       // Type: salariale, patronale, fiscale
-  typeCalcul        TypeCalcul           // Type de calcul
-  typeAssiette      TypeAssiette         // Type d'assiette
-  plancher          Float?               // Montant plancher (optionnel)
-  plafond           Float?               // Montant plafond (optionnel)
-  taux              TauxCotisation[]     // Historique des taux
-  reglesComptables  RegleComptable[]     // Règles comptables associées
-  estActif          Boolean              @default(true) // Règle active ou non
+  code              String               @unique
+  nom               String
+  description       String?
+  categorie         CategorieCotisation  @relation(fields: [categorieId], references: [id], onDelete: Cascade)
+  categorieId       String
+  organisme         OrganismeCotisation  @relation(fields: [organismeId], references: [id], onDelete: Cascade)
+  organismeId       String
+  typeCotisation    TypeCotisation
+  typeCalcul        TypeCalcul
+  typeAssiette      TypeAssiette
+  plancher          Float?               // Montant minimum en euros (ex: 0 pour pas de plancher)
+  plafond           Float?               // Montant maximum en euros (ex: PASS mensuel = 3864€)
+  taux              TauxCotisation[]
+  reglesComptables  RegleComptable[]
+  estActif          Boolean              @default(true)
   createdAt         DateTime             @default(now())
   updatedAt         DateTime             @updatedAt
 
   @@map("regles_cotisation")
 }
 
-// Taux de cotisation avec historique
+/// Taux de cotisation avec historique législatif
+/// Permet de suivre l'évolution des taux dans le temps pour conformité réglementaire.
+///
+/// Format du taux : valeur décimale (ex: 0.0755 = 7,55%)
+///
+/// Période de validité :
+/// - dateDebut : Date de début d'application (inclusive)
+/// - dateFin : Date de fin d'application (exclusive). Si NULL, le taux est toujours actif.
+///
+/// IMPORTANT : L'application doit s'assurer qu'il n'y a pas de chevauchement de périodes
+/// pour une même règle. La contrainte unique sur (regleId, dateDebut) empêche d'avoir
+/// deux taux avec la même date de début, mais ne garantit pas l'absence de chevauchement.
+/// La logique métier doit valider que dateDebut du nouveau taux >= dateFin du taux précédent.
 model TauxCotisation {
   id        String          @id @default(cuid())
-  regle     RegleCotisation @relation(fields: [regleId], references: [id])
-  regleId   String          // Clé étrangère vers RegleCotisation
-  taux      Float           // Taux en pourcentage (ex: 0.0755 pour 7,55%)
-  dateDebut DateTime        // Date de début d'application
-  dateFin   DateTime?       // Date de fin (null = toujours actif)
+  regle     RegleCotisation @relation(fields: [regleId], references: [id], onDelete: Cascade)
+  regleId   String
+  taux      Float
+  dateDebut DateTime
+  dateFin   DateTime?
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
 
+  @@unique([regleId, dateDebut])
   @@index([regleId, dateDebut])
   @@map("taux_cotisation")
 }
 
-// Règle comptable associée à une cotisation
+/// Règle comptable associée à une cotisation
+/// Définit l'écriture comptable générée lors du calcul de la paie.
+///
+/// Plan comptable français (PCG) - Exemples de comptes :
+/// - Comptes de charges (débit) :
+///   * 6411 : Salaires bruts
+///   * 6451 : Cotisations sociales à la charge de l'employeur
+///   * 6311 : Taxes sur salaires
+/// - Comptes de dettes (crédit) :
+///   * 421 : Personnel - rémunérations dues
+///   * 431 : Sécurité sociale
+///   * 437 : Autres organismes sociaux (retraite complémentaire, etc.)
+///   * 4386 : Organismes sociaux - autres charges à payer
 model RegleComptable {
   id           String          @id @default(cuid())
-  regle        RegleCotisation @relation(fields: [regleId], references: [id])
-  regleId      String          // Clé étrangère vers RegleCotisation
-  compteDebit  String          // Compte de débit (ex: "6451")
-  compteCredit String          // Compte de crédit (ex: "431")
-  description  String?         // Description de l'écriture comptable
+  regle        RegleCotisation @relation(fields: [regleId], references: [id], onDelete: Cascade)
+  regleId      String
+  compteDebit  String          // Ex: "6451" (Cotisations à la charge de l'employeur)
+  compteCredit String          // Ex: "431" (Sécurité sociale)
+  description  String?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 

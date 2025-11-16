@@ -1,4 +1,4 @@
--- CreateTable
+-- CreateTable categories_cotisation
 CREATE TABLE "categories_cotisation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "code" TEXT NOT NULL,
@@ -8,7 +8,7 @@ CREATE TABLE "categories_cotisation" (
     "updatedAt" DATETIME NOT NULL
 );
 
--- CreateTable
+-- CreateTable organismes_cotisation
 CREATE TABLE "organismes_cotisation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "code" TEXT NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE "organismes_cotisation" (
     "updatedAt" DATETIME NOT NULL
 );
 
--- CreateTable
+-- CreateTable regles_cotisation avec ON DELETE CASCADE
 CREATE TABLE "regles_cotisation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "code" TEXT NOT NULL,
@@ -34,11 +34,11 @@ CREATE TABLE "regles_cotisation" (
     "estActif" BOOLEAN NOT NULL DEFAULT 1,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "regles_cotisation_categorieId_fkey" FOREIGN KEY ("categorieId") REFERENCES "categories_cotisation" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
-    CONSTRAINT "regles_cotisation_organismeId_fkey" FOREIGN KEY ("organismeId") REFERENCES "organismes_cotisation" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "regles_cotisation_categorieId_fkey" FOREIGN KEY ("categorieId") REFERENCES "categories_cotisation" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "regles_cotisation_organismeId_fkey" FOREIGN KEY ("organismeId") REFERENCES "organismes_cotisation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- CreateTable
+-- CreateTable taux_cotisation avec ON DELETE CASCADE et contrainte UNIQUE
 CREATE TABLE "taux_cotisation" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "regleId" TEXT NOT NULL,
@@ -47,10 +47,10 @@ CREATE TABLE "taux_cotisation" (
     "dateFin" DATETIME,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "taux_cotisation_regleId_fkey" FOREIGN KEY ("regleId") REFERENCES "regles_cotisation" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "taux_cotisation_regleId_fkey" FOREIGN KEY ("regleId") REFERENCES "regles_cotisation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- CreateTable
+-- CreateTable regles_comptables avec ON DELETE CASCADE
 CREATE TABLE "regles_comptables" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "regleId" TEXT NOT NULL,
@@ -59,7 +59,7 @@ CREATE TABLE "regles_comptables" (
     "description" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "regles_comptables_regleId_fkey" FOREIGN KEY ("regleId") REFERENCES "regles_cotisation" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT "regles_comptables_regleId_fkey" FOREIGN KEY ("regleId") REFERENCES "regles_cotisation" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex
@@ -71,5 +71,8 @@ CREATE UNIQUE INDEX "organismes_cotisation_code_key" ON "organismes_cotisation"(
 -- CreateIndex
 CREATE UNIQUE INDEX "regles_cotisation_code_key" ON "regles_cotisation"("code");
 
--- CreateIndex
+-- CreateIndex pour performance
 CREATE INDEX "taux_cotisation_regleId_dateDebut_idx" ON "taux_cotisation"("regleId", "dateDebut");
+
+-- CreateIndex pour éviter les doublons de dates (empêche deux taux avec la même date de début pour une règle)
+CREATE UNIQUE INDEX "taux_cotisation_regleId_dateDebut_key" ON "taux_cotisation"("regleId", "dateDebut");
