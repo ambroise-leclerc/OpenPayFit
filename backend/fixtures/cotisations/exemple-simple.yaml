@@ -1,0 +1,80 @@
+version: "1.0"
+date_creation: "2024-01-01"
+description: "Exemple simplifié de règles de cotisations pour démonstration"
+
+cotisations:
+  - code: MALADIE_SAL
+    nom: "Assurance maladie salariale"
+    categorie: SECURITE_SOCIALE
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.0755
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: MALADIE_PAT
+    nom: "Assurance maladie patronale"
+    categorie: SECURITE_SOCIALE
+    organisme: URSSAF
+    type: COTISATION_PATRONALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    taux:
+      - taux: 0.1300
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6452"
+      compte_credit: "431"
+
+  - code: RETRAITE_BASE_SAL
+    nom: "Retraite de base plafonnée salariale"
+    categorie: RETRAITE
+    organisme: URSSAF
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 46368
+      plancher: null
+    taux:
+      - taux: 0.0690
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "431"
+
+  - code: CHOMAGE_SAL
+    nom: "Assurance chômage salariale"
+    categorie: CHOMAGE
+    organisme: POLE_EMPLOI
+    type: COTISATION_SALARIALE
+    actif: true
+    calcul:
+      type: POURCENTAGE
+      assiette: SALAIRE_PLAFONNE
+      plafond: 185472
+      plancher: null
+    taux:
+      - taux: 0.0240
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
