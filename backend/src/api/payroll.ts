@@ -6,7 +6,6 @@ import express, { Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import {
   runPayroll,
-  runPayrollDetailed,
   getPayslipsByPeriod,
   getAllPayslips,
   getPayslipById,
@@ -14,7 +13,7 @@ import {
   isPayslipOwner,
   validatePayPeriod
 } from '../lib/payroll';
-import { generatePayslipPDF, generateDetailedPayslipPDF, PayslipWithEmployee } from '../lib/pdfGenerator';
+import { generatePayslipPDF, PayslipWithEmployee } from '../lib/pdfGenerator';
 import Database from 'better-sqlite3';
 import path from 'path';
 
@@ -207,20 +206,13 @@ router.get('/:id', authenticateToken, (req: Request, res: Response) => {
  * Récupère les détails complets d'une fiche de paie avec lignes de cotisations
  */
 router.get('/companies/:companyId/payslips/:payslipId/details', authenticateToken, (req: Request, res: Response) => {
-  const { companyId, payslipId } = req.params;
+  const { payslipId } = req.params;
   const userId = req.userId;
 
   // S'assurer que userId est défini
   if (!userId) {
     return res.status(401).json({
       error: 'Non autorisé'
-    });
-  }
-
-  // Vérifier que l'utilisateur est propriétaire de l'entreprise
-  if (!isCompanyOwner(companyId, userId)) {
-    return res.status(403).json({
-      error: 'Accès interdit : vous n\'êtes pas propriétaire de cette entreprise'
     });
   }
 
@@ -233,10 +225,10 @@ router.get('/companies/:companyId/payslips/:payslipId/details', authenticateToke
       });
     }
 
-    // Vérifier que la fiche de paie appartient bien à l'entreprise
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise associée à cette fiche
     if (!isPayslipOwner(payslipId, userId)) {
       return res.status(403).json({
-        error: 'Accès interdit : cette fiche de paie n\'appartient pas à cette entreprise'
+        error: 'Accès interdit : vous n\'êtes pas autorisé à consulter cette fiche de paie'
       });
     }
 

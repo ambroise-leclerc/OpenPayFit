@@ -266,7 +266,8 @@ export async function calculerDetailsFichePaie(
 /**
  * Crée une fiche de paie détaillée dans la base de données
  *
- * Cette fonction remplace createPayslip() et utilise le nouveau système de calcul détaillé.
+ * Cette fonction est une alternative moderne à createPayslip() et utilise le nouveau système
+ * de calcul détaillé des cotisations. L'ancienne fonction reste disponible pour compatibilité.
  * Elle sauvegarde à la fois la fiche de paie et toutes les lignes de cotisations détaillées.
  *
  * @param employeeId - ID de l'employé
@@ -361,6 +362,8 @@ export async function creerFichePaie(
     fichePaie.updatedAt = updatedAt;
     return fichePaie;
   } catch (error: any) {
+    // Protection contre les race conditions : même si payslipExists() a vérifié avant,
+    // une autre requête pourrait avoir créé une fiche de paie entre-temps
     if (error.code === 'SQLITE_CONSTRAINT' || error.message.includes('UNIQUE constraint failed')) {
       throw new Error(`Une fiche de paie existe déjà pour l'employé ${employeeId} pour la période ${payPeriod}`);
     }
