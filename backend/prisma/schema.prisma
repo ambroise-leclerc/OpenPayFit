@@ -40,19 +40,20 @@ model Company {
 }
 
 model Employee {
-  id          String       @id @default(cuid())
-  firstName   String
-  lastName    String
-  email       String       @unique
-  grossSalary Float
-  department  String?      // Département de l'employé (optionnel)
-  company     Company      @relation(fields: [companyId], references: [id])
-  companyId   String       // Clé étrangère vers Company
-  fichesPaie  FichePaie[]  // Un employé peut avoir plusieurs fiches de paie
-  leaves      Leave[]      // Un employé peut avoir plusieurs congés
-  expenses    Expense[]    // Un employé peut avoir plusieurs notes de frais
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id            String         @id @default(cuid())
+  firstName     String
+  lastName      String
+  email         String         @unique
+  grossSalary   Float
+  department    String?        // Département de l'employé (optionnel)
+  company       Company        @relation(fields: [companyId], references: [id])
+  companyId     String         // Clé étrangère vers Company
+  fichesPaie    FichePaie[]    // Un employé peut avoir plusieurs fiches de paie
+  leaves        Leave[]        // Un employé peut avoir plusieurs congés
+  leaveBalances LeaveBalance[] // Un employé peut avoir plusieurs soldes de congés (par type et année)
+  expenses      Expense[]      // Un employé peut avoir plusieurs notes de frais
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 /// Fiche de paie d'un employé pour une période donnée
@@ -304,6 +305,25 @@ model Leave {
   @@index([employeeId])
   @@index([startDate, endDate])
   @@map("leaves")
+}
+
+/// Solde de congés d'un employé
+/// Suit le nombre de jours de congés disponibles pour chaque type de congé
+model LeaveBalance {
+  id                String   @id @default(cuid())
+  employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId        String
+  type              LeaveType
+  year              Int      // Année du solde (ex: 2025)
+  totalDays         Float    // Nombre total de jours acquis (ex: 25 jours pour congés payés)
+  usedDays          Float    @default(0) // Nombre de jours utilisés
+  remainingDays     Float    // Jours restants = totalDays - usedDays
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([employeeId, type, year]) // Un employé a un seul solde par type de congé et par année
+  @@index([employeeId])
+  @@map("leave_balances")
 }
 
 /// Statut d'une note de frais
