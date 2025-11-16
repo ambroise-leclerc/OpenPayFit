@@ -9,6 +9,7 @@ import {
   getPayslipsByPeriod,
   getAllPayslips,
   getPayslipById,
+  getFichePaieDetails,
   isPayslipOwner,
   validatePayPeriod
 } from '../lib/payroll';
@@ -196,6 +197,46 @@ router.get('/:id', authenticateToken, (req: Request, res: Response) => {
     console.error('Erreur lors de la récupération de la fiche de paie:', error);
     return res.status(500).json({
       error: 'Erreur lors de la récupération de la fiche de paie'
+    });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/payslips/:payslipId/details
+ * Récupère les détails complets d'une fiche de paie avec lignes de cotisations
+ */
+router.get('/companies/:companyId/payslips/:payslipId/details', authenticateToken, (req: Request, res: Response) => {
+  const { payslipId } = req.params;
+  const userId = req.userId;
+
+  // S'assurer que userId est défini
+  if (!userId) {
+    return res.status(401).json({
+      error: 'Non autorisé'
+    });
+  }
+
+  try {
+    const fichePaie = getFichePaieDetails(payslipId);
+
+    if (!fichePaie) {
+      return res.status(404).json({
+        error: 'Fiche de paie non trouvée'
+      });
+    }
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise associée à cette fiche
+    if (!isPayslipOwner(payslipId, userId)) {
+      return res.status(403).json({
+        error: 'Accès interdit : vous n\'êtes pas autorisé à consulter cette fiche de paie'
+      });
+    }
+
+    return res.status(200).json(fichePaie);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des détails de la fiche de paie:', error);
+    return res.status(500).json({
+      error: 'Erreur lors de la récupération des détails de la fiche de paie'
     });
   }
 });

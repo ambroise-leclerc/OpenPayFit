@@ -40,30 +40,64 @@ model Company {
 }
 
 model Employee {
-  id          String     @id @default(cuid())
+  id          String       @id @default(cuid())
   firstName   String
   lastName    String
-  email       String     @unique
+  email       String       @unique
   grossSalary Float
-  company     Company    @relation(fields: [companyId], references: [id])
-  companyId   String     // Clé étrangère vers Company
-  payslips    Payslip[]  // Un employé peut avoir plusieurs fiches de paie
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  company     Company      @relation(fields: [companyId], references: [id])
+  companyId   String       // Clé étrangère vers Company
+  fichesPaie  FichePaie[]  // Un employé peut avoir plusieurs fiches de paie
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
-model Payslip {
-  id          String   @id @default(cuid())
-  payPeriod   String   // Format: "2025-08" (année-mois)
-  grossSalary Float    // Salaire brut pour cette période
-  deductions  Float    // Montant des cotisations sociales
-  netSalary   Float    // Salaire net après déductions
-  employee    Employee @relation(fields: [employeeId], references: [id])
-  employeeId  String   // Clé étrangère vers Employee
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+/// Fiche de paie d'un employé pour une période donnée
+/// Renommé de Payslip vers FichePaie pour meilleure cohérence avec le français
+/// La table garde le nom "Payslip" pour compatibilité avec les migrations existantes
+model FichePaie {
+  id                           String                      @id @default(cuid())
+  payPeriod                    String                      // Format: "2025-08" (année-mois)
+  grossSalary                  Float                       // Salaire brut pour cette période
+  deductions                   Float                       // Montant des cotisations sociales (legacy - à déprécier)
+  netSalary                    Float                       // Salaire net après déductions
+  totalCotisationsSalariales   Float?                      // Total des cotisations salariales (nouveau système)
+  totalCotisationsPatronales   Float?                      // Total des cotisations patronales (nouveau système)
+  totalChargesFiscales         Float?                      // Total des charges fiscales (nouveau système)
+  coutTotal                    Float?                      // Coût total employeur = brut + cotisations patronales
+  employee                     Employee                    @relation(fields: [employeeId], references: [id])
+  employeeId                   String                      // Clé étrangère vers Employee
+  lignesCotisations            LigneCotisationFichePaie[]  // Détails ligne par ligne des cotisations
+  createdAt                    DateTime                    @default(now())
+  updatedAt                    DateTime                    @updatedAt
 
   @@unique([employeeId, payPeriod]) // Un employé ne peut avoir qu'une fiche de paie par période
+  @@map("Payslip") // Conserve le nom de table existant pour compatibilité
+}
+
+/// Ligne de détail d'une cotisation dans une fiche de paie
+/// Stocke les informations détaillées de chaque cotisation appliquée
+model LigneCotisationFichePaie {
+  id                 String      @id @default(cuid())
+  fichePaie          FichePaie   @relation(fields: [fichePaieId], references: [id], onDelete: Cascade)
+  fichePaieId        String
+  code               String      // Code de la règle de cotisation (ex: "SS_MALADIE_SAL")
+  nom                String      // Nom de la cotisation (ex: "Assurance maladie")
+  categorie          String      // Catégorie (ex: "Sécurité sociale")
+  organisme          String      // Organisme collecteur (ex: "URSSAF")
+  typeCotisation     String      // Type: COTISATION_SALARIALE, COTISATION_PATRONALE, CHARGE_FISCALE
+  assiette           Float       // Assiette de calcul en euros
+  taux               Float       // Taux appliqué (ex: 0.0755 pour 7,55%)
+  montantSalarial    Float       // Montant de la part salariale (0 si patronale)
+  montantPatronal    Float       // Montant de la part patronale (0 si salariale)
+  montantTotal       Float       // Montant total de la ligne
+  compteDebit        String?     // Compte comptable à débiter (optionnel)
+  compteCredit       String?     // Compte comptable à créditer (optionnel)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([fichePaieId])
+  @@map("lignes_cotisation_fiche_paie")
 }
 
 // ========== Enums pour les règles de cotisations ==========
