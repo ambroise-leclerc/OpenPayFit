@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import prisma from '../lib/db';
 import employeesRouter from './employees';
+import analyticsRouter from './analytics';
 
 const router = Router();
 
@@ -48,5 +49,9 @@ router.post('/', async (req, res) => {
 // Mount the employees router for nested routes
 // This will handle all routes starting with /api/companies/:companyId/employees
 router.use('/:companyId/employees', employeesRouter);
+
+// Mount the analytics router for nested routes
+// This will handle all routes starting with /api/companies/:companyId/analytics
+router.use('/:companyId/analytics', analyticsRouter);
 
 export default router;

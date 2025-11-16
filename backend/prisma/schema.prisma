@@ -45,9 +45,12 @@ model Employee {
   lastName    String
   email       String       @unique
   grossSalary Float
+  department  String?      // Département de l'employé (optionnel)
   company     Company      @relation(fields: [companyId], references: [id])
   companyId   String       // Clé étrangère vers Company
   fichesPaie  FichePaie[]  // Un employé peut avoir plusieurs fiches de paie
+  leaves      Leave[]      // Un employé peut avoir plusieurs congés
+  expenses    Expense[]    // Un employé peut avoir plusieurs notes de frais
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 }
@@ -263,4 +266,77 @@ model RegleComptable {
   updatedAt    DateTime        @updatedAt
 
   @@map("regles_comptables")
+}
+
+// ========== Modèles pour les analytics RH ==========
+
+/// Statut d'une demande de congé
+enum LeaveStatus {
+  PENDING    // En attente de validation
+  APPROVED   // Approuvé
+  REJECTED   // Rejeté
+  CANCELLED  // Annulé
+}
+
+/// Type de congé
+enum LeaveType {
+  PAID_LEAVE       // Congés payés
+  SICK_LEAVE       // Arrêt maladie
+  UNPAID_LEAVE     // Congé sans solde
+  PARENTAL_LEAVE   // Congé parental
+  OTHER            // Autre
+}
+
+/// Congé d'un employé
+model Leave {
+  id         String      @id @default(cuid())
+  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  type       LeaveType
+  status     LeaveStatus @default(PENDING)
+  startDate  DateTime    // Date de début du congé
+  endDate    DateTime    // Date de fin du congé
+  days       Float       // Nombre de jours de congé (peut être 0.5 pour une demi-journée)
+  reason     String?     // Raison du congé (optionnel)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  @@index([employeeId])
+  @@index([startDate, endDate])
+  @@map("leaves")
+}
+
+/// Statut d'une note de frais
+enum ExpenseStatus {
+  PENDING    // En attente de validation
+  APPROVED   // Approuvé
+  REJECTED   // Rejeté
+  PAID       // Payé
+}
+
+/// Catégorie de note de frais
+enum ExpenseCategory {
+  TRANSPORT      // Transport (train, avion, taxi, etc.)
+  MEAL           // Repas
+  ACCOMMODATION  // Hébergement
+  EQUIPMENT      // Équipement
+  OTHER          // Autre
+}
+
+/// Note de frais d'un employé
+model Expense {
+  id          String          @id @default(cuid())
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  category    ExpenseCategory
+  status      ExpenseStatus   @default(PENDING)
+  amount      Float           // Montant en euros
+  date        DateTime        // Date de la dépense
+  description String          // Description de la dépense
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([employeeId])
+  @@index([date])
+  @@map("expenses")
 }
