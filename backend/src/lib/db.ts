@@ -3,12 +3,21 @@ import { PrismaClient } from '@prisma/client';
 // Initialiser Prisma avec gestion d'erreur pour les environnements où la génération a échoué
 let prisma: any;
 
-try {
-  prisma = new PrismaClient();
-} catch (error) {
-  // Si Prisma ne peut pas être initialisé, utiliser better-sqlite3 directement
-  console.warn('Warning: Prisma Client could not be initialized. Using better-sqlite3 directly.');
+// En mode test, toujours utiliser better-sqlite3 directement pour éviter les problèmes
+// de configuration de DATABASE_URL dans le CI
+const shouldUseBetterSqlite = process.env.NODE_ENV === 'test';
 
+if (!shouldUseBetterSqlite) {
+  try {
+    prisma = new PrismaClient();
+  } catch (error) {
+    // Si Prisma ne peut pas être initialisé, utiliser better-sqlite3
+    console.warn('Warning: Prisma Client could not be initialized. Using better-sqlite3 directly.');
+  }
+}
+
+if (!prisma || shouldUseBetterSqlite) {
+  // Utiliser better-sqlite3 directement
   const Database = require('better-sqlite3');
   const path = require('path');
 
@@ -69,6 +78,10 @@ try {
                     const relStmt = db.prepare(relQuery);
                     const relRow = relStmt.get(row[relationIdField]);
 
+                    if (process.env.DEBUG_DB) {
+                      console.log(`[DB] Relation ${relationName}: table=${relationTable}, id=${row[relationIdField]}, found=${!!relRow}`);
+                    }
+
                     // Si select est spécifié, ne garder que les champs demandés
                     if (typeof relationConfig === 'object' && (relationConfig as any).select && relRow) {
                       const selectedFields: any = {};
@@ -103,23 +116,34 @@ try {
         if (args?.where) {
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
-            if (typeof value === 'object' && value !== null) {
+            if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
               // Support pour les opérateurs (lte, gte, etc.)
               for (const [op, opValue] of Object.entries(value)) {
+                // Convertir les dates en chaînes ISO pour SQLite
+                const paramValue = opValue instanceof Date ? opValue.toISOString() : opValue;
+
                 if (op === 'lte') {
                   conditions.push(`${key} <= ?`);
-                  params.push(opValue);
-                } else if (op === 'gte' || op === 'gt') {
+                  params.push(paramValue);
+                } else if (op === 'gte') {
+                  conditions.push(`${key} >= ?`);
+                  params.push(paramValue);
+                } else if (op === 'gt') {
                   conditions.push(`${key} > ?`);
-                  params.push(opValue);
+                  params.push(paramValue);
+                } else if (op === 'lt') {
+                  conditions.push(`${key} < ?`);
+                  params.push(paramValue);
                 }
               }
             } else if (typeof value === 'boolean') {
               conditions.push(`${key} = ?`);
               params.push(value ? 1 : 0);
             } else if (value !== null && value !== undefined) {
+              // Convertir les dates en chaînes ISO pour SQLite
+              const paramValue = value instanceof Date ? value.toISOString() : value;
               conditions.push(`${key} = ?`);
-              params.push(value);
+              params.push(paramValue);
             }
           }
 
@@ -130,11 +154,23 @@ try {
               for (const [key, value] of Object.entries(orClause)) {
                 if (value === null) {
                   orConditions.push(`${key} IS NULL`);
-                } else if (typeof value === 'object' && value !== null) {
+                } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
                   for (const [op, opValue] of Object.entries(value)) {
+                    // Convertir les dates en chaînes ISO pour SQLite
+                    const paramValue = opValue instanceof Date ? opValue.toISOString() : opValue;
+
                     if (op === 'gt') {
                       orConditions.push(`${key} > ?`);
-                      params.push(opValue);
+                      params.push(paramValue);
+                    } else if (op === 'gte') {
+                      orConditions.push(`${key} >= ?`);
+                      params.push(paramValue);
+                    } else if (op === 'lt') {
+                      orConditions.push(`${key} < ?`);
+                      params.push(paramValue);
+                    } else if (op === 'lte') {
+                      orConditions.push(`${key} <= ?`);
+                      params.push(paramValue);
                     }
                   }
                 }

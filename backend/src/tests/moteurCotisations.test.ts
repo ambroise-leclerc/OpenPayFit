@@ -199,9 +199,9 @@ describe('Moteur de calcul des cotisations', () => {
       // Vérifier le coût total
       expect(resultat.coutTotal).toBe(resultat.salaireBrut + resultat.totalCotisationsPatronales);
 
-      // Vérifier que les montants sont arrondis au centime
-      expect(resultat.salaireNet % 0.01).toBeLessThan(0.001);
-      expect(resultat.totalCotisationsSalariales % 0.01).toBeLessThan(0.001);
+      // Vérifier que les montants sont arrondis au centime (tolérance pour précision flottante)
+      expect(Math.abs(resultat.salaireNet * 100 - Math.round(resultat.salaireNet * 100))).toBeLessThan(0.01);
+      expect(Math.abs(resultat.totalCotisationsSalariales * 100 - Math.round(resultat.totalCotisationsSalariales * 100))).toBeLessThan(0.01);
     });
 
     it('devrait calculer correctement la cotisation maladie salariale', async () => {
@@ -385,15 +385,15 @@ describe('Moteur de calcul des cotisations', () => {
 
       const resultat = await calculerCotisations(parametres);
 
-      // Tous les montants doivent être arrondis au centime
-      expect(resultat.salaireNet % 0.01).toBeLessThan(0.001);
-      expect(resultat.totalCotisationsSalariales % 0.01).toBeLessThan(0.001);
-      expect(resultat.totalCotisationsPatronales % 0.01).toBeLessThan(0.001);
+      // Tous les montants doivent être arrondis au centime (tolérance pour précision flottante)
+      expect(Math.abs(resultat.salaireNet * 100 - Math.round(resultat.salaireNet * 100))).toBeLessThan(0.01);
+      expect(Math.abs(resultat.totalCotisationsSalariales * 100 - Math.round(resultat.totalCotisationsSalariales * 100))).toBeLessThan(0.01);
+      expect(Math.abs(resultat.totalCotisationsPatronales * 100 - Math.round(resultat.totalCotisationsPatronales * 100))).toBeLessThan(0.01);
 
       for (const ligne of resultat.lignesCotisations) {
-        expect(ligne.assiette % 0.01).toBeLessThan(0.001);
-        expect(ligne.montantSalarial % 0.01).toBeLessThan(0.001);
-        expect(ligne.montantPatronal % 0.01).toBeLessThan(0.001);
+        expect(Math.abs(ligne.assiette * 100 - Math.round(ligne.assiette * 100))).toBeLessThan(0.01);
+        expect(Math.abs(ligne.montantSalarial * 100 - Math.round(ligne.montantSalarial * 100))).toBeLessThan(0.01);
+        expect(Math.abs(ligne.montantPatronal * 100 - Math.round(ligne.montantPatronal * 100))).toBeLessThan(0.01);
       }
     });
   });
