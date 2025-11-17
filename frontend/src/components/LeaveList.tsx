@@ -1,4 +1,4 @@
-import { Leave, LeaveBalance, LeaveType, LeaveStatus } from '../services/api';
+import type { Leave, LeaveBalance, LeaveType, LeaveStatus } from '../services/api';
 import styles from './LeaveList.module.css';
 
 interface LeaveListProps {

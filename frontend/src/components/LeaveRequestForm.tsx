@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CreateLeaveData, LeaveType } from '../services/api';
+import type { CreateLeaveData, LeaveType } from '../services/api';
 import styles from './LeaveRequestForm.module.css';
 
 interface LeaveRequestFormProps {
