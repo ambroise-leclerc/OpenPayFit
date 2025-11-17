@@ -31,6 +31,8 @@ describe('DashboardPage', () => {
     // Setup mocks
     vi.mocked(api.getCompanies).mockResolvedValue(mockCompanies);
     vi.mocked(api.getEmployees).mockResolvedValue(mockEmployees);
+    vi.mocked(api.getLeaves).mockResolvedValue([]);
+    vi.mocked(api.getLeaveBalances).mockResolvedValue([]);
 
     renderWithAuth(<DashboardPage />);
 
@@ -54,7 +56,9 @@ describe('DashboardPage', () => {
 
     // 4. Simulate user selecting another company (let's pretend it has no employees)
     vi.mocked(api.getEmployees).mockResolvedValue([]); // Mock response for the second company
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '2' } });
+    // Use getAllByRole to get the first combobox (company selector)
+    const [companySelect] = screen.getAllByRole('combobox');
+    fireEvent.change(companySelect, { target: { value: '2' } });
 
     await waitFor(() => {
         expect(screen.getByText(/Cette entreprise n'a pas encore d'employé./i)).toBeInTheDocument();
