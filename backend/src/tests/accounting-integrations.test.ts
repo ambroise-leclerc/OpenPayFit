@@ -4,92 +4,106 @@
 
 import request from 'supertest';
 import app from '../index';
-import prisma from '../lib/db';
+import Database, { type Database as DatabaseType } from 'better-sqlite3';
+import path from 'path';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'test-secret';
+const dbPath = path.join(__dirname, '../../prisma/test.db');
+
+/**
+ * Utilitaires pour les tests
+ */
+function createTestUser(db: DatabaseType, email: string, name: string): string {
+  const id = randomUUID();
+  db.prepare(`
+    INSERT INTO User (id, email, name, password, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
+  `).run(id, email, name, 'hashed-password-123');
+  return id;
+}
+
+function createTestCompany(db: DatabaseType, name: string, ownerId: string): string {
+  const id = randomUUID();
+  db.prepare(`
+    INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
+    VALUES (?, ?, ?, datetime('now'), datetime('now'))
+  `).run(id, name, ownerId);
+  return id;
+}
+
+function createTestAccountingIntegration(
+  db: DatabaseType,
+  companyId: string,
+  type: string,
+  configuration: string,
+  status: string = 'ACTIVE'
+): string {
+  const id = randomUUID();
+  db.prepare(`
+    INSERT INTO accounting_integrations (id, companyId, type, status, configuration, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+  `).run(id, companyId, type, status, configuration);
+  return id;
+}
+
+function createTestAccountingExportLog(
+  db: DatabaseType,
+  integrationId: string,
+  status: string,
+  payPeriod: string,
+  recordCount: number
+): string {
+  const id = randomUUID();
+  db.prepare(`
+    INSERT INTO accounting_export_logs (id, integrationId, status, payPeriod, recordCount, retryCount, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?, 0, datetime('now'), datetime('now'))
+  `).run(id, integrationId, status, payPeriod, recordCount);
+  return id;
+}
 
 describe('Accounting Integrations API', () => {
-  let user: any;
-  let company: any;
+  let db: DatabaseType;
+  let userId: string;
+  let companyId: string;
   let token: string;
-  let otherUser: any;
+  let otherUserId: string;
   let otherToken: string;
 
-  beforeAll(async () => {
-    // Créer un utilisateur de test avec un email unique pour éviter les conflits
+  beforeAll(() => {
+    db = new Database(dbPath);
+
+    // Nettoyer les données de test existantes
+    db.exec(`DELETE FROM accounting_export_logs`);
+    db.exec(`DELETE FROM accounting_integrations`);
+    db.exec(`DELETE FROM Employee WHERE email LIKE '%accounting-test%'`);
+    db.exec(`DELETE FROM Company WHERE name LIKE '%Accounting Test%'`);
+    db.exec(`DELETE FROM User WHERE email LIKE '%accounting-test%'`);
+
+    // Créer un utilisateur de test
     const timestamp = Date.now();
-    const hashedPassword = await bcrypt.hash('password123', 10);
-    user = await prisma.user.create({
-      data: {
-        email: `test-${timestamp}@example.com`,
-        name: 'Test User',
-        password: hashedPassword
-      }
-    });
-
-    // Créer une entreprise
-    company = await prisma.company.create({
-      data: {
-        name: `Test Company ${timestamp}`,
-        ownerId: user.id
-      }
-    });
-
-    // Générer un token JWT
-    token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '24h' });
+    userId = createTestUser(db, `accounting-test-${timestamp}@example.com`, 'Test User');
+    companyId = createTestCompany(db, `Accounting Test Company ${timestamp}`, userId);
 
     // Créer un autre utilisateur pour tester les permissions
-    otherUser = await prisma.user.create({
-      data: {
-        email: `other-${timestamp}@example.com`,
-        name: 'Other User',
-        password: hashedPassword
-      }
-    });
-    otherToken = jwt.sign({ userId: otherUser.id }, JWT_SECRET, { expiresIn: '24h' });
+    otherUserId = createTestUser(db, `accounting-other-${timestamp}@example.com`, 'Other User');
+
+    db.close();
+
+    // Générer des tokens JWT
+    token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: '24h' });
+    otherToken = jwt.sign({ userId: otherUserId }, JWT_SECRET, { expiresIn: '24h' });
   });
 
-  afterAll(async () => {
-    // Nettoyer uniquement les données créées par ce test
-    // Utilisation de deleteMany avec des filtres spécifiques
-    if (company) {
-      await prisma.accountingExportLog.deleteMany({
-        where: {
-          integration: {
-            companyId: company.id
-          }
-        }
-      });
-      await prisma.accountingIntegration.deleteMany({
-        where: { companyId: company.id }
-      });
-      await prisma.fichePaie.deleteMany({
-        where: {
-          employee: {
-            companyId: company.id
-          }
-        }
-      });
-      await prisma.employee.deleteMany({
-        where: { companyId: company.id }
-      });
-      await prisma.company.delete({
-        where: { id: company.id }
-      });
-    }
-    if (user) {
-      await prisma.user.delete({
-        where: { id: user.id }
-      });
-    }
-    if (otherUser) {
-      await prisma.user.delete({
-        where: { id: otherUser.id }
-      });
-    }
-    await prisma.$disconnect();
+  afterAll(() => {
+    // Nettoyer les données de test
+    const cleanupDb = new Database(dbPath);
+    cleanupDb.exec(`DELETE FROM accounting_export_logs`);
+    cleanupDb.exec(`DELETE FROM accounting_integrations WHERE companyId = '${companyId}'`);
+    cleanupDb.exec(`DELETE FROM Company WHERE id = '${companyId}'`);
+    cleanupDb.exec(`DELETE FROM User WHERE id = '${userId}' OR id = '${otherUserId}'`);
+    cleanupDb.close();
   });
 
   describe('POST /api/companies/:companyId/integrations', () => {
@@ -107,7 +121,7 @@ describe('Accounting Integrations API', () => {
       };
 
       const res = await request(app)
-        .post(`/api/companies/${company.id}/integrations`)
+        .post(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           type: 'SAGE',
@@ -117,7 +131,7 @@ describe('Accounting Integrations API', () => {
       expect(res.statusCode).toBe(201);
       expect(res.body.type).toBe('SAGE');
       expect(res.body.status).toBe('ACTIVE');
-      expect(res.body.companyId).toBe(company.id);
+      expect(res.body.companyId).toBe(companyId);
     });
 
     it('should create a QuickBooks integration', async () => {
@@ -137,7 +151,7 @@ describe('Accounting Integrations API', () => {
       };
 
       const res = await request(app)
-        .post(`/api/companies/${company.id}/integrations`)
+        .post(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           type: 'QUICKBOOKS',
@@ -163,7 +177,7 @@ describe('Accounting Integrations API', () => {
 
       // Essayer de créer une deuxième intégration Sage
       const res = await request(app)
-        .post(`/api/companies/${company.id}/integrations`)
+        .post(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           type: 'SAGE',
@@ -181,7 +195,7 @@ describe('Accounting Integrations API', () => {
       };
 
       const res = await request(app)
-        .post(`/api/companies/${company.id}/integrations`)
+        .post(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           type: 'SAGE',
@@ -193,7 +207,7 @@ describe('Accounting Integrations API', () => {
 
     it('should reject unauthorized access', async () => {
       const res = await request(app)
-        .post(`/api/companies/${company.id}/integrations`)
+        .post(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${otherToken}`)
         .send({
           type: 'SAGE',
@@ -207,7 +221,7 @@ describe('Accounting Integrations API', () => {
   describe('GET /api/companies/:companyId/integrations', () => {
     it('should list all integrations for a company', async () => {
       const res = await request(app)
-        .get(`/api/companies/${company.id}/integrations`)
+        .get(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.statusCode).toBe(200);
@@ -220,7 +234,7 @@ describe('Accounting Integrations API', () => {
 
     it('should reject unauthorized access', async () => {
       const res = await request(app)
-        .get(`/api/companies/${company.id}/integrations`)
+        .get(`/api/companies/${companyId}/integrations`)
         .set('Authorization', `Bearer ${otherToken}`);
 
       expect(res.statusCode).toBe(403);
@@ -229,14 +243,19 @@ describe('Accounting Integrations API', () => {
 
   describe('PUT /api/companies/:companyId/integrations/:integrationId', () => {
     it('should update integration status', async () => {
-      // Récupérer une intégration existante
-      const integrations = await prisma.accountingIntegration.findMany({
-        where: { companyId: company.id }
-      });
-      const integration = integrations[0];
+      // Récupérer une intégration existante via la base de données
+      const testDb = new Database(dbPath);
+      const integration = testDb.prepare(`
+        SELECT * FROM accounting_integrations
+        WHERE companyId = ?
+        LIMIT 1
+      `).get(companyId) as any;
+      testDb.close();
+
+      expect(integration).toBeDefined();
 
       const res = await request(app)
-        .put(`/api/companies/${company.id}/integrations/${integration.id}`)
+        .put(`/api/companies/${companyId}/integrations/${integration.id}`)
         .set('Authorization', `Bearer ${token}`)
         .send({
           status: 'INACTIVE'
@@ -249,46 +268,30 @@ describe('Accounting Integrations API', () => {
 
   describe('DELETE /api/companies/:companyId/integrations/:integrationId', () => {
     it('should delete an integration', async () => {
-      // Créer une nouvelle intégration pour la supprimer
-      const integration = await prisma.accountingIntegration.create({
-        data: {
-          companyId: company.id,
-          type: 'SAGE',
-          configuration: JSON.stringify({
-            formatType: 'PNM',
-            accountMapping: {
-              salaryExpense: '6411',
-              socialCharges: '6451',
-              socialDebt: '431',
-              employeeDebt: '421',
-              taxCharges: '6311'
-            }
-          }),
-          status: 'ACTIVE'
-        }
-      });
+      // Récupérer une intégration existante (SAGE) pour la supprimer
+      const testDb = new Database(dbPath);
+      const integration = testDb.prepare(`
+        SELECT * FROM accounting_integrations
+        WHERE companyId = ? AND type = 'SAGE'
+        LIMIT 1
+      `).get(companyId) as any;
+      testDb.close();
 
-      // Supprimer cette intégration temporaire (ne pas affecter l'autre)
-      // D'abord, supprimer l'une des intégrations SAGE pour éviter la contrainte unique
-      await prisma.accountingIntegration.deleteMany({
-        where: {
-          companyId: company.id,
-          type: 'SAGE',
-          id: { not: integration.id }
-        }
-      });
+      expect(integration).toBeDefined();
 
       const res = await request(app)
-        .delete(`/api/companies/${company.id}/integrations/${integration.id}`)
+        .delete(`/api/companies/${companyId}/integrations/${integration.id}`)
         .set('Authorization', `Bearer ${token}`);
 
       expect(res.statusCode).toBe(204);
 
       // Vérifier que l'intégration a été supprimée
-      const deleted = await prisma.accountingIntegration.findUnique({
-        where: { id: integration.id }
-      });
-      expect(deleted).toBeNull();
+      const verifyDb = new Database(dbPath);
+      const deleted = verifyDb.prepare(`
+        SELECT * FROM accounting_integrations WHERE id = ?
+      `).get(integration.id);
+      verifyDb.close();
+      expect(deleted).toBeUndefined();
     });
   });
 
@@ -319,27 +322,34 @@ describe('Accounting Integrations API', () => {
 
   describe('GET /api/companies/:companyId/integrations/:integrationId/logs', () => {
     it('should list export logs for an integration', async () => {
-      // Créer une intégration et un log
-      const integration = await prisma.accountingIntegration.findFirst({
-        where: { companyId: company.id }
-      });
+      // Récupérer une intégration existante
+      const testDb = new Database(dbPath);
+      const integration = testDb.prepare(`
+        SELECT * FROM accounting_integrations
+        WHERE companyId = ?
+        LIMIT 1
+      `).get(companyId) as any;
 
       if (integration) {
-        await prisma.accountingExportLog.create({
-          data: {
-            integrationId: integration.id,
-            status: 'SUCCESS',
-            payPeriod: '2025-11',
-            recordCount: 10
-          }
-        });
+        // Créer un log de test
+        createTestAccountingExportLog(
+          testDb,
+          integration.id,
+          'SUCCESS',
+          '2025-11',
+          10
+        );
+        testDb.close();
 
         const res = await request(app)
-          .get(`/api/companies/${company.id}/integrations/${integration.id}/logs`)
+          .get(`/api/companies/${companyId}/integrations/${integration.id}/logs`)
           .set('Authorization', `Bearer ${token}`);
 
         expect(res.statusCode).toBe(200);
         expect(Array.isArray(res.body)).toBe(true);
+        expect(res.body.length).toBeGreaterThan(0);
+      } else {
+        testDb.close();
       }
     });
   });
