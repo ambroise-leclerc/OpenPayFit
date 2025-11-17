@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import path from 'path';
 import authRouter from './api/auth';
 import companiesRouter from './api/companies';
 import payrollRouter from './api/payroll';
@@ -12,6 +13,9 @@ const port = process.env.PORT || 3000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Servir les fichiers uploadés (reçus)
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // API Routes
 app.use('/api/auth', authRouter);
