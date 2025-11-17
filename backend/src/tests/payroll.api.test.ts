@@ -28,7 +28,7 @@ function setupTestDatabase() {
 function createTestUser(db: DatabaseType, email: string, motDePasse: string = 'password123'): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO User (id, email, motDePasse, createdAt, updatedAt)
+    INSERT INTO User (id, email, password, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, email, motDePasse);
   return id;
@@ -37,7 +37,7 @@ function createTestUser(db: DatabaseType, email: string, motDePasse: string = 'p
 function createTestCompany(db: DatabaseType, nom: string, proprietaireId: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Company (id, nom, proprietaireId, createdAt, updatedAt)
+    INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, nom, proprietaireId);
   return id;
@@ -53,7 +53,7 @@ function createTestEmployee(
 ): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Employee (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt)
+    INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, prenom, nom, email, salaireBrut, compagnieId);
   return id;

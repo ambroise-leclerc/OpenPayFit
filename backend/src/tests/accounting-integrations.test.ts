@@ -78,7 +78,7 @@ describe('Accounting Integrations API', () => {
     db.exec(`DELETE FROM accounting_export_logs`);
     db.exec(`DELETE FROM accounting_integrations`);
     db.exec(`DELETE FROM Employee WHERE email LIKE '%accounting-test%'`);
-    db.exec(`DELETE FROM Company WHERE nom LIKE '%Accounting Test%'`);
+    db.exec(`DELETE FROM Company WHERE name LIKE '%Accounting Test%'`);
     db.exec(`DELETE FROM User WHERE email LIKE '%accounting-test%'`);
 
     // Créer un utilisateur de test
