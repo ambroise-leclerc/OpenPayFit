@@ -179,7 +179,8 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
 
   try {
     // Utiliser une transaction pour éviter les race conditions lors de la vérification et création
-    const newLeave = await prisma.$transaction(async (tx) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const newLeave = await prisma.$transaction(async (tx: any) => {
       // Vérifier le solde de congés disponible pour les congés payés
       if (type === 'PAID_LEAVE') {
         const currentYear = new Date().getFullYear();
