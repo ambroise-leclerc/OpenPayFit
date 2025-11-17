@@ -49,11 +49,12 @@ model Employee {
   company       Company        @relation(fields: [companyId], references: [id])
   companyId     String         // Clé étrangère vers Company
   fichesPaie    FichePaie[]    // Un employé peut avoir plusieurs fiches de paie
-  leaves        Leave[]        // Un employé peut avoir plusieurs congés
-  leaveBalances LeaveBalance[] // Un employé peut avoir plusieurs soldes de congés (par type et année)
-  expenses      Expense[]      // Un employé peut avoir plusieurs notes de frais
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  leaves         Leave[]          // Un employé peut avoir plusieurs congés
+  leaveBalances  LeaveBalance[]   // Un employé peut avoir plusieurs soldes de congés (par type et année)
+  expenses       Expense[]        // Un employé peut avoir plusieurs notes de frais (ancien modèle)
+  expenseReports ExpenseReport[]  // Un employé peut avoir plusieurs rapports de notes de frais
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 }
 
 /// Fiche de paie d'un employé pour une période donnée
@@ -343,7 +344,8 @@ enum ExpenseCategory {
   OTHER          // Autre
 }
 
-/// Note de frais d'un employé
+/// Note de frais d'un employé (ancien modèle - déprécié)
+/// Utilisez ExpenseReport et ExpenseItem pour les nouveaux développements
 model Expense {
   id          String          @id @default(cuid())
   employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
@@ -359,4 +361,41 @@ model Expense {
   @@index([employeeId])
   @@index([date])
   @@map("expenses")
+}
+
+/// Rapport de notes de frais (multi-lignes)
+/// Un rapport regroupe plusieurs dépenses d'un employé pour une période
+model ExpenseReport {
+  id          String          @id @default(cuid())
+  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId  String
+  title       String          // Titre du rapport (ex: "Déplacement Paris - Mars 2025")
+  status      ExpenseStatus   @default(PENDING)
+  totalAmount Float           @default(0) // Montant total calculé à partir des lignes
+  items       ExpenseItem[]   // Lignes de dépenses du rapport
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([employeeId])
+  @@index([status])
+  @@map("expense_reports")
+}
+
+/// Ligne de dépense dans un rapport de notes de frais
+/// Chaque ligne représente une dépense individuelle avec son justificatif
+model ExpenseItem {
+  id          String          @id @default(cuid())
+  report      ExpenseReport   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  reportId    String
+  category    ExpenseCategory
+  amount      Float           // Montant en euros
+  date        DateTime        // Date de la dépense
+  description String          // Description de la dépense
+  receiptPath String?         // Chemin du fichier de reçu (PDF, JPG, PNG)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([reportId])
+  @@index([date])
+  @@map("expense_items")
 }

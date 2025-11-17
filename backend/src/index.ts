@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import cors from 'cors';
+import path from 'path';
 import authRouter from './api/auth';
 import companiesRouter from './api/companies';
 import payrollRouter from './api/payroll';
@@ -28,6 +29,9 @@ app.use('/api/payslips', payrollRouter); // Routes de paie et fiches de paie
 //   app.use('/api/cotisations', authenticateToken, cotisationsRouter); // GET seulement
 //   app.use('/api/cotisations', authenticateToken, requireAdmin, cotisationsRouterAdmin); // POST/PUT/DELETE
 app.use('/api/cotisations', authenticateToken, cotisationsRouter); // Routes des règles de cotisations (authentification requise)
+
+// Servir les fichiers uploadés (reçus) avec authentification
+app.use('/uploads', authenticateToken, express.static(path.join(__dirname, '../uploads')));
 
 // Health check route
 app.get('/', (_req: Request, res: Response) => {
