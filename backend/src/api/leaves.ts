@@ -8,15 +8,24 @@ const DEFAULT_ANNUAL_LEAVE_DAYS = 25; // Jours de congés payés annuels par dé
 // Fonction de transformation pour les objets Leave avec Employee
 function transformLeaveWithEmployee(leave: any) {
   return {
-    ...leave,
-    employee: leave.employee ? {
-      id: leave.employee.id,
-      firstName: leave.employee.prenom,
-      lastName: leave.employee.nom,
-      email: leave.employee.email,
-      grossSalary: leave.employee.salaireBrut,
-      department: leave.employee.departement,
-      companyId: leave.employee.compagnieId,
+    id: leave.id,
+    type: leave.typeDemande,
+    status: leave.statut,
+    startDate: leave.dateDebut,
+    endDate: leave.dateFin,
+    days: leave.nombreJours,
+    reason: leave.motif,
+    employeeId: leave.employeId,
+    createdAt: leave.dateCreation,
+    updatedAt: leave.dateModification,
+    employee: leave.employe ? {
+      id: leave.employe.id,
+      firstName: leave.employe.prenom,
+      lastName: leave.employe.nom,
+      email: leave.employe.email,
+      grossSalary: leave.employe.salaireBrut,
+      department: leave.employe.departement,
+      companyId: leave.employe.compagnieId,
     } : undefined,
   };
 }
@@ -42,24 +51,24 @@ async function restoreLeaveBalance(
 ): Promise<void> {
   const balance = await prisma.leaveBalance.findUnique({
     where: {
-      employeId_type_year: {
+      employeId_typeDemande_annee: {
         employeId: employeeId,
-        type: 'PAID_LEAVE',
-        year,
+        typeDemande: 'PAID_LEAVE',
+        annee: year,
       },
     },
   });
 
   if (balance) {
     // Utiliser Math.max pour éviter les soldes négatifs en cas de données incohérentes
-    const newUsedDays = Math.max(0, balance.usedDays - leaveDays);
-    const newRemainingDays = balance.totalDays - newUsedDays;
+    const newUsedDays = Math.max(0, balance.joursUtilises - leaveDays);
+    const newRemainingDays = balance.joursTotal - newUsedDays;
 
     await prisma.leaveBalance.update({
       where: { id: balance.id },
       data: {
-        usedDays: newUsedDays,
-        remainingDays: newRemainingDays,
+        joursUtilises: newUsedDays,
+        joursRestants: newRemainingDays,
       },
     });
   }
@@ -73,23 +82,23 @@ async function consumeLeaveBalance(
 ): Promise<void> {
   const balance = await prisma.leaveBalance.findUnique({
     where: {
-      employeId_type_year: {
+      employeId_typeDemande_annee: {
         employeId: employeeId,
-        type: 'PAID_LEAVE',
-        year,
+        typeDemande: 'PAID_LEAVE',
+        annee: year,
       },
     },
   });
 
   if (balance) {
-    const newUsedDays = balance.usedDays + leaveDays;
-    const newRemainingDays = balance.totalDays - newUsedDays;
+    const newUsedDays = balance.joursUtilises + leaveDays;
+    const newRemainingDays = balance.joursTotal - newUsedDays;
 
     await prisma.leaveBalance.update({
       where: { id: balance.id },
       data: {
-        usedDays: newUsedDays,
-        remainingDays: newRemainingDays,
+        joursUtilises: newUsedDays,
+        joursRestants: newRemainingDays,
       },
     });
   }
@@ -204,10 +213,10 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
         const currentYear = new Date().getFullYear();
         const balance = await tx.leaveBalance.findUnique({
           where: {
-            employeId_type_year: {
+            employeId_typeDemande_annee: {
               employeId: employeeId,
-              type: 'PAID_LEAVE',
-              year: currentYear,
+              typeDemande: 'PAID_LEAVE',
+              annee: currentYear,
             },
           },
         });
@@ -217,18 +226,18 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
           await tx.leaveBalance.create({
             data: {
               employeId: employeeId,
-              type: 'PAID_LEAVE',
-              year: currentYear,
-              totalDays: DEFAULT_ANNUAL_LEAVE_DAYS,
-              usedDays: 0,
-              remainingDays: DEFAULT_ANNUAL_LEAVE_DAYS,
+              typeDemande: 'PAID_LEAVE',
+              annee: currentYear,
+              joursTotal: DEFAULT_ANNUAL_LEAVE_DAYS,
+              joursUtilises: 0,
+              joursRestants: DEFAULT_ANNUAL_LEAVE_DAYS,
             },
           });
-        } else if (balance.remainingDays < parsedDays) {
+        } else if (balance.joursRestants < parsedDays) {
           throw new Error(
             JSON.stringify({
               code: 'INSUFFICIENT_BALANCE',
-              remainingDays: balance.remainingDays,
+              remainingDays: balance.joursRestants,
               requestedDays: parsedDays,
             })
           );
@@ -393,7 +402,7 @@ router.get('/balances', async (req: Request<EmployeeParams>, res: Response) => {
     let balances = await prisma.leaveBalance.findMany({
       where: {
         employeId: employeeId,
-        year: currentYear,
+        annee: currentYear,
       },
     });
 
@@ -402,17 +411,30 @@ router.get('/balances', async (req: Request<EmployeeParams>, res: Response) => {
       const defaultBalance = await prisma.leaveBalance.create({
         data: {
           employeId: employeeId,
-          type: 'PAID_LEAVE',
-          year: currentYear,
-          totalDays: DEFAULT_ANNUAL_LEAVE_DAYS,
-          usedDays: 0,
-          remainingDays: DEFAULT_ANNUAL_LEAVE_DAYS,
+          typeDemande: 'PAID_LEAVE',
+          annee: currentYear,
+          joursTotal: DEFAULT_ANNUAL_LEAVE_DAYS,
+          joursUtilises: 0,
+          joursRestants: DEFAULT_ANNUAL_LEAVE_DAYS,
         },
       });
       balances = [defaultBalance];
     }
 
-    res.json(balances);
+    // Transformer les balances pour l'API
+    const transformedBalances = balances.map((b: any) => ({
+      id: b.id,
+      employeeId: b.employeId,
+      type: b.typeDemande,
+      year: b.annee,
+      totalDays: b.joursTotal,
+      usedDays: b.joursUtilises,
+      remainingDays: b.joursRestants,
+      createdAt: b.dateCreation,
+      updatedAt: b.dateModification,
+    }));
+
+    res.json(transformedBalances);
   } catch (error) {
     console.error('Erreur lors de la récupération des soldes de congés:', error);
     res.status(500).json({ error: 'Échec de la récupération des soldes de congés' });
