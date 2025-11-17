@@ -22,8 +22,8 @@ router.get('/', async (req, res) => {
       id: c.id,
       name: c.nom,
       ownerId: c.proprietaireId,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
+      createdAt: c.dateCreation,
+      updatedAt: c.dateModification,
     }));
     res.json(transformedCompanies);
   } catch (error) {
@@ -52,8 +52,8 @@ router.post('/', async (req, res) => {
       id: newCompany.id,
       name: newCompany.nom,
       ownerId: newCompany.proprietaireId,
-      createdAt: newCompany.createdAt,
-      updatedAt: newCompany.updatedAt,
+      createdAt: newCompany.dateCreation,
+      updatedAt: newCompany.dateModification,
     });
   } catch (error) {
     console.error(error);

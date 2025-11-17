@@ -166,7 +166,7 @@ export async function exportPayrollToSage(
       employee: {
         compagnieId: companyId
       },
-      payPeriod: payPeriod
+      periodeVersement: payPeriod
     },
     include: {
       employee: true,

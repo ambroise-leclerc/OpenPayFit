@@ -63,9 +63,9 @@ describe.skip('Endpoints API Analytics (nécessite Prisma - ignoré en CI)', () 
     // Création de 2 employés avec départements
     const emp1Id = randomUUID();
     const emp2Id = randomUUID();
-    bd.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, departement, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    bd.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, department, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(emp1Id, 'Alice', 'Martin', 'alice@entreprise.com', 45000, 'Tech', entreprise1.id);
-    bd.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, departement, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    bd.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, department, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(emp2Id, 'Bob', 'Dupont', 'bob@entreprise.com', 50000, 'Commercial', entreprise1.id);
 
     employe1 = { id: emp1Id, prenom: 'Alice', nom: 'Martin', email: 'alice@entreprise.com', salaireBrut: 45000, departement: 'Tech', entrepriseId: entreprise1.id };

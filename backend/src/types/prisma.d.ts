@@ -10,16 +10,16 @@ declare module '@prisma/client' {
     nom: string | null;
     motDePasse: string;
     role: Role;
-    createdAt: Date;
-    updatedAt: Date;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
   export interface Compagnie {
     id: string;
     nom: string;
     proprietaireId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
   export interface Employe {
@@ -28,25 +28,25 @@ declare module '@prisma/client' {
     nom: string;
     email: string;
     salaireBrut: number;
-    department?: string;
+    departement?: string;
     compagnieId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
   export interface FichePaie {
     id: string;
-    payPeriod: string;
+    periodeVersement: string;
     salaireBrut: number;
-    deductions: number;
+    prelevements: number;
     salaireNet: number;
     totalCotisationsSalariales?: number;
     totalCotisationsPatronales?: number;
     totalChargesFiscales?: number;
     coutTotal?: number;
     employeId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
   // Alias pour compatibilité avec le code existant

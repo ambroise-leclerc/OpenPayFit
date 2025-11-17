@@ -15,7 +15,7 @@ function transformLeaveWithEmployee(leave: any) {
       lastName: leave.employee.nom,
       email: leave.employee.email,
       grossSalary: leave.employee.salaireBrut,
-      department: leave.employee.department,
+      department: leave.employee.departement,
       companyId: leave.employee.compagnieId,
     } : undefined,
   };
@@ -119,7 +119,7 @@ router.use(async (req: Request<EmployeeParams>, res: Response, next: NextFunctio
 
   try {
     // Vérifier que l'entreprise existe et appartient à l'utilisateur
-    const company = await prisma.company.findUnique({
+    const company = await prisma.compagnie.findUnique({
       where: { id: companyId },
     });
 

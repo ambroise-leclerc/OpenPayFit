@@ -83,7 +83,7 @@ function transformExpenseReportWithEmployee(report: any) {
       lastName: report.employee.nom,
       email: report.employee.email,
       grossSalary: report.employee.salaireBrut,
-      department: report.employee.department,
+      department: report.employee.departement,
       companyId: report.employee.compagnieId,
     } : undefined,
   };
@@ -98,7 +98,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
   }
 
   try {
-    const company = await prisma.company.findUnique({
+    const company = await prisma.compagnie.findUnique({
       where: { id: companyId },
     });
 
@@ -205,7 +205,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
             nom: true,
             email: true,
             salaireBrut: true,
-            department: true,
+            departement: true,
             compagnieId: true,
           },
         },
@@ -253,13 +253,13 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
             nom: true,
             email: true,
             salaireBrut: true,
-            department: true,
+            departement: true,
             compagnieId: true,
           },
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        dateCreation: 'desc',
       },
     });
 
@@ -296,7 +296,7 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
             nom: true,
             email: true,
             salaireBrut: true,
-            department: true,
+            departement: true,
             compagnieId: true,
           },
         },
@@ -358,7 +358,7 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
             nom: true,
             email: true,
             salaireBrut: true,
-            department: true,
+            departement: true,
             compagnieId: true,
           },
         },

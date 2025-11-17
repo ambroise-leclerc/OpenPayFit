@@ -11,10 +11,10 @@ function transformEmploye(e: any) {
     lastName: e.nom,
     email: e.email,
     grossSalary: e.salaireBrut,
-    department: e.department,
+    department: e.departement,
     companyId: e.compagnieId,
-    createdAt: e.createdAt,
-    updatedAt: e.updatedAt,
+    createdAt: e.dateCreation,
+    updatedAt: e.dateModification,
   };
 }
 

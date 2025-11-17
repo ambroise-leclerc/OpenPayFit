@@ -179,7 +179,7 @@ export async function exportPayrollToQuickBooks(
       employee: {
         compagnieId: companyId
       },
-      payPeriod: payPeriod
+      periodeVersement: payPeriod
     },
     include: {
       employee: true,
