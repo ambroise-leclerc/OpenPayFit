@@ -5,6 +5,7 @@ import authRouter from './api/auth';
 import companiesRouter from './api/companies';
 import payrollRouter from './api/payroll';
 import cotisationsRouter from './api/cotisations';
+import accountingIntegrationsRouter from './api/accounting-integrations';
 import { authenticateToken } from './middleware/auth';
 
 const app = express();
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use('/api/auth', authRouter);
 app.use('/api/companies', companiesRouter);
 app.use('/api/payslips', payrollRouter); // Routes de paie et fiches de paie
+app.use('/api', accountingIntegrationsRouter); // Routes des intégrations comptables (Sage, QuickBooks)
 
 // TODO: Restreindre les modifications des cotisations aux administrateurs
 // Actuellement, tous les utilisateurs authentifiés peuvent modifier les règles de cotisations.
