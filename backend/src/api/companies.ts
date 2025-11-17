@@ -7,11 +7,11 @@ import expenseReportsRouter from './expense-reports';
 
 const router = Router();
 
-// Apply the authentication middleware to all routes in this file
+// Appliquer le middleware d'authentification à toutes les routes de ce fichier
 router.use(authenticateToken);
 
 // GET /api/companies
-// Gets all companies for the authenticated user
+// Récupère toutes les entreprises de l'utilisateur authentifié
 router.get('/', async (req, res) => {
   try {
     const companies = await prisma.company.findMany({
@@ -20,17 +20,17 @@ router.get('/', async (req, res) => {
     res.json(companies);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to retrieve companies' });
+    res.status(500).json({ error: 'Échec de la récupération des entreprises' });
   }
 });
 
 // POST /api/companies
-// Creates a new company for the authenticated user
+// Crée une nouvelle entreprise pour l'utilisateur authentifié
 router.post('/', async (req, res) => {
   const { name } = req.body;
 
   if (!name) {
-    return res.status(400).json({ error: 'Company name is required' });
+    return res.status(400).json({ error: 'Le nom de l\'entreprise est requis' });
   }
 
   try {
@@ -43,20 +43,20 @@ router.post('/', async (req, res) => {
     res.status(201).json(newCompany);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to create company' });
+    res.status(500).json({ error: 'Échec de la création de l\'entreprise' });
   }
 });
 
-// Mount the employees router for nested routes
-// This will handle all routes starting with /api/companies/:companyId/employees
+// Monter le routeur des employés pour les routes imbriquées
+// Ceci gérera toutes les routes commençant par /api/companies/:companyId/employees
 router.use('/:companyId/employees', employeesRouter);
 
-// Mount the analytics router for nested routes
-// This will handle all routes starting with /api/companies/:companyId/analytics
+// Monter le routeur des analytics pour les routes imbriquées
+// Ceci gérera toutes les routes commençant par /api/companies/:companyId/analytics
 router.use('/:companyId/analytics', analyticsRouter);
 
-// Mount the expense reports router for nested routes
-// This will handle all routes starting with /api/companies/:companyId/expense-reports
+// Monter le routeur des notes de frais pour les routes imbriquées
+// Ceci gérera toutes les routes commençant par /api/companies/:companyId/expense-reports
 router.use('/:companyId/expense-reports', expenseReportsRouter);
 
 export default router;

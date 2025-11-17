@@ -98,7 +98,7 @@ router.use(async (req: Request<EmployeeParams>, res: Response, next: NextFunctio
   const { companyId, employeeId } = req.params;
 
   if (!companyId || !employeeId) {
-    return res.status(400).json({ error: 'Company ID and Employee ID are required' });
+    return res.status(400).json({ error: 'L\'ID de l\'entreprise et l\'ID de l\'employé sont requis' });
   }
 
   try {
@@ -108,11 +108,11 @@ router.use(async (req: Request<EmployeeParams>, res: Response, next: NextFunctio
     });
 
     if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
     if (company.ownerId !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Interdit' });
     }
 
     // Vérifier que l'employé existe et appartient à cette entreprise
@@ -121,16 +121,16 @@ router.use(async (req: Request<EmployeeParams>, res: Response, next: NextFunctio
     });
 
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
+      return res.status(404).json({ error: 'Employé non trouvé' });
     }
 
     if (employee.companyId !== companyId) {
-      return res.status(403).json({ error: 'Employee does not belong to this company' });
+      return res.status(403).json({ error: 'L\'employé n\'appartient pas à cette entreprise' });
     }
 
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Erreur serveur interne' });
   }
 });
 
@@ -146,7 +146,7 @@ router.get('/', async (req: Request<EmployeeParams>, res: Response) => {
     });
     res.json(leaves);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch leaves' });
+    res.status(500).json({ error: 'Échec de la récupération des congés' });
   }
 });
 
@@ -157,24 +157,24 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
   const { type, startDate, endDate, days, reason } = req.body;
 
   if (!type || !startDate || !endDate || days == null) {
-    return res.status(400).json({ error: 'type, startDate, endDate, and days are required' });
+    return res.status(400).json({ error: 'type, startDate, endDate et days sont requis' });
   }
 
   // Valider le nombre de jours
   const parsedDays = typeof days === 'number' ? days : parseFloat(days);
   if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
-    return res.status(400).json({ error: 'days must be a positive number' });
+    return res.status(400).json({ error: 'days doit être un nombre positif' });
   }
 
   // Valider les dates
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    return res.status(400).json({ error: 'Invalid date format' });
+    return res.status(400).json({ error: 'Format de date invalide' });
   }
 
   if (start > end) {
-    return res.status(400).json({ error: 'Start date must be before end date' });
+    return res.status(400).json({ error: 'La date de début doit être avant la date de fin' });
   }
 
   try {
@@ -238,7 +238,7 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
         const errorData = JSON.parse(error.message);
         if (errorData.code === 'INSUFFICIENT_BALANCE') {
           return res.status(400).json({
-            error: 'Insufficient leave balance',
+            error: 'Solde de congés insuffisant',
             remainingDays: errorData.remainingDays,
             requestedDays: errorData.requestedDays,
           });
@@ -247,8 +247,8 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
         // Continue avec la gestion d'erreur générique
       }
     }
-    console.error('Error creating leave:', error);
-    res.status(500).json({ error: 'Failed to create leave request' });
+    console.error('Erreur lors de la création du congé:', error);
+    res.status(500).json({ error: 'Échec de la création de la demande de congé' });
   }
 });
 
@@ -265,11 +265,11 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     });
 
     if (!currentLeave) {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
 
     if (currentLeave.employeeId !== employeeId) {
-      return res.status(403).json({ error: 'Leave request does not belong to this employee' });
+      return res.status(403).json({ error: 'La demande de congé n\'appartient pas à cet employé' });
     }
 
     // Préparer les données de mise à jour
@@ -279,7 +279,7 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
       // Valider la transition d'état
       if (!isValidStatusTransition(currentLeave.status, status)) {
         return res.status(400).json({
-          error: 'Invalid status transition',
+          error: 'Transition de statut invalide',
           currentStatus: currentLeave.status,
           requestedStatus: status,
         });
@@ -306,7 +306,7 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     if (days !== undefined) {
       const parsedDays = typeof days === 'number' ? days : parseFloat(days);
       if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
-        return res.status(400).json({ error: 'days must be a positive number' });
+        return res.status(400).json({ error: 'days doit être un nombre positif' });
       }
       updateData.days = parsedDays;
     }
@@ -320,10 +320,10 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     res.json(updatedLeave);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
-    console.error('Error updating leave:', error);
-    res.status(500).json({ error: 'Failed to update leave request' });
+    console.error('Erreur lors de la mise à jour du congé:', error);
+    res.status(500).json({ error: 'Échec de la mise à jour de la demande de congé' });
   }
 });
 
@@ -339,11 +339,11 @@ router.delete('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     });
 
     if (!leave) {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
 
     if (leave.employeeId !== employeeId) {
-      return res.status(403).json({ error: 'Leave request does not belong to this employee' });
+      return res.status(403).json({ error: 'La demande de congé n\'appartient pas à cet employé' });
     }
 
     // Si le congé était approuvé, restaurer le solde
@@ -356,10 +356,10 @@ router.delete('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     res.status(204).send();
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
-    console.error('Error deleting leave:', error);
-    res.status(500).json({ error: 'Failed to delete leave request' });
+    console.error('Erreur lors de la suppression du congé:', error);
+    res.status(500).json({ error: 'Échec de la suppression de la demande de congé' });
   }
 });
 
@@ -394,8 +394,8 @@ router.get('/balances', async (req: Request<EmployeeParams>, res: Response) => {
 
     res.json(balances);
   } catch (error) {
-    console.error('Error fetching leave balances:', error);
-    res.status(500).json({ error: 'Failed to fetch leave balances' });
+    console.error('Erreur lors de la récupération des soldes de congés:', error);
+    res.status(500).json({ error: 'Échec de la récupération des soldes de congés' });
   }
 });
 

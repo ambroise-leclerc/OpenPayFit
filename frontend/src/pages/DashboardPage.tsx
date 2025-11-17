@@ -203,7 +203,7 @@ export default function DashboardPage() {
             ))}
           </select>
         ) : (
-          // TODO: Add a "Create Company" button/form
+          // TODO: Ajouter un bouton/formulaire "Créer une entreprise"
           <p>Vous n'avez pas encore d'entreprise. Créez-en une !</p>
         )}
       </section>
