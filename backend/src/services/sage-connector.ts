@@ -4,6 +4,8 @@
  */
 
 import prisma from '../lib/db';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 /**
  * Configuration du connecteur Sage
@@ -105,6 +107,49 @@ function getAccountLabel(account: string): string {
 }
 
 /**
+ * Valide et sécurise un chemin d'export pour éviter les path traversal
+ */
+function validateExportPath(exportPath: string): string {
+  // Normaliser le chemin pour résoudre les ../ et ./
+  const normalizedPath = path.normalize(exportPath);
+
+  // Vérifier qu'il n'y a pas de tentative de remontée de répertoire
+  if (normalizedPath.includes('..')) {
+    throw new Error('Chemin d\'export invalide : tentative de path traversal détectée');
+  }
+
+  // Vérifier que le chemin ne commence pas par / (chemin absolu)
+  if (path.isAbsolute(normalizedPath)) {
+    throw new Error('Chemin d\'export invalide : seuls les chemins relatifs sont autorisés');
+  }
+
+  return normalizedPath;
+}
+
+/**
+ * Valide le format de la période de paie (YYYY-MM)
+ */
+function validatePayPeriod(payPeriod: string): void {
+  const periodRegex = /^\d{4}-\d{2}$/;
+  if (!periodRegex.test(payPeriod)) {
+    throw new Error('Format de période invalide. Format attendu : YYYY-MM (ex: 2025-11)');
+  }
+
+  // Vérifier que le mois est valide (01-12)
+  const [year, month] = payPeriod.split('-');
+  const monthNum = parseInt(month, 10);
+  if (monthNum < 1 || monthNum > 12) {
+    throw new Error('Mois invalide. Doit être entre 01 et 12');
+  }
+
+  // Vérifier que l'année est raisonnable (2000-2100)
+  const yearNum = parseInt(year, 10);
+  if (yearNum < 2000 || yearNum > 2100) {
+    throw new Error('Année invalide. Doit être entre 2000 et 2100');
+  }
+}
+
+/**
  * Exporte les données de paie d'une période vers Sage
  */
 export async function exportPayrollToSage(
@@ -112,6 +157,9 @@ export async function exportPayrollToSage(
   payPeriod: string,
   config: SageConfig
 ): Promise<{ filePath: string; recordCount: number }> {
+  // Valider le format de la période
+  validatePayPeriod(payPeriod);
+
   // Récupérer toutes les fiches de paie de la période
   const fichesPaie = await prisma.fichePaie.findMany({
     where: {
@@ -200,10 +248,8 @@ export async function exportPayrollToSage(
     ? generateTRAFormat(entries)
     : generatePNMFormat(entries);
 
-  // Sauvegarder le fichier
-  const fs = require('fs').promises;
-  const path = require('path');
-  const exportPath = config.exportPath || './exports';
+  // Valider et sécuriser le chemin d'export
+  const exportPath = validateExportPath(config.exportPath || './exports');
   const fileName = `sage_export_${payPeriod}.${config.formatType.toLowerCase()}`;
   const filePath = path.join(exportPath, fileName);
 

@@ -90,19 +90,39 @@ export async function refreshQuickBooksToken(config: QuickBooksConfig): Promise<
 }
 
 /**
- * Vérifie et rafraîchit le token si nécessaire
+ * Résultat de la vérification du token
  */
-async function ensureValidToken(config: QuickBooksConfig): Promise<string> {
+interface TokenValidationResult {
+  accessToken: string;
+  tokensRefreshed: boolean;
+  newTokens?: {
+    accessToken: string;
+    refreshToken: string;
+    expiresIn: number;
+  };
+}
+
+/**
+ * Vérifie et rafraîchit le token si nécessaire
+ * Retourne les nouveaux tokens s'ils ont été rafraîchis pour permettre la persistance
+ */
+async function ensureValidToken(config: QuickBooksConfig): Promise<TokenValidationResult> {
   const now = Date.now() / 1000;
 
   // Si le token expire dans moins de 5 minutes, le rafraîchir
   if (config.tokenExpiry - now < 300) {
     const tokens = await refreshQuickBooksToken(config);
-    // Le token sera mis à jour dans la configuration de l'intégration
-    return tokens.accessToken;
+    return {
+      accessToken: tokens.accessToken,
+      tokensRefreshed: true,
+      newTokens: tokens
+    };
   }
 
-  return config.accessToken;
+  return {
+    accessToken: config.accessToken,
+    tokensRefreshed: false
+  };
 }
 
 /**
@@ -111,15 +131,15 @@ async function ensureValidToken(config: QuickBooksConfig): Promise<string> {
 async function createJournalEntry(
   config: QuickBooksConfig,
   entry: QuickBooksJournalEntry
-): Promise<any> {
-  const token = await ensureValidToken(config);
+): Promise<{ result: any; tokenValidation: TokenValidationResult }> {
+  const tokenValidation = await ensureValidToken(config);
   const baseUrl = config.sandbox ? QUICKBOOKS_API.sandbox : QUICKBOOKS_API.production;
   const url = `${baseUrl}/v3/company/${config.realmId}/journalentry?minorversion=65`;
 
   const response = await fetch(url, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${tokenValidation.accessToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json'
     },
@@ -131,7 +151,10 @@ async function createJournalEntry(
     throw new Error(`Échec de création de l'écriture QuickBooks: ${error}`);
   }
 
-  return await response.json();
+  return {
+    result: await response.json(),
+    tokenValidation
+  };
 }
 
 /**
@@ -141,7 +164,15 @@ export async function exportPayrollToQuickBooks(
   companyId: string,
   payPeriod: string,
   config: QuickBooksConfig
-): Promise<{ recordCount: number; journalEntryIds: string[] }> {
+): Promise<{
+  recordCount: number;
+  journalEntryIds: string[];
+  updatedTokens?: {
+    accessToken: string;
+    refreshToken: string;
+    tokenExpiry: number;
+  };
+}> {
   // Récupérer toutes les fiches de paie de la période
   const fichesPaie = await prisma.fichePaie.findMany({
     where: {
@@ -162,6 +193,7 @@ export async function exportPayrollToQuickBooks(
 
   const journalEntryIds: string[] = [];
   const txnDate = `${payPeriod}-01`; // Format YYYY-MM-DD
+  let updatedTokens: { accessToken: string; refreshToken: string; tokenExpiry: number } | undefined;
 
   // Créer une écriture de journal pour chaque employé
   for (const fiche of fichesPaie) {
@@ -243,13 +275,23 @@ export async function exportPayrollToQuickBooks(
       DocNumber: `PAIE-${payPeriod}-${fiche.employee.id.substring(0, 8)}`
     };
 
-    const result = await createJournalEntry(config, journalEntry);
+    const { result, tokenValidation } = await createJournalEntry(config, journalEntry);
     journalEntryIds.push(result.JournalEntry.Id);
+
+    // Capturer les tokens mis à jour si rafraîchis (une seule fois)
+    if (tokenValidation.tokensRefreshed && !updatedTokens && tokenValidation.newTokens) {
+      updatedTokens = {
+        accessToken: tokenValidation.newTokens.accessToken,
+        refreshToken: tokenValidation.newTokens.refreshToken,
+        tokenExpiry: Date.now() / 1000 + tokenValidation.newTokens.expiresIn
+      };
+    }
   }
 
   return {
     recordCount: journalEntryIds.length,
-    journalEntryIds
+    journalEntryIds,
+    ...(updatedTokens && { updatedTokens })
   };
 }
 
@@ -262,9 +304,9 @@ export function generateAuthorizationUrl(
   state: string,
   sandbox: boolean = false
 ): string {
-  const baseUrl = sandbox
-    ? 'https://appcenter.intuit.com/connect/oauth2'
-    : 'https://appcenter.intuit.com/connect/oauth2';
+  // Note: L'URL OAuth est identique pour sandbox et production
+  // La différence se fait via le realmId et les credentials
+  const baseUrl = 'https://appcenter.intuit.com/connect/oauth2';
 
   const params = new URLSearchParams({
     client_id: clientId,

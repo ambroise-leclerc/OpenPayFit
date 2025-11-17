@@ -18,19 +18,12 @@ describe('Accounting Integrations API', () => {
   let otherToken: string;
 
   beforeAll(async () => {
-    // Nettoyer la base de données
-    await prisma.accountingExportLog.deleteMany();
-    await prisma.accountingIntegration.deleteMany();
-    await prisma.fichePaie.deleteMany();
-    await prisma.employee.deleteMany();
-    await prisma.company.deleteMany();
-    await prisma.user.deleteMany();
-
-    // Créer un utilisateur de test
+    // Créer un utilisateur de test avec un email unique pour éviter les conflits
+    const timestamp = Date.now();
     const hashedPassword = await bcrypt.hash('password123', 10);
     user = await prisma.user.create({
       data: {
-        email: 'test@example.com',
+        email: `test-${timestamp}@example.com`,
         name: 'Test User',
         password: hashedPassword
       }
@@ -39,7 +32,7 @@ describe('Accounting Integrations API', () => {
     // Créer une entreprise
     company = await prisma.company.create({
       data: {
-        name: 'Test Company',
+        name: `Test Company ${timestamp}`,
         ownerId: user.id
       }
     });
@@ -50,7 +43,7 @@ describe('Accounting Integrations API', () => {
     // Créer un autre utilisateur pour tester les permissions
     otherUser = await prisma.user.create({
       data: {
-        email: 'other@example.com',
+        email: `other-${timestamp}@example.com`,
         name: 'Other User',
         password: hashedPassword
       }
@@ -59,13 +52,43 @@ describe('Accounting Integrations API', () => {
   });
 
   afterAll(async () => {
-    // Nettoyer
-    await prisma.accountingExportLog.deleteMany();
-    await prisma.accountingIntegration.deleteMany();
-    await prisma.fichePaie.deleteMany();
-    await prisma.employee.deleteMany();
-    await prisma.company.deleteMany();
-    await prisma.user.deleteMany();
+    // Nettoyer uniquement les données créées par ce test
+    // Utilisation de deleteMany avec des filtres spécifiques
+    if (company) {
+      await prisma.accountingExportLog.deleteMany({
+        where: {
+          integration: {
+            companyId: company.id
+          }
+        }
+      });
+      await prisma.accountingIntegration.deleteMany({
+        where: { companyId: company.id }
+      });
+      await prisma.fichePaie.deleteMany({
+        where: {
+          employee: {
+            companyId: company.id
+          }
+        }
+      });
+      await prisma.employee.deleteMany({
+        where: { companyId: company.id }
+      });
+      await prisma.company.delete({
+        where: { id: company.id }
+      });
+    }
+    if (user) {
+      await prisma.user.delete({
+        where: { id: user.id }
+      });
+    }
+    if (otherUser) {
+      await prisma.user.delete({
+        where: { id: otherUser.id }
+      });
+    }
     await prisma.$disconnect();
   });
 

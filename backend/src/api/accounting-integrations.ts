@@ -21,6 +21,16 @@ import {
 const router = Router();
 
 /**
+ * Fonction helper pour masquer les credentials dans la configuration
+ */
+function sanitizeIntegration(integration: any) {
+  return {
+    ...integration,
+    configuration: '***' // Masquer les credentials
+  };
+}
+
+/**
  * Middleware pour vérifier que l'utilisateur est propriétaire de l'entreprise
  */
 async function verifyCompanyOwnership(req: Request, res: Response, next: any) {
@@ -126,7 +136,8 @@ router.post(
         }
       });
 
-      res.status(201).json(integration);
+      // Masquer les credentials avant d'envoyer la réponse
+      res.status(201).json(sanitizeIntegration(integration));
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -171,7 +182,8 @@ router.put(
         }
       });
 
-      res.json(updated);
+      // Masquer les credentials avant d'envoyer la réponse
+      res.json(sanitizeIntegration(updated));
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
@@ -260,6 +272,23 @@ router.post(
         } else if (integration.type === 'QUICKBOOKS') {
           const qbResult = await exportPayrollToQuickBooks(companyId, payPeriod, config as QuickBooksConfig);
           result = { recordCount: qbResult.recordCount };
+
+          // Si les tokens ont été rafraîchis, mettre à jour la configuration
+          if (qbResult.updatedTokens) {
+            const updatedConfig = {
+              ...config,
+              accessToken: qbResult.updatedTokens.accessToken,
+              refreshToken: qbResult.updatedTokens.refreshToken,
+              tokenExpiry: qbResult.updatedTokens.tokenExpiry
+            };
+
+            await prisma.accountingIntegration.update({
+              where: { id: integrationId },
+              data: {
+                configuration: JSON.stringify(updatedConfig)
+              }
+            });
+          }
 
           // Mettre à jour le log avec succès
           await prisma.accountingExportLog.update({
