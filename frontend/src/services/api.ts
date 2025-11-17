@@ -1313,3 +1313,328 @@ export async function uploadReceipt(
 
   return response.json();
 }
+
+// --- Accounting Integrations Management (Gestion des Intégrations Comptables) ---
+
+// Enums pour les intégrations comptables
+export type AccountingIntegrationType = 'SAGE' | 'QUICKBOOKS';
+export type AccountingIntegrationStatus = 'ACTIVE' | 'INACTIVE' | 'ERROR';
+export type ExportStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'RETRYING';
+
+// Interfaces pour les intégrations comptables
+export interface AccountingIntegration {
+  id: string;
+  companyId: string;
+  type: AccountingIntegrationType;
+  status: AccountingIntegrationStatus;
+  configuration: string; // Masqué côté API (retourne '***')
+  lastSyncAt?: string;
+  lastError?: string;
+  exportLogs?: AccountingExportLog[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccountingExportLog {
+  id: string;
+  integrationId: string;
+  status: ExportStatus;
+  payPeriod?: string;
+  recordCount: number;
+  filePath?: string;
+  errorMessage?: string;
+  retryCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SageConfig {
+  formatType: 'TRA' | 'PNM';
+  accountMapping: {
+    salaryExpense: string;
+    socialCharges: string;
+    socialDebt: string;
+    employeeDebt: string;
+    taxCharges: string;
+  };
+  exportPath?: string;
+  journalCode?: string;
+}
+
+export interface QuickBooksConfig {
+  clientId: string;
+  clientSecret: string;
+  realmId: string;
+  accessToken: string;
+  refreshToken: string;
+  tokenExpiry: number;
+  accountMapping: {
+    salaryExpense: string;
+    socialCharges: string;
+    socialDebt: string;
+    employeeDebt: string;
+  };
+  sandbox?: boolean;
+}
+
+export interface CreateIntegrationData {
+  type: AccountingIntegrationType;
+  configuration: SageConfig | QuickBooksConfig;
+}
+
+export interface UpdateIntegrationData {
+  configuration?: SageConfig | QuickBooksConfig;
+  status?: AccountingIntegrationStatus;
+}
+
+export interface ExportPayrollData {
+  payPeriod: string; // Format YYYY-MM
+}
+
+export interface ExportPayrollResult {
+  success: boolean;
+  recordCount: number;
+  filePath?: string;
+}
+
+export interface QuickBooksAuthUrl {
+  url: string;
+  state: string;
+}
+
+export interface QuickBooksTokens {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  realmId: string;
+}
+
+// --- Accounting Integrations API Functions ---
+
+/**
+ * Récupère toutes les intégrations comptables d'une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param token - Token d'authentification
+ */
+export async function getAccountingIntegrations(
+  companyId: string,
+  token: string
+): Promise<AccountingIntegration[]> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/integrations`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des intégrations comptables');
+  }
+
+  return response.json();
+}
+
+/**
+ * Crée une nouvelle intégration comptable
+ * @param companyId - ID de l'entreprise
+ * @param integrationData - Données de l'intégration
+ * @param token - Token d'authentification
+ */
+export async function createAccountingIntegration(
+  companyId: string,
+  integrationData: CreateIntegrationData,
+  token: string
+): Promise<AccountingIntegration> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/integrations`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(integrationData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création de l\'intégration comptable');
+  }
+
+  return response.json();
+}
+
+/**
+ * Met à jour une intégration comptable
+ * @param companyId - ID de l'entreprise
+ * @param integrationId - ID de l'intégration
+ * @param integrationData - Données à mettre à jour
+ * @param token - Token d'authentification
+ */
+export async function updateAccountingIntegration(
+  companyId: string,
+  integrationId: string,
+  integrationData: UpdateIntegrationData,
+  token: string
+): Promise<AccountingIntegration> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/integrations/${integrationId}`,
+    {
+      method: 'PUT',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(integrationData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour de l\'intégration comptable');
+  }
+
+  return response.json();
+}
+
+/**
+ * Supprime une intégration comptable
+ * @param companyId - ID de l'entreprise
+ * @param integrationId - ID de l'intégration
+ * @param token - Token d'authentification
+ */
+export async function deleteAccountingIntegration(
+  companyId: string,
+  integrationId: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/integrations/${integrationId}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de l\'intégration comptable');
+  }
+}
+
+/**
+ * Exporte les données de paie vers le logiciel comptable
+ * @param companyId - ID de l'entreprise
+ * @param integrationId - ID de l'intégration
+ * @param exportData - Données d'export (période de paie)
+ * @param token - Token d'authentification
+ */
+export async function exportPayrollToAccounting(
+  companyId: string,
+  integrationId: string,
+  exportData: ExportPayrollData,
+  token: string
+): Promise<ExportPayrollResult> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/integrations/${integrationId}/export`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(exportData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'export vers le logiciel comptable');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère l'historique des exports pour une intégration
+ * @param companyId - ID de l'entreprise
+ * @param integrationId - ID de l'intégration
+ * @param limit - Nombre maximum de logs à récupérer
+ * @param token - Token d'authentification
+ */
+export async function getAccountingExportLogs(
+  companyId: string,
+  integrationId: string,
+  limit: number = 50,
+  token: string
+): Promise<AccountingExportLog[]> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/integrations/${integrationId}/logs?limit=${limit}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des logs d\'export');
+  }
+
+  return response.json();
+}
+
+/**
+ * Génère l'URL d'autorisation OAuth 2.0 pour QuickBooks
+ * @param clientId - Client ID QuickBooks
+ * @param redirectUri - URI de redirection
+ * @param sandbox - Utiliser l'environnement sandbox
+ * @param token - Token d'authentification
+ */
+export async function getQuickBooksAuthUrl(
+  clientId: string,
+  redirectUri: string,
+  sandbox: boolean = false,
+  token: string
+): Promise<QuickBooksAuthUrl> {
+  const queryParams = new URLSearchParams({
+    clientId,
+    redirectUri,
+    sandbox: sandbox.toString(),
+  });
+
+  const response = await fetch(
+    `${API_URL}/integrations/quickbooks/auth-url?${queryParams.toString()}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la génération de l\'URL d\'autorisation QuickBooks');
+  }
+
+  return response.json();
+}
+
+/**
+ * Échange le code d'autorisation OAuth contre des tokens QuickBooks
+ * @param clientId - Client ID QuickBooks
+ * @param clientSecret - Client Secret QuickBooks
+ * @param code - Code d'autorisation reçu
+ * @param redirectUri - URI de redirection
+ * @param token - Token d'authentification
+ */
+export async function exchangeQuickBooksToken(
+  clientId: string,
+  clientSecret: string,
+  code: string,
+  redirectUri: string,
+  token: string
+): Promise<QuickBooksTokens> {
+  const response = await fetch(
+    `${API_URL}/integrations/quickbooks/exchange-token`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify({
+        clientId,
+        clientSecret,
+        code,
+        redirectUri,
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'échange du code d\'autorisation QuickBooks');
+  }
+
+  return response.json();
+}
