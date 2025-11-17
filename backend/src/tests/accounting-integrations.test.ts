@@ -18,7 +18,7 @@ const dbPath = path.join(__dirname, '../../prisma/test.db');
 function createTestUser(db: DatabaseType, email: string, nom: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO User (id, email, nom, motDePasse, createdAt, updatedAt)
+    INSERT INTO User (id, email, name, password, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, email, nom, 'hashed-password-123');
   return id;
@@ -27,7 +27,7 @@ function createTestUser(db: DatabaseType, email: string, nom: string): string {
 function createTestCompany(db: DatabaseType, nom: string, proprietaireId: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Company (id, nom, proprietaireId, createdAt, updatedAt)
+    INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, nom, proprietaireId);
   return id;

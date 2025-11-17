@@ -40,6 +40,34 @@ if (!prisma || shouldUseBetterSqlite) {
     'accounting_export_logs'
   ]);
 
+  // Mapping des noms de champs Prisma (français) vers les noms de colonnes SQL (anglais)
+  const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
+    accounting_integrations: {
+      compagnieId: 'companyId',
+      typeIntegration: 'type',
+      statut: 'status',
+      dateDerniereSynchro: 'lastSyncAt',
+      derniereErreur: 'lastError',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    accounting_export_logs: {
+      statut: 'status',
+      periodeVersement: 'payPeriod',
+      nombreEnregistrements: 'recordCount',
+      cheminFichier: 'filePath',
+      messageErreur: 'errorMessage',
+      nombreTentatives: 'retryCount',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    }
+  };
+
+  // Fonction helper pour traduire les noms de champs
+  const mapFieldName = (tableName: string, fieldName: string): string => {
+    return FIELD_MAPPINGS[tableName]?.[fieldName] || fieldName;
+  };
+
   // Créer un wrapper Prisma-like pour better-sqlite3
   const createModelWrapper = (tableName: string) => {
     // Valider le nom de table pour prévenir les injections SQL
@@ -65,11 +93,12 @@ if (!prisma || shouldUseBetterSqlite) {
         }
 
         const fields = Object.keys(data);
+        const mappedFields = fields.map(f => mapFieldName(tableName, f));
         const values = Object.values(data).map(v =>
           typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
         );
-        const placeholders = fields.map(() => '?').join(', ');
-        const query = `INSERT INTO ${tableName} (${fields.join(', ')}) VALUES (${placeholders})`;
+        const placeholders = mappedFields.map(() => '?').join(', ');
+        const query = `INSERT INTO ${tableName} (${mappedFields.join(', ')}) VALUES (${placeholders})`;
 
         const stmt = db.prepare(query);
         stmt.run(...values);
@@ -101,7 +130,8 @@ if (!prisma || shouldUseBetterSqlite) {
           const compositeWhere = args.where[whereKeys[0]];
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(compositeWhere)) {
-            conditions.push(`${key} = ?`);
+            const mappedKey = mapFieldName(tableName, key);
+            conditions.push(`${mappedKey} = ?`);
             params.push(value);
           }
           query += ` WHERE ${conditions.join(' AND ')}`;
@@ -109,7 +139,8 @@ if (!prisma || shouldUseBetterSqlite) {
           // Simple where
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
-            conditions.push(`${key} = ?`);
+            const mappedKey = mapFieldName(tableName, key);
+            conditions.push(`${mappedKey} = ?`);
             params.push(value);
           }
           query += ` WHERE ${conditions.join(' AND ')}`;
@@ -315,16 +346,18 @@ if (!prisma || shouldUseBetterSqlite) {
         }
 
         const setFields = Object.keys(data);
+        const mappedSetFields = setFields.map(f => mapFieldName(tableName, f));
         const setValues = Object.values(data).map(v =>
           typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
         );
 
-        const setClause = setFields.map(f => `${f} = ?`).join(', ');
+        const setClause = mappedSetFields.map(f => `${f} = ?`).join(', ');
         const whereConditions: string[] = [];
         const whereValues: any[] = [];
 
         for (const [key, value] of Object.entries(args.where)) {
-          whereConditions.push(`${key} = ?`);
+          const mappedKey = mapFieldName(tableName, key);
+          whereConditions.push(`${mappedKey} = ?`);
           whereValues.push(value);
         }
 
