@@ -800,3 +800,190 @@ export async function getAnalyticsDepenses(
 
   return response.json();
 }
+
+// --- Leave Management (Gestion des Congés) ---
+
+// Enums pour les congés
+export type LeaveType = 'PAID_LEAVE' | 'SICK_LEAVE' | 'UNPAID_LEAVE' | 'PARENTAL_LEAVE' | 'OTHER';
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+// Interfaces pour les congés
+export interface Leave {
+  id: string;
+  employeeId: string;
+  type: LeaveType;
+  status: LeaveStatus;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface LeaveBalance {
+  id: string;
+  employeeId: string;
+  type: LeaveType;
+  year: number;
+  totalDays: number;
+  usedDays: number;
+  remainingDays: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateLeaveData {
+  type: LeaveType;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason?: string;
+}
+
+export interface UpdateLeaveData {
+  status?: LeaveStatus;
+  type?: LeaveType;
+  startDate?: string;
+  endDate?: string;
+  days?: number;
+  reason?: string;
+}
+
+// --- Leave API Functions ---
+
+/**
+ * Récupère toutes les demandes de congés d'un employé
+ * @param companyId - ID de l'entreprise
+ * @param employeeId - ID de l'employé
+ * @param token - Token d'authentification
+ */
+export async function getLeaves(
+  companyId: string,
+  employeeId: string,
+  token: string
+): Promise<Leave[]> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/employees/${employeeId}/leaves`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des demandes de congés');
+  }
+
+  return response.json();
+}
+
+/**
+ * Crée une nouvelle demande de congé
+ * @param companyId - ID de l'entreprise
+ * @param employeeId - ID de l'employé
+ * @param leaveData - Données de la demande de congé
+ * @param token - Token d'authentification
+ */
+export async function createLeave(
+  companyId: string,
+  employeeId: string,
+  leaveData: CreateLeaveData,
+  token: string
+): Promise<Leave> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/employees/${employeeId}/leaves`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(leaveData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création de la demande de congé');
+  }
+
+  return response.json();
+}
+
+/**
+ * Met à jour une demande de congé (principalement pour changer le statut)
+ * @param companyId - ID de l'entreprise
+ * @param employeeId - ID de l'employé
+ * @param leaveId - ID de la demande de congé
+ * @param leaveData - Données à mettre à jour
+ * @param token - Token d'authentification
+ */
+export async function updateLeave(
+  companyId: string,
+  employeeId: string,
+  leaveId: string,
+  leaveData: UpdateLeaveData,
+  token: string
+): Promise<Leave> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/employees/${employeeId}/leaves/${leaveId}`,
+    {
+      method: 'PUT',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(leaveData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour de la demande de congé');
+  }
+
+  return response.json();
+}
+
+/**
+ * Supprime une demande de congé
+ * @param companyId - ID de l'entreprise
+ * @param employeeId - ID de l'employé
+ * @param leaveId - ID de la demande de congé
+ * @param token - Token d'authentification
+ */
+export async function deleteLeave(
+  companyId: string,
+  employeeId: string,
+  leaveId: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/employees/${employeeId}/leaves/${leaveId}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de la demande de congé');
+  }
+}
+
+/**
+ * Récupère les soldes de congés d'un employé
+ * @param companyId - ID de l'entreprise
+ * @param employeeId - ID de l'employé
+ * @param token - Token d'authentification
+ */
+export async function getLeaveBalances(
+  companyId: string,
+  employeeId: string,
+  token: string
+): Promise<LeaveBalance[]> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/employees/${employeeId}/leaves/balances`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des soldes de congés');
+  }
+
+  return response.json();
+}
