@@ -30,13 +30,14 @@ model User {
 }
 
 model Company {
-  id        String     @id @default(cuid())
-  name      String
-  owner     User       @relation(fields: [ownerId], references: [id])
-  ownerId   String     // Clé étrangère vers User
-  employees Employee[] // Une entreprise a plusieurs employés
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id                     String                   @id @default(cuid())
+  name                   String
+  owner                  User                     @relation(fields: [ownerId], references: [id])
+  ownerId                String                   // Clé étrangère vers User
+  employees              Employee[]               // Une entreprise a plusieurs employés
+  accountingIntegrations AccountingIntegration[]  // Intégrations comptables (Sage, QuickBooks, etc.)
+  createdAt              DateTime                 @default(now())
+  updatedAt              DateTime                 @updatedAt
 }
 
 model Employee {
@@ -398,4 +399,66 @@ model ExpenseItem {
   @@index([reportId])
   @@index([date])
   @@map("expense_items")
+}
+
+// ========== Modèles pour les intégrations comptables ==========
+
+/// Type d'intégration comptable
+enum AccountingIntegrationType {
+  SAGE       // Sage (formats TRA/PNM)
+  QUICKBOOKS // QuickBooks Online
+}
+
+/// Statut d'une intégration comptable
+enum AccountingIntegrationStatus {
+  ACTIVE     // Active et fonctionnelle
+  INACTIVE   // Désactivée
+  ERROR      // En erreur
+}
+
+/// Intégration comptable d'une entreprise
+/// Permet l'export automatique des données de paie vers un logiciel comptable
+model AccountingIntegration {
+  id                String                       @id @default(cuid())
+  company           Company                      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  companyId         String
+  type              AccountingIntegrationType
+  status            AccountingIntegrationStatus  @default(INACTIVE)
+  configuration     String                       // JSON avec la configuration spécifique (mapping comptes, credentials OAuth, etc.)
+  lastSyncAt        DateTime?                    // Date du dernier export réussi
+  lastError         String?                      // Dernier message d'erreur (si status = ERROR)
+  exportLogs        AccountingExportLog[]        // Historique des exports
+  createdAt         DateTime                     @default(now())
+  updatedAt         DateTime                     @updatedAt
+
+  @@unique([companyId, type]) // Une entreprise ne peut avoir qu'une seule intégration de chaque type
+  @@map("accounting_integrations")
+}
+
+/// Statut d'un export comptable
+enum ExportStatus {
+  PENDING    // En attente
+  SUCCESS    // Réussi
+  FAILED     // Échoué
+  RETRYING   // Nouvelle tentative en cours
+}
+
+/// Log d'export comptable
+/// Conserve l'historique de tous les exports vers les logiciels comptables
+model AccountingExportLog {
+  id            String                 @id @default(cuid())
+  integration   AccountingIntegration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+  integrationId String
+  status        ExportStatus           @default(PENDING)
+  payPeriod     String?                // Période de paie exportée (format: "2025-08")
+  recordCount   Int                    @default(0) // Nombre d'écritures exportées
+  filePath      String?                // Chemin du fichier généré (pour Sage)
+  errorMessage  String?                // Message d'erreur (si status = FAILED)
+  retryCount    Int                    @default(0) // Nombre de tentatives
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+
+  @@index([integrationId])
+  @@index([status])
+  @@map("accounting_export_logs")
 }

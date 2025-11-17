@@ -35,7 +35,9 @@ if (!prisma || shouldUseBetterSqlite) {
     'taux_cotisation',
     'categories_cotisation',
     'organismes_cotisation',
-    'regles_comptables'
+    'regles_comptables',
+    'accounting_integrations',
+    'accounting_export_logs'
   ]);
 
   // Créer un wrapper Prisma-like pour better-sqlite3
@@ -46,8 +48,83 @@ if (!prisma || shouldUseBetterSqlite) {
     }
 
     return {
-    create: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
-    findUnique: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
+    create: (args?: any) => {
+      try {
+        const crypto = require('crypto');
+        const data = { ...args.data };
+
+        // Ajouter les champs par défaut si manquants
+        if (!data.id) {
+          data.id = crypto.randomUUID();
+        }
+        if (!data.createdAt) {
+          data.createdAt = new Date().toISOString();
+        }
+        if (!data.updatedAt) {
+          data.updatedAt = new Date().toISOString();
+        }
+
+        const fields = Object.keys(data);
+        const values = Object.values(data).map(v =>
+          typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
+        );
+        const placeholders = fields.map(() => '?').join(', ');
+        const query = `INSERT INTO ${tableName} (${fields.join(', ')}) VALUES (${placeholders})`;
+
+        const stmt = db.prepare(query);
+        stmt.run(...values);
+
+        // Retourner l'objet créé
+        const selectQuery = `SELECT * FROM ${tableName} WHERE id = ?`;
+        const selectStmt = db.prepare(selectQuery);
+        const row = selectStmt.get(data.id);
+
+        return Promise.resolve(row);
+      } catch (e) {
+        console.error(`Error in create for ${tableName}:`, e);
+        return Promise.reject(e);
+      }
+    },
+    findUnique: (args?: any) => {
+      try {
+        if (!args?.where) {
+          return Promise.resolve(null);
+        }
+
+        let query = `SELECT * FROM ${tableName}`;
+        const params: any[] = [];
+
+        // Handle unique constraint queries (e.g., companyId_type)
+        const whereKeys = Object.keys(args.where);
+        if (whereKeys.length === 1 && typeof args.where[whereKeys[0]] === 'object') {
+          // Composite unique constraint
+          const compositeWhere = args.where[whereKeys[0]];
+          const conditions: string[] = [];
+          for (const [key, value] of Object.entries(compositeWhere)) {
+            conditions.push(`${key} = ?`);
+            params.push(value);
+          }
+          query += ` WHERE ${conditions.join(' AND ')}`;
+        } else {
+          // Simple where
+          const conditions: string[] = [];
+          for (const [key, value] of Object.entries(args.where)) {
+            conditions.push(`${key} = ?`);
+            params.push(value);
+          }
+          query += ` WHERE ${conditions.join(' AND ')}`;
+        }
+
+        query += ' LIMIT 1';
+
+        const stmt = db.prepare(query);
+        const row = stmt.get(...params);
+        return Promise.resolve(row || null);
+      } catch (e) {
+        console.error(`Error in findUnique for ${tableName}:`, e);
+        return Promise.resolve(null);
+      }
+    },
     findMany: (args?: any) => {
       // Implémentation basique pour findMany (utilisé par le moteur de cotisations)
       try {
@@ -224,9 +301,97 @@ if (!prisma || shouldUseBetterSqlite) {
         return Promise.resolve(null);
       }
     },
-    update: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
-    delete: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
-    deleteMany: () => Promise.reject(new Error('Prisma client not initialized - use better-sqlite3 directly')),
+    update: (args?: any) => {
+      try {
+        if (!args?.where || !args?.data) {
+          throw new Error('Update requires where and data');
+        }
+
+        const data = { ...args.data };
+
+        // Ajouter updatedAt automatiquement
+        if (!data.updatedAt) {
+          data.updatedAt = new Date().toISOString();
+        }
+
+        const setFields = Object.keys(data);
+        const setValues = Object.values(data).map(v =>
+          typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
+        );
+
+        const setClause = setFields.map(f => `${f} = ?`).join(', ');
+        const whereConditions: string[] = [];
+        const whereValues: any[] = [];
+
+        for (const [key, value] of Object.entries(args.where)) {
+          whereConditions.push(`${key} = ?`);
+          whereValues.push(value);
+        }
+
+        const query = `UPDATE ${tableName} SET ${setClause} WHERE ${whereConditions.join(' AND ')}`;
+        const stmt = db.prepare(query);
+        stmt.run(...setValues, ...whereValues);
+
+        // Retourner l'objet mis à jour
+        const selectQuery = `SELECT * FROM ${tableName} WHERE ${whereConditions.join(' AND ')}`;
+        const selectStmt = db.prepare(selectQuery);
+        const row = selectStmt.get(...whereValues);
+
+        return Promise.resolve(row);
+      } catch (e) {
+        console.error(`Error in update for ${tableName}:`, e);
+        return Promise.reject(e);
+      }
+    },
+    delete: (args?: any) => {
+      try {
+        if (!args?.where) {
+          throw new Error('Delete requires where');
+        }
+
+        const conditions: string[] = [];
+        const values: any[] = [];
+
+        for (const [key, value] of Object.entries(args.where)) {
+          conditions.push(`${key} = ?`);
+          values.push(value);
+        }
+
+        const query = `DELETE FROM ${tableName} WHERE ${conditions.join(' AND ')}`;
+        const stmt = db.prepare(query);
+        stmt.run(...values);
+
+        return Promise.resolve({ count: stmt.changes });
+      } catch (e) {
+        console.error(`Error in delete for ${tableName}:`, e);
+        return Promise.reject(e);
+      }
+    },
+    deleteMany: (args?: any) => {
+      try {
+        let query = `DELETE FROM ${tableName}`;
+        const values: any[] = [];
+
+        if (args?.where) {
+          const conditions: string[] = [];
+          for (const [key, value] of Object.entries(args.where)) {
+            conditions.push(`${key} = ?`);
+            values.push(value);
+          }
+          if (conditions.length > 0) {
+            query += ` WHERE ${conditions.join(' AND ')}`;
+          }
+        }
+
+        const stmt = db.prepare(query);
+        stmt.run(...values);
+
+        return Promise.resolve({ count: stmt.changes });
+      } catch (e) {
+        console.error(`Error in deleteMany for ${tableName}:`, e);
+        return Promise.reject(e);
+      }
+    },
   };
   };
 
@@ -239,6 +404,8 @@ if (!prisma || shouldUseBetterSqlite) {
     categorieCotisation: createModelWrapper('categories_cotisation'),
     organismeCotisation: createModelWrapper('organismes_cotisation'),
     regleComptable: createModelWrapper('regles_comptables'),
+    accountingIntegration: createModelWrapper('accounting_integrations'),
+    accountingExportLog: createModelWrapper('accounting_export_logs'),
     $disconnect: () => { db.close(); return Promise.resolve(); },
     $connect: () => Promise.resolve(),
   };
