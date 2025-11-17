@@ -14,9 +14,6 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Servir les fichiers uploadés (reçus)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
 // API Routes
 app.use('/api/auth', authRouter);
 app.use('/api/companies', companiesRouter);
@@ -32,6 +29,9 @@ app.use('/api/payslips', payrollRouter); // Routes de paie et fiches de paie
 //   app.use('/api/cotisations', authenticateToken, cotisationsRouter); // GET seulement
 //   app.use('/api/cotisations', authenticateToken, requireAdmin, cotisationsRouterAdmin); // POST/PUT/DELETE
 app.use('/api/cotisations', authenticateToken, cotisationsRouter); // Routes des règles de cotisations (authentification requise)
+
+// Servir les fichiers uploadés (reçus) avec authentification
+app.use('/uploads', authenticateToken, express.static(path.join(__dirname, '../uploads')));
 
 // Health check route
 app.get('/', (_req: Request, res: Response) => {

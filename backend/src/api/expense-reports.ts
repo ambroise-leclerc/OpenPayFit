@@ -5,6 +5,21 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+// Validation des enums
+const VALID_STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'PAID'] as const;
+const VALID_CATEGORIES = ['TRANSPORT', 'MEAL', 'ACCOMMODATION', 'EQUIPMENT', 'OTHER'] as const;
+
+type ExpenseStatus = typeof VALID_STATUSES[number];
+type ExpenseCategory = typeof VALID_CATEGORIES[number];
+
+function isValidStatus(status: string): status is ExpenseStatus {
+  return VALID_STATUSES.includes(status as ExpenseStatus);
+}
+
+function isValidCategory(category: string): category is ExpenseCategory {
+  return VALID_CATEGORIES.includes(category as ExpenseCategory);
+}
+
 // Définition des types pour les paramètres d'URL
 interface CompanyParams {
   companyId: string;
@@ -122,6 +137,13 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
           });
         }
 
+        // Valider la catégorie
+        if (!isValidCategory(category)) {
+          return res.status(400).json({
+            error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+          });
+        }
+
         const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
         if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
           return res.status(400).json({
@@ -129,11 +151,19 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
           });
         }
 
+        // Valider la date
+        const parsedDate = new Date(date);
+        if (isNaN(parsedDate.getTime())) {
+          return res.status(400).json({
+            error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+          });
+        }
+
         totalAmount += parsedAmount;
         itemsData.push({
           category,
           amount: parsedAmount,
-          date: new Date(date),
+          date: parsedDate,
           description,
           receiptPath: receiptPath || null,
         });
@@ -280,9 +310,16 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
       return res.status(404).json({ error: 'Expense report not found' });
     }
 
-    const updateData: any = {};
+    const updateData: { title?: string; status?: string } = {};
     if (title !== undefined) updateData.title = title;
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) {
+      if (!isValidStatus(status)) {
+        return res.status(400).json({
+          error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`
+        });
+      }
+      updateData.status = status;
+    }
 
     const updatedReport = await prisma.expenseReport.update({
       where: { id: reportId },
@@ -356,9 +393,24 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
     });
   }
 
+  // Valider la catégorie
+  if (!isValidCategory(category)) {
+    return res.status(400).json({
+      error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+    });
+  }
+
   const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
     return res.status(400).json({ error: 'amount must be a valid non-negative number' });
+  }
+
+  // Valider la date
+  const parsedDate = new Date(date);
+  if (isNaN(parsedDate.getTime())) {
+    return res.status(400).json({
+      error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+    });
   }
 
   try {
@@ -382,17 +434,16 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
         reportId,
         category,
         amount: parsedAmount,
-        date: new Date(date),
+        date: parsedDate,
         description,
         receiptPath: receiptPath || null,
       },
     });
 
-    // Mettre à jour le montant total du rapport
-    const newTotalAmount = existingReport.totalAmount + parsedAmount;
+    // Mettre à jour le montant total du rapport de manière atomique
     await prisma.expenseReport.update({
       where: { id: reportId },
-      data: { totalAmount: newTotalAmount },
+      data: { totalAmount: { increment: parsedAmount } },
     });
 
     res.status(201).json(newItem);
@@ -426,11 +477,34 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
       return res.status(404).json({ error: 'Expense item not found' });
     }
 
-    const updateData: any = {};
+    const updateData: {
+      category?: string;
+      amount?: number;
+      date?: Date;
+      description?: string;
+      receiptPath?: string | null;
+    } = {};
     let amountDifference = 0;
 
-    if (category !== undefined) updateData.category = category;
-    if (date !== undefined) updateData.date = new Date(date);
+    if (category !== undefined) {
+      if (!isValidCategory(category)) {
+        return res.status(400).json({
+          error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+        });
+      }
+      updateData.category = category;
+    }
+
+    if (date !== undefined) {
+      const parsedDate = new Date(date);
+      if (isNaN(parsedDate.getTime())) {
+        return res.status(400).json({
+          error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+        });
+      }
+      updateData.date = parsedDate;
+    }
+
     if (description !== undefined) updateData.description = description;
     if (receiptPath !== undefined) updateData.receiptPath = receiptPath;
 
@@ -448,17 +522,12 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
       data: updateData,
     });
 
-    // Mettre à jour le montant total si l'amount a changé
+    // Mettre à jour le montant total si l'amount a changé de manière atomique
     if (amountDifference !== 0) {
-      const report = await prisma.expenseReport.findUnique({
+      await prisma.expenseReport.update({
         where: { id: reportId },
+        data: { totalAmount: { increment: amountDifference } },
       });
-      if (report) {
-        await prisma.expenseReport.update({
-          where: { id: reportId },
-          data: { totalAmount: report.totalAmount + amountDifference },
-        });
-      }
     }
 
     res.json(updatedItem);
@@ -536,16 +605,11 @@ router.delete('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: 
       where: { id: itemId },
     });
 
-    // Mettre à jour le montant total du rapport
-    const report = await prisma.expenseReport.findUnique({
+    // Mettre à jour le montant total du rapport de manière atomique
+    await prisma.expenseReport.update({
       where: { id: reportId },
+      data: { totalAmount: { decrement: existingItem.amount } },
     });
-    if (report) {
-      await prisma.expenseReport.update({
-        where: { id: reportId },
-        data: { totalAmount: report.totalAmount - existingItem.amount },
-      });
-    }
 
     res.status(204).send();
   } catch (error) {
