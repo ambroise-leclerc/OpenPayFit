@@ -606,7 +606,7 @@ docs: met à jour le guide d'installation
 
 ```bash
 # Cloner le projet
-git clone https://github.com/votre-org/OpenPayFit.git
+git clone https://github.com/ambroise-leclerc/OpenPayFit.git
 cd OpenPayFit
 
 # Backend
@@ -896,8 +896,8 @@ npx prisma generate
 ## Contact et support
 
 - 📖 **Documentation** : Dossier `/docs`
-- 🐛 **Issues** : [GitHub Issues](https://github.com/votre-org/OpenPayFit/issues)
-- 💬 **Discussions** : [GitHub Discussions](https://github.com/votre-org/OpenPayFit/discussions)
+- 🐛 **Issues** : [GitHub Issues](https://github.com/ambroise-leclerc/OpenPayFit/issues)
+- 💬 **Discussions** : [GitHub Discussions](https://github.com/ambroise-leclerc/OpenPayFit/discussions)
 
 ---
 
