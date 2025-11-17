@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CreateLeaveData, LeaveType } from '../services/api';
-import './LeaveRequestForm.module.css';
+import styles from './LeaveRequestForm.module.css';
 
 interface LeaveRequestFormProps {
   onSubmit: (leaveData: CreateLeaveData) => void;
@@ -48,7 +48,8 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
     if (startDate > endDate) return 0;
 
     // Calculer le nombre de jours (en comptant les week-ends)
-    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    // Note : Math.abs() n'est pas nécessaire ici car la garde ci-dessus garantit startDate <= endDate
+    const diffTime = endDate.getTime() - startDate.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 pour inclure le dernier jour
 
     return diffDays;
@@ -93,12 +94,12 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
   };
 
   return (
-    <form onSubmit={handleSubmit} className="leave-request-form">
+    <form onSubmit={handleSubmit} className={styles.leaveRequestForm}>
       <h3>Nouvelle demande de congé</h3>
 
-      {error && <div className="error-message">{error}</div>}
+      {error && <div className={styles.errorMessage}>{error}</div>}
 
-      <div className="form-group">
+      <div className={styles.formGroup}>
         <label htmlFor="type">Type de congé*</label>
         <select id="type" name="type" value={formData.type} onChange={handleChange} required>
           {leaveTypeOptions.map((option) => (
@@ -109,8 +110,8 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
         </select>
       </div>
 
-      <div className="form-row">
-        <div className="form-group">
+      <div className={styles.formRow}>
+        <div className={styles.formGroup}>
           <label htmlFor="startDate">Date de début*</label>
           <input
             type="date"
@@ -122,7 +123,7 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
           />
         </div>
 
-        <div className="form-group">
+        <div className={styles.formGroup}>
           <label htmlFor="endDate">Date de fin*</label>
           <input
             type="date"
@@ -135,7 +136,7 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
         </div>
       </div>
 
-      <div className="form-group">
+      <div className={styles.formGroup}>
         <label htmlFor="days">Nombre de jours*</label>
         <input
           type="number"
@@ -150,7 +151,7 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
         <small>Ce champ est calculé automatiquement selon les dates sélectionnées.</small>
       </div>
 
-      <div className="form-group">
+      <div className={styles.formGroup}>
         <label htmlFor="reason">Raison (optionnel)</label>
         <textarea
           id="reason"
@@ -162,12 +163,12 @@ export default function LeaveRequestForm({ onSubmit, onCancel }: LeaveRequestFor
         />
       </div>
 
-      <div className="form-actions">
-        <button type="submit" className="btn-submit">
+      <div className={styles.formActions}>
+        <button type="submit" className={styles.btnSubmit}>
           Soumettre la demande
         </button>
         {onCancel && (
-          <button type="button" className="btn-cancel" onClick={onCancel}>
+          <button type="button" className={styles.btnCancel} onClick={onCancel}>
             Annuler
           </button>
         )}

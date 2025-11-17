@@ -1,5 +1,5 @@
 import { Leave, LeaveBalance, LeaveType, LeaveStatus } from '../services/api';
-import './LeaveList.module.css';
+import styles from './LeaveList.module.css';
 
 interface LeaveListProps {
   leaves: Leave[];
@@ -28,10 +28,10 @@ const leaveStatusLabels: Record<LeaveStatus, string> = {
 
 // Classes CSS pour les statuts
 const statusClasses: Record<LeaveStatus, string> = {
-  PENDING: 'status-pending',
-  APPROVED: 'status-approved',
-  REJECTED: 'status-rejected',
-  CANCELLED: 'status-cancelled',
+  PENDING: styles.statusPending,
+  APPROVED: styles.statusApproved,
+  REJECTED: styles.statusRejected,
+  CANCELLED: styles.statusCancelled,
 };
 
 export default function LeaveList({
@@ -48,25 +48,25 @@ export default function LeaveList({
   };
 
   return (
-    <div className="leave-list">
+    <div className={styles.leaveList}>
       {/* Section des soldes de congés */}
-      <div className="leave-balances">
+      <div className={styles.leaveBalances}>
         <h3>Soldes de congés</h3>
         {balances.length === 0 ? (
           <p>Aucun solde de congés disponible.</p>
         ) : (
-          <div className="balances-grid">
+          <div className={styles.balancesGrid}>
             {balances.map((balance) => (
-              <div key={balance.id} className="balance-card">
+              <div key={balance.id} className={styles.balanceCard}>
                 <h4>{leaveTypeLabels[balance.type]}</h4>
-                <div className="balance-info">
+                <div className={styles.balanceInfo}>
                   <p>
                     <strong>Total:</strong> {balance.totalDays} jours
                   </p>
                   <p>
                     <strong>Utilisés:</strong> {balance.usedDays} jours
                   </p>
-                  <p className="remaining-days">
+                  <p className={styles.remainingDays}>
                     <strong>Restants:</strong> {balance.remainingDays} jours
                   </p>
                 </div>
@@ -77,12 +77,12 @@ export default function LeaveList({
       </div>
 
       {/* Section des demandes de congés */}
-      <div className="leave-requests">
+      <div className={styles.leaveRequests}>
         <h3>Demandes de congés</h3>
         {leaves.length === 0 ? (
           <p>Aucune demande de congé enregistrée.</p>
         ) : (
-          <table className="leaves-table">
+          <table className={styles.leavesTable}>
             <thead>
               <tr>
                 <th>Type</th>
@@ -102,15 +102,15 @@ export default function LeaveList({
                   <td>{formatDate(leave.endDate)}</td>
                   <td>{leave.days}</td>
                   <td>
-                    <span className={`status-badge ${statusClasses[leave.status]}`}>
+                    <span className={`${styles.statusBadge} ${statusClasses[leave.status]}`}>
                       {leaveStatusLabels[leave.status]}
                     </span>
                   </td>
                   <td>{leave.reason || '-'}</td>
-                  <td className="actions">
+                  <td className={styles.actions}>
                     {leave.status === 'PENDING' && onApprove && (
                       <button
-                        className="btn-approve"
+                        className={styles.btnApprove}
                         onClick={() => onApprove(leave.id)}
                         title="Approuver"
                       >
@@ -119,7 +119,7 @@ export default function LeaveList({
                     )}
                     {leave.status === 'PENDING' && onReject && (
                       <button
-                        className="btn-reject"
+                        className={styles.btnReject}
                         onClick={() => onReject(leave.id)}
                         title="Rejeter"
                       >
@@ -128,7 +128,7 @@ export default function LeaveList({
                     )}
                     {onDelete && (
                       <button
-                        className="btn-delete"
+                        className={styles.btnDelete}
                         onClick={() => onDelete(leave.id)}
                         title="Supprimer"
                       >

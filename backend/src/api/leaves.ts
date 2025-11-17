@@ -2,6 +2,9 @@ import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../lib/db';
 import { Prisma } from '@prisma/client';
 
+// Constantes
+const DEFAULT_ANNUAL_LEAVE_DAYS = 25; // Jours de congés payés annuels par défaut (France)
+
 // Définition des types pour les paramètres d'URL
 interface EmployeeParams {
   companyId: string;
@@ -10,6 +13,82 @@ interface EmployeeParams {
 
 interface LeaveParams extends EmployeeParams {
   leaveId: string;
+}
+
+// Types de statut valides pour les transitions
+type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+// Fonction utilitaire pour restaurer le solde de congés
+async function restoreLeaveBalance(
+  employeeId: string,
+  leaveDays: number,
+  year: number
+): Promise<void> {
+  const balance = await prisma.leaveBalance.findUnique({
+    where: {
+      employeeId_type_year: {
+        employeeId,
+        type: 'PAID_LEAVE',
+        year,
+      },
+    },
+  });
+
+  if (balance) {
+    // Utiliser Math.max pour éviter les soldes négatifs en cas de données incohérentes
+    const newUsedDays = Math.max(0, balance.usedDays - leaveDays);
+    const newRemainingDays = balance.totalDays - newUsedDays;
+
+    await prisma.leaveBalance.update({
+      where: { id: balance.id },
+      data: {
+        usedDays: newUsedDays,
+        remainingDays: newRemainingDays,
+      },
+    });
+  }
+}
+
+// Fonction utilitaire pour consommer le solde de congés
+async function consumeLeaveBalance(
+  employeeId: string,
+  leaveDays: number,
+  year: number
+): Promise<void> {
+  const balance = await prisma.leaveBalance.findUnique({
+    where: {
+      employeeId_type_year: {
+        employeeId,
+        type: 'PAID_LEAVE',
+        year,
+      },
+    },
+  });
+
+  if (balance) {
+    const newUsedDays = balance.usedDays + leaveDays;
+    const newRemainingDays = balance.totalDays - newUsedDays;
+
+    await prisma.leaveBalance.update({
+      where: { id: balance.id },
+      data: {
+        usedDays: newUsedDays,
+        remainingDays: newRemainingDays,
+      },
+    });
+  }
+}
+
+// Validation des transitions d'état
+function isValidStatusTransition(currentStatus: string, newStatus: string): boolean {
+  const validTransitions: Record<string, LeaveStatus[]> = {
+    PENDING: ['APPROVED', 'REJECTED', 'CANCELLED'],
+    APPROVED: ['CANCELLED'], // Une demande approuvée peut seulement être annulée
+    REJECTED: [], // Une demande rejetée ne peut plus changer d'état
+    CANCELLED: [], // Une demande annulée ne peut plus changer d'état
+  };
+
+  return validTransitions[currentStatus]?.includes(newStatus as LeaveStatus) ?? false;
 }
 
 const router = Router({ mergeParams: true });
@@ -99,54 +178,74 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
   }
 
   try {
-    // Vérifier le solde de congés disponible pour les congés payés
-    if (type === 'PAID_LEAVE') {
-      const currentYear = new Date().getFullYear();
-      const balance = await prisma.leaveBalance.findUnique({
-        where: {
-          employeeId_type_year: {
-            employeeId,
-            type: 'PAID_LEAVE',
-            year: currentYear,
+    // Utiliser une transaction pour éviter les race conditions lors de la vérification et création
+    const newLeave = await prisma.$transaction(async (tx) => {
+      // Vérifier le solde de congés disponible pour les congés payés
+      if (type === 'PAID_LEAVE') {
+        const currentYear = new Date().getFullYear();
+        const balance = await tx.leaveBalance.findUnique({
+          where: {
+            employeeId_type_year: {
+              employeeId,
+              type: 'PAID_LEAVE',
+              year: currentYear,
+            },
           },
+        });
+
+        if (!balance) {
+          // Créer un solde par défaut si inexistant
+          await tx.leaveBalance.create({
+            data: {
+              employeeId,
+              type: 'PAID_LEAVE',
+              year: currentYear,
+              totalDays: DEFAULT_ANNUAL_LEAVE_DAYS,
+              usedDays: 0,
+              remainingDays: DEFAULT_ANNUAL_LEAVE_DAYS,
+            },
+          });
+        } else if (balance.remainingDays < parsedDays) {
+          throw new Error(
+            JSON.stringify({
+              code: 'INSUFFICIENT_BALANCE',
+              remainingDays: balance.remainingDays,
+              requestedDays: parsedDays,
+            })
+          );
+        }
+      }
+
+      // Créer la demande de congé
+      return await tx.leave.create({
+        data: {
+          employeeId,
+          type,
+          startDate: start,
+          endDate: end,
+          days: parsedDays,
+          reason: reason || null,
+          status: 'PENDING',
         },
       });
-
-      if (!balance) {
-        // Créer un solde par défaut de 25 jours si inexistant
-        await prisma.leaveBalance.create({
-          data: {
-            employeeId,
-            type: 'PAID_LEAVE',
-            year: currentYear,
-            totalDays: 25,
-            usedDays: 0,
-            remainingDays: 25,
-          },
-        });
-      } else if (balance.remainingDays < parsedDays) {
-        return res.status(400).json({
-          error: 'Insufficient leave balance',
-          remainingDays: balance.remainingDays,
-          requestedDays: parsedDays,
-        });
-      }
-    }
-
-    const newLeave = await prisma.leave.create({
-      data: {
-        employeeId,
-        type,
-        startDate: start,
-        endDate: end,
-        days: parsedDays,
-        reason: reason || null,
-        status: 'PENDING',
-      },
     });
 
     res.status(201).json(newLeave);
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('{')) {
+      try {
+        const errorData = JSON.parse(error.message);
+        if (errorData.code === 'INSUFFICIENT_BALANCE') {
+          return res.status(400).json({
+            error: 'Insufficient leave balance',
+            remainingDays: errorData.remainingDays,
+            requestedDays: errorData.requestedDays,
+          });
+        }
+      } catch {
+        // Continue avec la gestion d'erreur générique
+      }
+    }
     console.error('Error creating leave:', error);
     res.status(500).json({ error: 'Failed to create leave request' });
   }
@@ -176,60 +275,27 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     const updateData: any = {};
 
     if (status !== undefined) {
+      // Valider la transition d'état
+      if (!isValidStatusTransition(currentLeave.status, status)) {
+        return res.status(400).json({
+          error: 'Invalid status transition',
+          currentStatus: currentLeave.status,
+          requestedStatus: status,
+        });
+      }
+
       updateData.status = status;
+
+      const currentYear = new Date().getFullYear();
 
       // Si on approuve un congé payé, mettre à jour le solde
       if (status === 'APPROVED' && currentLeave.type === 'PAID_LEAVE' && currentLeave.status !== 'APPROVED') {
-        const currentYear = new Date().getFullYear();
-        const balance = await prisma.leaveBalance.findUnique({
-          where: {
-            employeeId_type_year: {
-              employeeId,
-              type: 'PAID_LEAVE',
-              year: currentYear,
-            },
-          },
-        });
-
-        if (balance) {
-          const newUsedDays = balance.usedDays + currentLeave.days;
-          const newRemainingDays = balance.totalDays - newUsedDays;
-
-          await prisma.leaveBalance.update({
-            where: { id: balance.id },
-            data: {
-              usedDays: newUsedDays,
-              remainingDays: newRemainingDays,
-            },
-          });
-        }
+        await consumeLeaveBalance(employeeId, currentLeave.days, currentYear);
       }
 
       // Si on rejette ou annule un congé payé précédemment approuvé, restaurer le solde
       if ((status === 'REJECTED' || status === 'CANCELLED') && currentLeave.type === 'PAID_LEAVE' && currentLeave.status === 'APPROVED') {
-        const currentYear = new Date().getFullYear();
-        const balance = await prisma.leaveBalance.findUnique({
-          where: {
-            employeeId_type_year: {
-              employeeId,
-              type: 'PAID_LEAVE',
-              year: currentYear,
-            },
-          },
-        });
-
-        if (balance) {
-          const newUsedDays = balance.usedDays - currentLeave.days;
-          const newRemainingDays = balance.totalDays - newUsedDays;
-
-          await prisma.leaveBalance.update({
-            where: { id: balance.id },
-            data: {
-              usedDays: newUsedDays,
-              remainingDays: newRemainingDays,
-            },
-          });
-        }
+        await restoreLeaveBalance(employeeId, currentLeave.days, currentYear);
       }
     }
 
@@ -282,28 +348,7 @@ router.delete('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     // Si le congé était approuvé, restaurer le solde
     if (leave.status === 'APPROVED' && leave.type === 'PAID_LEAVE') {
       const currentYear = new Date().getFullYear();
-      const balance = await prisma.leaveBalance.findUnique({
-        where: {
-          employeeId_type_year: {
-            employeeId,
-            type: 'PAID_LEAVE',
-            year: currentYear,
-          },
-        },
-      });
-
-      if (balance) {
-        const newUsedDays = balance.usedDays - leave.days;
-        const newRemainingDays = balance.totalDays - newUsedDays;
-
-        await prisma.leaveBalance.update({
-          where: { id: balance.id },
-          data: {
-            usedDays: newUsedDays,
-            remainingDays: newRemainingDays,
-          },
-        });
-      }
+      await restoreLeaveBalance(employeeId, leave.days, currentYear);
     }
 
     await prisma.leave.delete({ where: { id: leaveId } });
@@ -338,9 +383,9 @@ router.get('/balances', async (req: Request<EmployeeParams>, res: Response) => {
           employeeId,
           type: 'PAID_LEAVE',
           year: currentYear,
-          totalDays: 25,
+          totalDays: DEFAULT_ANNUAL_LEAVE_DAYS,
           usedDays: 0,
-          remainingDays: 25,
+          remainingDays: DEFAULT_ANNUAL_LEAVE_DAYS,
         },
       });
       balances = [defaultBalance];

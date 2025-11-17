@@ -1,25 +1,25 @@
-.leave-list {
+.leaveList {
   margin: 20px 0;
 }
 
 /* Section des soldes */
-.leave-balances {
+.leaveBalances {
   margin-bottom: 40px;
 }
 
-.leave-balances h3 {
+.leaveBalances h3 {
   margin-bottom: 15px;
   color: #333;
 }
 
-.balances-grid {
+.balancesGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 15px;
   margin-bottom: 20px;
 }
 
-.balance-card {
+.balanceCard {
   background: #f8f9fa;
   border: 1px solid #dee2e6;
   border-radius: 8px;
@@ -27,19 +27,19 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
 
-.balance-card h4 {
+.balanceCard h4 {
   margin: 0 0 10px 0;
   color: #495057;
   font-size: 16px;
 }
 
-.balance-info p {
+.balanceInfo p {
   margin: 5px 0;
   font-size: 14px;
   color: #6c757d;
 }
 
-.balance-info .remaining-days {
+.balanceInfo .remainingDays {
   color: #28a745;
   font-weight: bold;
   font-size: 16px;
@@ -47,16 +47,16 @@
 }
 
 /* Section des demandes */
-.leave-requests {
+.leaveRequests {
   margin-top: 30px;
 }
 
-.leave-requests h3 {
+.leaveRequests h3 {
   margin-bottom: 15px;
   color: #333;
 }
 
-.leaves-table {
+.leavesTable {
   width: 100%;
   border-collapse: collapse;
   background: white;
@@ -65,11 +65,11 @@
   overflow: hidden;
 }
 
-.leaves-table thead {
+.leavesTable thead {
   background: #f8f9fa;
 }
 
-.leaves-table th {
+.leavesTable th {
   padding: 12px;
   text-align: left;
   font-weight: 600;
@@ -77,21 +77,21 @@
   border-bottom: 2px solid #dee2e6;
 }
 
-.leaves-table td {
+.leavesTable td {
   padding: 12px;
   border-bottom: 1px solid #e9ecef;
 }
 
-.leaves-table tbody tr:hover {
+.leavesTable tbody tr:hover {
   background: #f8f9fa;
 }
 
-.leaves-table tbody tr:last-child td {
+.leavesTable tbody tr:last-child td {
   border-bottom: none;
 }
 
 /* Badges de statut */
-.status-badge {
+.statusBadge {
   display: inline-block;
   padding: 4px 12px;
   border-radius: 12px;
@@ -100,22 +100,22 @@
   text-transform: uppercase;
 }
 
-.status-pending {
+.statusPending {
   background: #ffc107;
   color: #000;
 }
 
-.status-approved {
+.statusApproved {
   background: #28a745;
   color: white;
 }
 
-.status-rejected {
+.statusRejected {
   background: #dc3545;
   color: white;
 }
 
-.status-cancelled {
+.statusCancelled {
   background: #6c757d;
   color: white;
 }
@@ -135,29 +135,29 @@
   transition: all 0.2s;
 }
 
-.btn-approve {
+.btnApprove {
   background: #28a745;
   color: white;
 }
 
-.btn-approve:hover {
+.btnApprove:hover {
   background: #218838;
 }
 
-.btn-reject {
+.btnReject {
   background: #dc3545;
   color: white;
 }
 
-.btn-reject:hover {
+.btnReject:hover {
   background: #c82333;
 }
 
-.btn-delete {
+.btnDelete {
   background: #6c757d;
   color: white;
 }
 
-.btn-delete:hover {
+.btnDelete:hover {
   background: #5a6268;
 }
