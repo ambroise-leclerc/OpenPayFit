@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getCompanies,
@@ -12,6 +12,7 @@ import {
   type ExpenseReport,
   type CreateExpenseReportData,
   type ExpenseCategory,
+  ApiError,
 } from '../services/api';
 
 function ExpensesPage() {
@@ -38,22 +39,7 @@ function ExpensesPage() {
     ],
   });
 
-  // Charger les entreprises au montage
-  useEffect(() => {
-    if (token) {
-      loadCompanies();
-    }
-  }, [token]);
-
-  // Charger les employés et rapports quand une entreprise est sélectionnée
-  useEffect(() => {
-    if (selectedCompanyId && token) {
-      loadEmployees(selectedCompanyId);
-      loadReports(selectedCompanyId);
-    }
-  }, [selectedCompanyId, token]);
-
-  async function loadCompanies() {
+  const loadCompanies = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -62,41 +48,61 @@ function ExpensesPage() {
       if (data.length > 0) {
         setSelectedCompanyId(data[0].id);
       }
-    } catch (err: any) {
-      if (err.status === 401 || err.status === 403) {
+    } catch (err: unknown) {
+      if (err instanceof ApiError && (err.status === 401 || err.status === 403)) {
         logout();
       } else {
-        setError(err.message || 'Erreur lors du chargement des entreprises');
+        setError(err instanceof Error ? err.message : 'Erreur lors du chargement des entreprises');
       }
     } finally {
       setLoading(false);
     }
-  }
+  }, [token, logout]);
 
-  async function loadEmployees(companyId: string) {
+  const loadEmployees = useCallback(async (companyId: string) => {
     try {
       const data = await getEmployees(companyId, token!);
       setEmployees(data);
-      if (data.length > 0 && !formData.employeeId) {
-        setFormData({ ...formData, employeeId: data[0].id });
+      if (data.length > 0) {
+        setFormData(prevFormData => {
+          if (!prevFormData.employeeId) {
+            return { ...prevFormData, employeeId: data[0].id };
+          }
+          return prevFormData;
+        });
       }
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement des employés');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des employés');
     }
-  }
+  }, [token]);
 
-  async function loadReports(companyId: string) {
+  const loadReports = useCallback(async (companyId: string) => {
     try {
       setLoading(true);
       setError(null);
       const data = await getExpenseReports(companyId, {}, token!);
       setReports(data);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement des rapports');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors du chargement des rapports');
     } finally {
       setLoading(false);
     }
-  }
+  }, [token]);
+
+  // Charger les entreprises au montage
+  useEffect(() => {
+    if (token) {
+      loadCompanies();
+    }
+  }, [token, loadCompanies]);
+
+  // Charger les employés et rapports quand une entreprise est sélectionnée
+  useEffect(() => {
+    if (selectedCompanyId && token) {
+      loadEmployees(selectedCompanyId);
+      loadReports(selectedCompanyId);
+    }
+  }, [selectedCompanyId, token, loadEmployees, loadReports]);
 
   function addItem() {
     setFormData({
@@ -118,7 +124,7 @@ function ExpensesPage() {
     setFormData({ ...formData, items: newItems });
   }
 
-  function updateItem(index: number, field: string, value: any) {
+  function updateItem(index: number, field: string, value: string | number) {
     const newItems = [...formData.items];
     newItems[index] = { ...newItems[index], [field]: value };
     setFormData({ ...formData, items: newItems });
@@ -160,8 +166,8 @@ function ExpensesPage() {
 
       // Recharger les rapports
       await loadReports(selectedCompanyId);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la création du rapport');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création du rapport');
     } finally {
       setLoading(false);
     }
@@ -176,12 +182,12 @@ function ExpensesPage() {
       await updateExpenseReport(
         selectedCompanyId,
         reportId,
-        { status: newStatus as any },
+        { status: newStatus as 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID' },
         token!
       );
       await loadReports(selectedCompanyId);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la mise à jour du statut');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour du statut');
     } finally {
       setLoading(false);
     }
@@ -195,8 +201,8 @@ function ExpensesPage() {
       setError(null);
       await deleteExpenseReport(selectedCompanyId, reportId, token!);
       await loadReports(selectedCompanyId);
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la suppression du rapport');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la suppression du rapport');
     } finally {
       setLoading(false);
     }
