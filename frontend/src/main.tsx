@@ -12,6 +12,7 @@ import DashboardPage from './pages/DashboardPage';
 import PayrollPage from './pages/PayrollPage';
 import PayslipDetailPage from './pages/PayslipDetailPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
+import ExpensesPage from './pages/ExpensesPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ReglesListPage from './pages/admin/ReglesListPage';
 import SimulateurPage from './pages/admin/SimulateurPage';
@@ -78,6 +79,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AnalyticsDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'expenses',
+        element: (
+          <ProtectedRoute>
+            <ExpensesPage />
           </ProtectedRoute>
         ),
       },

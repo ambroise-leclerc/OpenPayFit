@@ -3,6 +3,7 @@ import { authenticateToken } from '../middleware/auth';
 import prisma from '../lib/db';
 import employeesRouter from './employees';
 import analyticsRouter from './analytics';
+import expenseReportsRouter from './expense-reports';
 
 const router = Router();
 
@@ -53,5 +54,9 @@ router.use('/:companyId/employees', employeesRouter);
 // Mount the analytics router for nested routes
 // This will handle all routes starting with /api/companies/:companyId/analytics
 router.use('/:companyId/analytics', analyticsRouter);
+
+// Mount the expense reports router for nested routes
+// This will handle all routes starting with /api/companies/:companyId/expense-reports
+router.use('/:companyId/expense-reports', expenseReportsRouter);
 
 export default router;

@@ -987,3 +987,329 @@ export async function getLeaveBalances(
 
   return response.json();
 }
+
+// --- Expense Reports Management (Gestion des Notes de Frais) ---
+
+// Enums pour les notes de frais
+export type ExpenseStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
+export type ExpenseCategory = 'TRANSPORT' | 'MEAL' | 'ACCOMMODATION' | 'EQUIPMENT' | 'OTHER';
+
+// Interfaces pour les notes de frais
+export interface ExpenseItem {
+  id: string;
+  reportId: string;
+  category: ExpenseCategory;
+  amount: number;
+  date: string;
+  description: string;
+  receiptPath?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ExpenseReport {
+  id: string;
+  employeeId: string;
+  title: string;
+  status: ExpenseStatus;
+  totalAmount: number;
+  items?: ExpenseItem[];
+  employee?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateExpenseReportData {
+  employeeId: string;
+  title: string;
+  items?: {
+    category: ExpenseCategory;
+    amount: number;
+    date: string;
+    description: string;
+    receiptPath?: string;
+  }[];
+}
+
+export interface UpdateExpenseReportData {
+  title?: string;
+  status?: ExpenseStatus;
+}
+
+export interface CreateExpenseItemData {
+  category: ExpenseCategory;
+  amount: number;
+  date: string;
+  description: string;
+  receiptPath?: string;
+}
+
+export interface UpdateExpenseItemData {
+  category?: ExpenseCategory;
+  amount?: number;
+  date?: string;
+  description?: string;
+  receiptPath?: string;
+}
+
+// --- Expense Reports API Functions ---
+
+/**
+ * Récupère tous les rapports de notes de frais d'une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param params - Paramètres de filtrage (status, employeeId)
+ * @param token - Token d'authentification
+ */
+export async function getExpenseReports(
+  companyId: string,
+  params: { status?: ExpenseStatus; employeeId?: string } = {},
+  token: string
+): Promise<ExpenseReport[]> {
+  const queryParams = new URLSearchParams();
+  if (params.status) queryParams.append('status', params.status);
+  if (params.employeeId) queryParams.append('employeeId', params.employeeId);
+
+  const queryString = queryParams.toString();
+  const url = `${API_URL}/companies/${companyId}/expense-reports${queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des notes de frais');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère un rapport de notes de frais spécifique
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param token - Token d'authentification
+ */
+export async function getExpenseReport(
+  companyId: string,
+  reportId: string,
+  token: string
+): Promise<ExpenseReport> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération du rapport de notes de frais');
+  }
+
+  return response.json();
+}
+
+/**
+ * Crée un nouveau rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportData - Données du rapport
+ * @param token - Token d'authentification
+ */
+export async function createExpenseReport(
+  companyId: string,
+  reportData: CreateExpenseReportData,
+  token: string
+): Promise<ExpenseReport> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(reportData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création du rapport de notes de frais');
+  }
+
+  return response.json();
+}
+
+/**
+ * Met à jour un rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param reportData - Données à mettre à jour
+ * @param token - Token d'authentification
+ */
+export async function updateExpenseReport(
+  companyId: string,
+  reportId: string,
+  reportData: UpdateExpenseReportData,
+  token: string
+): Promise<ExpenseReport> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}`,
+    {
+      method: 'PUT',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(reportData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour du rapport de notes de frais');
+  }
+
+  return response.json();
+}
+
+/**
+ * Supprime un rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param token - Token d'authentification
+ */
+export async function deleteExpenseReport(
+  companyId: string,
+  reportId: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression du rapport de notes de frais');
+  }
+}
+
+/**
+ * Ajoute un item à un rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param itemData - Données de l'item
+ * @param token - Token d'authentification
+ */
+export async function addExpenseItem(
+  companyId: string,
+  reportId: string,
+  itemData: CreateExpenseItemData,
+  token: string
+): Promise<ExpenseItem> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}/items`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(itemData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'ajout de la ligne de dépense');
+  }
+
+  return response.json();
+}
+
+/**
+ * Met à jour un item d'un rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param itemId - ID de l'item
+ * @param itemData - Données à mettre à jour
+ * @param token - Token d'authentification
+ */
+export async function updateExpenseItem(
+  companyId: string,
+  reportId: string,
+  itemId: string,
+  itemData: UpdateExpenseItemData,
+  token: string
+): Promise<ExpenseItem> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}/items/${itemId}`,
+    {
+      method: 'PUT',
+      headers: getAuthHeaders(token),
+      body: JSON.stringify(itemData),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour de la ligne de dépense');
+  }
+
+  return response.json();
+}
+
+/**
+ * Supprime un item d'un rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param itemId - ID de l'item
+ * @param token - Token d'authentification
+ */
+export async function deleteExpenseItem(
+  companyId: string,
+  reportId: string,
+  itemId: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}/items/${itemId}`,
+    {
+      method: 'DELETE',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de la ligne de dépense');
+  }
+}
+
+/**
+ * Upload un fichier de reçu pour un rapport de notes de frais
+ * @param companyId - ID de l'entreprise
+ * @param reportId - ID du rapport
+ * @param file - Fichier à uploader
+ * @param token - Token d'authentification
+ * @returns Le chemin du fichier uploadé
+ */
+export async function uploadReceipt(
+  companyId: string,
+  reportId: string,
+  file: File,
+  token: string
+): Promise<{ receiptPath: string }> {
+  const formData = new FormData();
+  formData.append('receipt', file);
+
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/expense-reports/${reportId}/upload-receipt`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'upload du reçu');
+  }
+
+  return response.json();
+}
