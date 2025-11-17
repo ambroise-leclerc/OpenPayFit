@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-// JWT secret should be set via environment variable for security
+// Le secret JWT doit être défini via une variable d'environnement pour des raisons de sécurité
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is not set.');
+  throw new Error('La variable d\'environnement JWT_SECRET n\'est pas définie.');
 }
 
 export function authenticateToken(req: Request, res: Response, next: NextFunction) {
@@ -13,12 +13,12 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
   if (token == null) {
-    return res.sendStatus(401); // No token, unauthorized
+    return res.sendStatus(401); // Pas de token, non autorisé
   }
 
   jwt.verify(token, JWT_SECRET as string, (err: any, payload: any) => {
     if (err) {
-      return res.sendStatus(403); // Token is no longer valid
+      return res.sendStatus(403); // Le token n'est plus valide
     }
 
     req.userId = payload.userId;

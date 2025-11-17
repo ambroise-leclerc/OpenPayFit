@@ -59,7 +59,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPG, PNG, and PDF files are allowed.'));
+    cb(new Error('Type de fichier invalide. Seuls les fichiers JPG, PNG et PDF sont autorisés.'));
   }
 };
 
@@ -78,7 +78,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
   const { companyId } = req.params;
 
   if (!companyId) {
-    return res.status(400).json({ error: 'Company ID is required' });
+    return res.status(400).json({ error: 'L\'ID de l\'entreprise est requis' });
   }
 
   try {
@@ -87,16 +87,16 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
     });
 
     if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
     if (company.ownerId !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Accès interdit' });
     }
 
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Erreur serveur interne' });
   }
 });
 
@@ -107,7 +107,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
   const { companyId } = req.params;
 
   if (!employeeId || !title) {
-    return res.status(400).json({ error: 'employeeId and title are required' });
+    return res.status(400).json({ error: 'Les champs employeeId et title sont requis' });
   }
 
   try {
@@ -120,7 +120,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
     });
 
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found in this company' });
+      return res.status(404).json({ error: 'Employé non trouvé dans cette entreprise' });
     }
 
     // Calculer le montant total si des items sont fournis
@@ -133,21 +133,21 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
 
         if (!category || amount == null || !date || !description) {
           return res.status(400).json({
-            error: 'Each item must have category, amount, date, and description'
+            error: 'Chaque élément doit avoir category, amount, date et description'
           });
         }
 
         // Valider la catégorie
         if (!isValidCategory(category)) {
           return res.status(400).json({
-            error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+            error: `Catégorie invalide. Doit être l'une des suivantes : ${VALID_CATEGORIES.join(', ')}`
           });
         }
 
         const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
         if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
           return res.status(400).json({
-            error: 'Each item amount must be a valid non-negative number'
+            error: 'Le montant de chaque élément doit être un nombre positif ou nul'
           });
         }
 
@@ -155,7 +155,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) {
           return res.status(400).json({
-            error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+            error: 'Format de date invalide. Utilisez le format ISO 8601 (YYYY-MM-DD)'
           });
         }
 
@@ -195,8 +195,8 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
 
     res.status(201).json(newReport);
   } catch (error) {
-    console.error('Error creating expense report:', error);
-    res.status(500).json({ error: 'Failed to create expense report' });
+    console.error('Erreur lors de la création du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la création du rapport de notes de frais' });
   }
 });
 
@@ -243,8 +243,8 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
 
     res.json(reports);
   } catch (error) {
-    console.error('Error fetching expense reports:', error);
-    res.status(500).json({ error: 'Failed to fetch expense reports' });
+    console.error('Erreur lors de la récupération des rapports de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la récupération des rapports de notes de frais' });
   }
 });
 
@@ -279,13 +279,13 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
     });
 
     if (!report) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     res.json(report);
   } catch (error) {
-    console.error('Error fetching expense report:', error);
-    res.status(500).json({ error: 'Failed to fetch expense report' });
+    console.error('Erreur lors de la récupération du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la récupération du rapport de notes de frais' });
   }
 });
 
@@ -307,7 +307,7 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
     });
 
     if (!existingReport) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     const updateData: { title?: string; status?: string } = {};
@@ -315,7 +315,7 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
     if (status !== undefined) {
       if (!isValidStatus(status)) {
         return res.status(400).json({
-          error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`
+          error: `Statut invalide. Doit être l'un des suivants : ${VALID_STATUSES.join(', ')}`
         });
       }
       updateData.status = status;
@@ -340,10 +340,10 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
     res.json(updatedReport);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
-    console.error('Error updating expense report:', error);
-    res.status(500).json({ error: 'Failed to update expense report' });
+    console.error('Erreur lors de la mise à jour du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la mise à jour du rapport de notes de frais' });
   }
 });
 
@@ -364,7 +364,7 @@ router.delete('/:reportId', async (req: Request<ReportParams>, res: Response) =>
     });
 
     if (!existingReport) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     await prisma.expenseReport.delete({
@@ -374,10 +374,10 @@ router.delete('/:reportId', async (req: Request<ReportParams>, res: Response) =>
     res.status(204).send();
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
-    console.error('Error deleting expense report:', error);
-    res.status(500).json({ error: 'Failed to delete expense report' });
+    console.error('Erreur lors de la suppression du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la suppression du rapport de notes de frais' });
   }
 });
 
@@ -389,27 +389,27 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
 
   if (!category || amount == null || !date || !description) {
     return res.status(400).json({
-      error: 'category, amount, date, and description are required'
+      error: 'Les champs category, amount, date et description sont requis'
     });
   }
 
   // Valider la catégorie
   if (!isValidCategory(category)) {
     return res.status(400).json({
-      error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+      error: `Catégorie invalide. Doit être l'une des suivantes : ${VALID_CATEGORIES.join(', ')}`
     });
   }
 
   const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
-    return res.status(400).json({ error: 'amount must be a valid non-negative number' });
+    return res.status(400).json({ error: 'Le montant doit être un nombre positif ou nul' });
   }
 
   // Valider la date
   const parsedDate = new Date(date);
   if (isNaN(parsedDate.getTime())) {
     return res.status(400).json({
-      error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+      error: 'Format de date invalide. Utilisez le format ISO 8601 (YYYY-MM-DD)'
     });
   }
 
@@ -425,7 +425,7 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
     });
 
     if (!existingReport) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     // Créer le nouvel item
@@ -448,8 +448,8 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
 
     res.status(201).json(newItem);
   } catch (error) {
-    console.error('Error creating expense item:', error);
-    res.status(500).json({ error: 'Failed to create expense item' });
+    console.error('Erreur lors de la création de l\'élément de note de frais :', error);
+    res.status(500).json({ error: 'Échec de la création de l\'élément de note de frais' });
   }
 });
 
@@ -474,7 +474,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
     });
 
     if (!existingItem) {
-      return res.status(404).json({ error: 'Expense item not found' });
+      return res.status(404).json({ error: 'Élément de note de frais non trouvé' });
     }
 
     const updateData: {
@@ -489,7 +489,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
     if (category !== undefined) {
       if (!isValidCategory(category)) {
         return res.status(400).json({
-          error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+          error: `Catégorie invalide. Doit être l'une des suivantes : ${VALID_CATEGORIES.join(', ')}`
         });
       }
       updateData.category = category;
@@ -499,7 +499,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
       const parsedDate = new Date(date);
       if (isNaN(parsedDate.getTime())) {
         return res.status(400).json({
-          error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+          error: 'Format de date invalide. Utilisez le format ISO 8601 (YYYY-MM-DD)'
         });
       }
       updateData.date = parsedDate;
@@ -511,7 +511,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
     if (amount !== undefined) {
       const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
       if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
-        return res.status(400).json({ error: 'amount must be a valid non-negative number' });
+        return res.status(400).json({ error: 'Le montant doit être un nombre positif ou nul' });
       }
       updateData.amount = parsedAmount;
       amountDifference = parsedAmount - existingItem.amount;
@@ -532,8 +532,8 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
 
     res.json(updatedItem);
   } catch (error) {
-    console.error('Error updating expense item:', error);
-    res.status(500).json({ error: 'Failed to update expense item' });
+    console.error('Erreur lors de la mise à jour de l\'élément de note de frais :', error);
+    res.status(500).json({ error: 'Échec de la mise à jour de l\'élément de note de frais' });
   }
 });
 
@@ -545,7 +545,7 @@ router.post('/:reportId/upload-receipt', upload.single('receipt'), async (req: R
 
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: 'Aucun fichier téléchargé' });
     }
 
     // Vérifier que le rapport existe et appartient à l'entreprise
@@ -561,19 +561,19 @@ router.post('/:reportId/upload-receipt', upload.single('receipt'), async (req: R
     if (!existingReport) {
       // Supprimer le fichier uploadé si le rapport n'existe pas
       fs.unlinkSync(req.file.path);
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     // Retourner le chemin relatif du fichier
     const receiptPath = `/uploads/receipts/${req.file.filename}`;
     res.status(200).json({ receiptPath });
   } catch (error) {
-    console.error('Error uploading receipt:', error);
+    console.error('Erreur lors du téléchargement du reçu :', error);
     // Supprimer le fichier en cas d'erreur
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ error: 'Failed to upload receipt' });
+    res.status(500).json({ error: 'Échec du téléchargement du reçu' });
   }
 });
 
@@ -597,7 +597,7 @@ router.delete('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: 
     });
 
     if (!existingItem) {
-      return res.status(404).json({ error: 'Expense item not found' });
+      return res.status(404).json({ error: 'Élément de note de frais non trouvé' });
     }
 
     // Supprimer l'item
@@ -613,8 +613,8 @@ router.delete('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: 
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting expense item:', error);
-    res.status(500).json({ error: 'Failed to delete expense item' });
+    console.error('Erreur lors de la suppression de l\'élément de note de frais :', error);
+    res.status(500).json({ error: 'Échec de la suppression de l\'élément de note de frais' });
   }
 });
 

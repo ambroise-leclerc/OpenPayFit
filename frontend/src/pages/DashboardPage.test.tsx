@@ -5,7 +5,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import * as api from '../services/api';
 import type { Company, Employee } from '../services/api';
 
-// Mock the api module
+// Simuler le module api
 vi.mock('../services/api');
 
 const mockCompanies: Company[] = [
@@ -27,8 +27,8 @@ describe('DashboardPage', () => {
     );
   };
 
-  it('should display companies and employees correctly', async () => {
-    // Setup mocks
+  it('devrait afficher correctement les entreprises et les employés', async () => {
+    // Configurer les mocks
     vi.mocked(api.getCompanies).mockResolvedValue(mockCompanies);
     vi.mocked(api.getEmployees).mockResolvedValue(mockEmployees);
     vi.mocked(api.getLeaves).mockResolvedValue([]);
@@ -36,27 +36,27 @@ describe('DashboardPage', () => {
 
     renderWithAuth(<DashboardPage />);
 
-    // 1. Check for loading state initially (optional, but good practice)
+    // 1. Vérifier l'état de chargement initialement (optionnel, mais bonne pratique)
     expect(screen.getByText(/chargement/i)).toBeInTheDocument();
 
-    // 2. Wait for companies to be loaded and displayed
+    // 2. Attendre que les entreprises soient chargées et affichées
     await waitFor(() => {
       expect(screen.getByText('Company A')).toBeInTheDocument();
       expect(screen.getByText('Company B')).toBeInTheDocument();
     });
 
-    // 3. Default selection should trigger employee fetch
+    // 3. La sélection par défaut devrait déclencher la récupération des employés
     await waitFor(() => {
-      // Names are in different cells, so we query for them separately
+      // Les noms sont dans des cellules différentes, on les recherche donc séparément
       expect(screen.getByText('Alice')).toBeInTheDocument();
       expect(screen.getByText('Smith')).toBeInTheDocument();
       expect(screen.getByText('Bob')).toBeInTheDocument();
       expect(screen.getByText('Johnson')).toBeInTheDocument();
     });
 
-    // 4. Simulate user selecting another company (let's pretend it has no employees)
-    vi.mocked(api.getEmployees).mockResolvedValue([]); // Mock response for the second company
-    // Use getAllByRole to get the first combobox (company selector)
+    // 4. Simuler la sélection d'une autre entreprise par l'utilisateur (supposons qu'elle n'a pas d'employés)
+    vi.mocked(api.getEmployees).mockResolvedValue([]); // Réponse mock pour la deuxième entreprise
+    // Utiliser getAllByRole pour obtenir le premier combobox (sélecteur d'entreprise)
     const [companySelect] = screen.getAllByRole('combobox');
     fireEvent.change(companySelect, { target: { value: '2' } });
 

@@ -19,7 +19,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
   const { companyId } = req.params;
 
   if (!companyId) {
-    return res.status(400).json({ error: 'Company ID is required' });
+    return res.status(400).json({ error: 'L\'ID de l\'entreprise est requis' });
   }
 
   try {
@@ -28,16 +28,16 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
     });
 
     if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
     if (company.ownerId !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+      return res.status(403).json({ error: 'Accès interdit' });
     }
 
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Erreur serveur interne' });
   }
 });
 
@@ -47,13 +47,13 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
   const { companyId } = req.params;
 
   if (!firstName || !lastName || !email || grossSalary == null) {
-    return res.status(400).json({ error: 'All employee fields are required' });
+    return res.status(400).json({ error: 'Tous les champs de l\'employé sont requis' });
   }
 
-  // Validate grossSalary
+  // Valider le salaire brut
   const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
   if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
-    return res.status(400).json({ error: 'grossSalary must be a valid non-negative number' });
+    return res.status(400).json({ error: 'Le salaire brut doit être un nombre positif valide' });
   }
 
   try {
@@ -69,9 +69,9 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
     res.status(201).json(newEmployee);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-      return res.status(409).json({ error: 'An employee with this email already exists' });
+      return res.status(409).json({ error: 'Un employé avec cet email existe déjà' });
     }
-    res.status(500).json({ error: 'Failed to create employee' });
+    res.status(500).json({ error: 'Échec de la création de l\'employé' });
   }
 });
 
@@ -87,12 +87,12 @@ router.put('/:employeeId', async (req: Request<EmployeeParams>, res: Response) =
   const { employeeId } = req.params;
   const { firstName, lastName, email, grossSalary } = req.body;
 
-  // Validate grossSalary if it is provided
+  // Valider le salaire brut s'il est fourni
   let updateData: any = { firstName, lastName, email };
   if (grossSalary !== undefined) {
     const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
     if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
-      return res.status(400).json({ error: 'grossSalary must be a valid non-negative number' });
+      return res.status(400).json({ error: 'Le salaire brut doit être un nombre positif valide' });
     }
     updateData.grossSalary = parsedGrossSalary;
   }
@@ -105,9 +105,9 @@ router.put('/:employeeId', async (req: Request<EmployeeParams>, res: Response) =
     res.json(updatedEmployee);
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Employee not found' });
+      return res.status(404).json({ error: 'Employé non trouvé' });
     }
-    res.status(500).json({ error: 'Failed to update employee' });
+    res.status(500).json({ error: 'Échec de la mise à jour de l\'employé' });
   }
 });
 
@@ -119,14 +119,14 @@ router.delete('/:employeeId', async (req: Request<EmployeeParams>, res: Response
     res.status(204).send();
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Employee not found' });
+      return res.status(404).json({ error: 'Employé non trouvé' });
     }
-    res.status(500).json({ error: 'Failed to delete employee' });
+    res.status(500).json({ error: 'Échec de la suppression de l\'employé' });
   }
 });
 
-// Mount the leaves router for nested routes
-// This will handle all routes starting with /api/companies/:companyId/employees/:employeeId/leaves
+// Monter le routeur des congés pour les routes imbriquées
+// Cela gérera toutes les routes commençant par /api/companies/:companyId/employees/:employeeId/leaves
 router.use('/:employeeId/leaves', leavesRouter);
 
 export default router;

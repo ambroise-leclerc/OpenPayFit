@@ -12,7 +12,7 @@ if (!shouldUseBetterSqlite) {
     prisma = new PrismaClient();
   } catch (error) {
     // Si Prisma ne peut pas être initialisé, utiliser better-sqlite3
-    console.warn('Warning: Prisma Client could not be initialized. Using better-sqlite3 directly.');
+    console.warn('Avertissement : Le client Prisma n\'a pas pu être initialisé. Utilisation de better-sqlite3 directement.');
   }
 }
 
@@ -40,11 +40,11 @@ if (!prisma || shouldUseBetterSqlite) {
     'accounting_export_logs'
   ]);
 
-  // Créer un wrapper Prisma-like pour better-sqlite3
+  // Créer un wrapper similaire à Prisma pour better-sqlite3
   const createModelWrapper = (tableName: string) => {
     // Valider le nom de table pour prévenir les injections SQL
     if (!ALLOWED_TABLES.has(tableName)) {
-      throw new Error(`Table name not allowed: ${tableName}`);
+      throw new Error(`Nom de table non autorisé : ${tableName}`);
     }
 
     return {
@@ -81,7 +81,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve(row);
       } catch (e) {
-        console.error(`Error in create for ${tableName}:`, e);
+        console.error(`Erreur dans create pour ${tableName} :`, e);
         return Promise.reject(e);
       }
     },
@@ -94,10 +94,10 @@ if (!prisma || shouldUseBetterSqlite) {
         let query = `SELECT * FROM ${tableName}`;
         const params: any[] = [];
 
-        // Handle unique constraint queries (e.g., companyId_type)
+        // Gérer les requêtes avec contraintes uniques (par ex., companyId_type)
         const whereKeys = Object.keys(args.where);
         if (whereKeys.length === 1 && typeof args.where[whereKeys[0]] === 'object') {
-          // Composite unique constraint
+          // Contrainte unique composite
           const compositeWhere = args.where[whereKeys[0]];
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(compositeWhere)) {
@@ -106,7 +106,7 @@ if (!prisma || shouldUseBetterSqlite) {
           }
           query += ` WHERE ${conditions.join(' AND ')}`;
         } else {
-          // Simple where
+          // Where simple
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
             conditions.push(`${key} = ?`);
@@ -121,7 +121,7 @@ if (!prisma || shouldUseBetterSqlite) {
         const row = stmt.get(...params);
         return Promise.resolve(row || null);
       } catch (e) {
-        console.error(`Error in findUnique for ${tableName}:`, e);
+        console.error(`Erreur dans findUnique pour ${tableName} :`, e);
         return Promise.resolve(null);
       }
     },
@@ -199,7 +199,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve(rows);
       } catch (e) {
-        console.error(`Error in findMany for ${tableName}:`, e);
+        console.error(`Erreur dans findMany pour ${tableName} :`, e);
         return Promise.resolve([]);
       }
     },
@@ -297,14 +297,14 @@ if (!prisma || shouldUseBetterSqlite) {
         const row = stmt.get(...params);
         return Promise.resolve(row || null);
       } catch (e) {
-        console.error(`Error in findFirst for ${tableName}:`, e);
+        console.error(`Erreur dans findFirst pour ${tableName} :`, e);
         return Promise.resolve(null);
       }
     },
     update: (args?: any) => {
       try {
         if (!args?.where || !args?.data) {
-          throw new Error('Update requires where and data');
+          throw new Error('Update nécessite where et data');
         }
 
         const data = { ...args.data };
@@ -339,14 +339,14 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve(row);
       } catch (e) {
-        console.error(`Error in update for ${tableName}:`, e);
+        console.error(`Erreur dans update pour ${tableName} :`, e);
         return Promise.reject(e);
       }
     },
     delete: (args?: any) => {
       try {
         if (!args?.where) {
-          throw new Error('Delete requires where');
+          throw new Error('Delete nécessite where');
         }
 
         const conditions: string[] = [];
@@ -363,7 +363,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve({ count: stmt.changes });
       } catch (e) {
-        console.error(`Error in delete for ${tableName}:`, e);
+        console.error(`Erreur dans delete pour ${tableName} :`, e);
         return Promise.reject(e);
       }
     },
@@ -388,7 +388,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve({ count: stmt.changes });
       } catch (e) {
-        console.error(`Error in deleteMany for ${tableName}:`, e);
+        console.error(`Erreur dans deleteMany pour ${tableName} :`, e);
         return Promise.reject(e);
       }
     },
