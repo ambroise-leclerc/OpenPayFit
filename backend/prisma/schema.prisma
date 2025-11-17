@@ -18,37 +18,41 @@ enum Role {
   ADMIN
 }
 
-model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  password  String
-  role      Role      @default(USER) // Rôle de l'utilisateur (USER ou ADMIN)
-  companies Company[] // Un utilisateur peut posséder plusieurs entreprises
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+model Utilisateur {
+  id          String      @id @default(cuid())
+  email       String      @unique
+  nom         String?     @map("name")
+  motDePasse  String      @map("password")
+  role        Role        @default(USER) // Rôle de l'utilisateur (USER ou ADMIN)
+  compagnies  Compagnie[] // Un utilisateur peut posséder plusieurs entreprises
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@map("User") // Conserve le nom de table existant pour compatibilité
 }
 
-model Company {
+model Compagnie {
   id                     String                   @id @default(cuid())
-  name                   String
-  owner                  User                     @relation(fields: [ownerId], references: [id])
-  ownerId                String                   // Clé étrangère vers User
-  employees              Employee[]               // Une entreprise a plusieurs employés
+  nom                    String                   @map("name")
+  proprietaire           Utilisateur              @relation(fields: [proprietaireId], references: [id])
+  proprietaireId         String                   @map("ownerId") // Clé étrangère vers Utilisateur
+  employes               Employe[]                // Une entreprise a plusieurs employés
   accountingIntegrations AccountingIntegration[]  // Intégrations comptables (Sage, QuickBooks, etc.)
   createdAt              DateTime                 @default(now())
   updatedAt              DateTime                 @updatedAt
+
+  @@map("Company") // Conserve le nom de table existant pour compatibilité
 }
 
-model Employee {
+model Employe {
   id            String         @id @default(cuid())
-  firstName     String
-  lastName      String
+  prenom        String         @map("firstName")
+  nom           String         @map("lastName")
   email         String         @unique
-  grossSalary   Float
+  salaireBrut   Float          @map("grossSalary")
   department    String?        // Département de l'employé (optionnel)
-  company       Company        @relation(fields: [companyId], references: [id])
-  companyId     String         // Clé étrangère vers Company
+  compagnie     Compagnie      @relation(fields: [compagnieId], references: [id])
+  compagnieId   String         @map("companyId") // Clé étrangère vers Compagnie
   fichesPaie    FichePaie[]    // Un employé peut avoir plusieurs fiches de paie
   leaves         Leave[]          // Un employé peut avoir plusieurs congés
   leaveBalances  LeaveBalance[]   // Un employé peut avoir plusieurs soldes de congés (par type et année)
@@ -56,6 +60,8 @@ model Employee {
   expenseReports ExpenseReport[]  // Un employé peut avoir plusieurs rapports de notes de frais
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
+
+  @@map("Employee") // Conserve le nom de table existant pour compatibilité
 }
 
 /// Fiche de paie d'un employé pour une période donnée
@@ -64,20 +70,20 @@ model Employee {
 model FichePaie {
   id                           String                      @id @default(cuid())
   payPeriod                    String                      // Format: "2025-08" (année-mois)
-  grossSalary                  Float                       // Salaire brut pour cette période
+  salaireBrut                  Float                       @map("grossSalary") // Salaire brut pour cette période
   deductions                   Float                       // Montant des cotisations sociales (legacy - à déprécier)
-  netSalary                    Float                       // Salaire net après déductions
+  salaireNet                   Float                       @map("netSalary") // Salaire net après déductions
   totalCotisationsSalariales   Float?                      // Total des cotisations salariales (nouveau système)
   totalCotisationsPatronales   Float?                      // Total des cotisations patronales (nouveau système)
   totalChargesFiscales         Float?                      // Total des charges fiscales (nouveau système)
   coutTotal                    Float?                      // Coût total employeur = brut + cotisations patronales
-  employee                     Employee                    @relation(fields: [employeeId], references: [id])
-  employeeId                   String                      // Clé étrangère vers Employee
+  employe                      Employe                     @relation(fields: [employeId], references: [id])
+  employeId                    String                      @map("employeeId") // Clé étrangère vers Employe
   lignesCotisations            LigneCotisationFichePaie[]  // Détails ligne par ligne des cotisations
   createdAt                    DateTime                    @default(now())
   updatedAt                    DateTime                    @updatedAt
 
-  @@unique([employeeId, payPeriod]) // Un employé ne peut avoir qu'une fiche de paie par période
+  @@unique([employeId, payPeriod]) // Un employé ne peut avoir qu'une fiche de paie par période
   @@map("Payslip") // Conserve le nom de table existant pour compatibilité
 }
 
@@ -293,8 +299,8 @@ enum LeaveType {
 /// Congé d'un employé
 model Leave {
   id         String      @id @default(cuid())
-  employee   Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId String
+  employe    Employe     @relation(fields: [employeId], references: [id], onDelete: Cascade)
+  employeId  String      @map("employeeId")
   type       LeaveType
   status     LeaveStatus @default(PENDING)
   startDate  DateTime    // Date de début du congé
@@ -304,7 +310,7 @@ model Leave {
   createdAt  DateTime    @default(now())
   updatedAt  DateTime    @updatedAt
 
-  @@index([employeeId])
+  @@index([employeId])
   @@index([startDate, endDate])
   @@map("leaves")
 }
@@ -313,8 +319,8 @@ model Leave {
 /// Suit le nombre de jours de congés disponibles pour chaque type de congé
 model LeaveBalance {
   id                String   @id @default(cuid())
-  employee          Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId        String
+  employe           Employe  @relation(fields: [employeId], references: [id], onDelete: Cascade)
+  employeId         String   @map("employeeId")
   type              LeaveType
   year              Int      // Année du solde (ex: 2025)
   totalDays         Float    // Nombre total de jours acquis (ex: 25 jours pour congés payés)
@@ -323,8 +329,8 @@ model LeaveBalance {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  @@unique([employeeId, type, year]) // Un employé a un seul solde par type de congé et par année
-  @@index([employeeId])
+  @@unique([employeId, type, year]) // Un employé a un seul solde par type de congé et par année
+  @@index([employeId])
   @@map("leave_balances")
 }
 
@@ -349,8 +355,8 @@ enum ExpenseCategory {
 /// Utilisez ExpenseReport et ExpenseItem pour les nouveaux développements
 model Expense {
   id          String          @id @default(cuid())
-  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId  String
+  employe     Employe         @relation(fields: [employeId], references: [id], onDelete: Cascade)
+  employeId   String          @map("employeeId")
   category    ExpenseCategory
   status      ExpenseStatus   @default(PENDING)
   amount      Float           // Montant en euros
@@ -359,7 +365,7 @@ model Expense {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  @@index([employeeId])
+  @@index([employeId])
   @@index([date])
   @@map("expenses")
 }
@@ -368,8 +374,8 @@ model Expense {
 /// Un rapport regroupe plusieurs dépenses d'un employé pour une période
 model ExpenseReport {
   id          String          @id @default(cuid())
-  employee    Employee        @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  employeeId  String
+  employe     Employe         @relation(fields: [employeId], references: [id], onDelete: Cascade)
+  employeId   String          @map("employeeId")
   title       String          // Titre du rapport (ex: "Déplacement Paris - Mars 2025")
   status      ExpenseStatus   @default(PENDING)
   totalAmount Float           @default(0) // Montant total calculé à partir des lignes
@@ -377,7 +383,7 @@ model ExpenseReport {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
-  @@index([employeeId])
+  @@index([employeId])
   @@index([status])
   @@map("expense_reports")
 }
@@ -420,8 +426,8 @@ enum AccountingIntegrationStatus {
 /// Permet l'export automatique des données de paie vers un logiciel comptable
 model AccountingIntegration {
   id                String                       @id @default(cuid())
-  company           Company                      @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId         String
+  compagnie         Compagnie                    @relation(fields: [compagnieId], references: [id], onDelete: Cascade)
+  compagnieId       String                       @map("companyId")
   type              AccountingIntegrationType
   status            AccountingIntegrationStatus  @default(INACTIVE)
   configuration     String                       // JSON avec la configuration spécifique (mapping comptes, credentials OAuth, etc.)
@@ -431,7 +437,7 @@ model AccountingIntegration {
   createdAt         DateTime                     @default(now())
   updatedAt         DateTime                     @updatedAt
 
-  @@unique([companyId, type]) // Une entreprise ne peut avoir qu'une seule intégration de chaque type
+  @@unique([compagnieId, type]) // Une entreprise ne peut avoir qu'une seule intégration de chaque type
   @@map("accounting_integrations")
 }
 

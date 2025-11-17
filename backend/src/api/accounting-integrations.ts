@@ -37,7 +37,7 @@ async function verifyCompanyOwnership(req: Request, res: Response, next: any) {
   const userId = (req as any).userId;
   const companyId = req.params.companyId;
 
-  const company = await prisma.company.findUnique({
+  const company = await prisma.compagnie.findUnique({
     where: { id: companyId }
   });
 
@@ -45,7 +45,7 @@ async function verifyCompanyOwnership(req: Request, res: Response, next: any) {
     return res.status(404).json({ error: 'Entreprise non trouvée' });
   }
 
-  if (company.ownerId !== userId) {
+  if (company.proprietaireId !== userId) {
     return res.status(403).json({ error: 'Accès non autorisé' });
   }
 
@@ -65,7 +65,7 @@ router.get(
       const { companyId } = req.params;
 
       const integrations = await prisma.accountingIntegration.findMany({
-        where: { companyId },
+        where: { compagnieId: companyId },
         include: {
           exportLogs: {
             orderBy: { createdAt: 'desc' },
@@ -114,8 +114,8 @@ router.post(
       // Vérifier qu'il n'existe pas déjà une intégration de ce type
       const existing = await prisma.accountingIntegration.findUnique({
         where: {
-          companyId_type: {
-            companyId,
+          compagnieId_type: {
+            compagnieId: companyId,
             type
           }
         }
@@ -129,7 +129,7 @@ router.post(
 
       const integration = await prisma.accountingIntegration.create({
         data: {
-          companyId,
+          compagnieId: companyId,
           type,
           configuration: JSON.stringify(configuration),
           status: 'ACTIVE'

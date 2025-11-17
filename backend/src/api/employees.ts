@@ -3,6 +3,21 @@ import prisma from '../lib/db';
 import { Prisma } from '@prisma/client';
 import leavesRouter from './leaves';
 
+// Fonction helper pour transformer les objets Employe en format anglais
+function transformEmploye(e: any) {
+  return {
+    id: e.id,
+    firstName: e.prenom,
+    lastName: e.nom,
+    email: e.email,
+    grossSalary: e.salaireBrut,
+    department: e.department,
+    companyId: e.compagnieId,
+    createdAt: e.createdAt,
+    updatedAt: e.updatedAt,
+  };
+}
+
 // Définition des types pour les paramètres d'URL pour plus de sécurité
 interface CompanyParams {
   companyId: string;
@@ -23,7 +38,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
   }
 
   try {
-    const company = await prisma.company.findUnique({
+    const company = await prisma.compagnie.findUnique({
       where: { id: companyId },
     });
 
@@ -31,7 +46,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
       return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
-    if (company.ownerId !== req.userId) {
+    if (company.proprietaireId !== req.userId) {
       return res.status(403).json({ error: 'Interdit' });
     }
 
@@ -57,16 +72,16 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
   }
 
   try {
-    const newEmployee = await prisma.employee.create({
+    const newEmployee = await prisma.employe.create({
       data: {
-        firstName,
-        lastName,
+        prenom: firstName,
+        nom: lastName,
         email,
-        grossSalary: parsedGrossSalary,
-        companyId: companyId,
+        salaireBrut: parsedGrossSalary,
+        compagnieId: companyId,
       },
     });
-    res.status(201).json(newEmployee);
+    res.status(201).json(transformEmploye(newEmployee));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'Un employé avec cet email existe déjà' });
@@ -78,8 +93,8 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
 // GET /api/companies/:companyId/employees
 router.get('/', async (req: Request<CompanyParams>, res: Response) => {
   const { companyId } = req.params;
-  const employees = await prisma.employee.findMany({ where: { companyId } });
-  res.json(employees);
+  const employees = await prisma.employe.findMany({ where: { compagnieId: companyId } });
+  res.json(employees.map(transformEmploye));
 });
 
 // PUT /api/companies/:companyId/employees/:employeeId
@@ -88,21 +103,21 @@ router.put('/:employeeId', async (req: Request<EmployeeParams>, res: Response) =
   const { firstName, lastName, email, grossSalary } = req.body;
 
   // Valider grossSalary s'il est fourni
-  let updateData: any = { firstName, lastName, email };
+  let updateData: any = { prenom: firstName, nom: lastName, email };
   if (grossSalary !== undefined) {
     const parsedGrossSalary = typeof grossSalary === 'number' ? grossSalary : parseFloat(grossSalary);
     if (!Number.isFinite(parsedGrossSalary) || parsedGrossSalary < 0) {
       return res.status(400).json({ error: 'grossSalary doit être un nombre non négatif valide' });
     }
-    updateData.grossSalary = parsedGrossSalary;
+    updateData.salaireBrut = parsedGrossSalary;
   }
 
   try {
-    const updatedEmployee = await prisma.employee.update({
+    const updatedEmployee = await prisma.employe.update({
       where: { id: employeeId },
       data: updateData,
     });
-    res.json(updatedEmployee);
+    res.json(transformEmploye(updatedEmployee));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Employé non trouvé' });
@@ -115,7 +130,7 @@ router.put('/:employeeId', async (req: Request<EmployeeParams>, res: Response) =
 router.delete('/:employeeId', async (req: Request<EmployeeParams>, res: Response) => {
   const { employeeId } = req.params;
   try {
-    await prisma.employee.delete({ where: { id: employeeId } });
+    await prisma.employe.delete({ where: { id: employeeId } });
     res.status(204).send();
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {

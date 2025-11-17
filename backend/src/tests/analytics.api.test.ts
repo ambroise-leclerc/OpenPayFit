@@ -42,20 +42,20 @@ describe.skip('Endpoints API Analytics (nécessite Prisma - ignoré en CI)', () 
     bd.exec('DELETE FROM expenses');
     bd.exec('DELETE FROM leaves');
     bd.exec('DELETE FROM Payslip');
-    bd.exec('DELETE FROM Employee');
-    bd.exec('DELETE FROM Company');
-    bd.exec('DELETE FROM User');
+    bd.exec('DELETE FROM Employe');
+    bd.exec('DELETE FROM Compagnie');
+    bd.exec('DELETE FROM Utilisateur');
 
     // Création d'un utilisateur
     const utilisateur1Id = randomUUID();
-    bd.prepare(`INSERT INTO User (id, email, password, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    bd.prepare(`INSERT INTO Utilisateur (id, email, motDePasse, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(utilisateur1Id, 'utilisateur1@test.com', 'p1', 'USER');
 
     utilisateur1 = { id: utilisateur1Id, email: 'utilisateur1@test.com' };
 
     // Création d'une entreprise
     const entreprise1Id = randomUUID();
-    bd.prepare(`INSERT INTO Company (id, name, ownerId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    bd.prepare(`INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(entreprise1Id, 'Entreprise Analytics', utilisateur1.id);
 
     entreprise1 = { id: entreprise1Id, nom: 'Entreprise Analytics', proprietaireId: utilisateur1.id };
@@ -63,9 +63,9 @@ describe.skip('Endpoints API Analytics (nécessite Prisma - ignoré en CI)', () 
     // Création de 2 employés avec départements
     const emp1Id = randomUUID();
     const emp2Id = randomUUID();
-    bd.prepare(`INSERT INTO Employee (id, firstName, lastName, email, grossSalary, department, companyId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    bd.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, departement, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(emp1Id, 'Alice', 'Martin', 'alice@entreprise.com', 45000, 'Tech', entreprise1.id);
-    bd.prepare(`INSERT INTO Employee (id, firstName, lastName, email, grossSalary, department, companyId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    bd.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, departement, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(emp2Id, 'Bob', 'Dupont', 'bob@entreprise.com', 50000, 'Commercial', entreprise1.id);
 
     employe1 = { id: emp1Id, prenom: 'Alice', nom: 'Martin', email: 'alice@entreprise.com', salaireBrut: 45000, departement: 'Tech', entrepriseId: entreprise1.id };
@@ -103,9 +103,9 @@ describe.skip('Endpoints API Analytics (nécessite Prisma - ignoré en CI)', () 
     bd.exec('DELETE FROM expenses');
     bd.exec('DELETE FROM leaves');
     bd.exec('DELETE FROM Payslip');
-    bd.exec('DELETE FROM Employee');
-    bd.exec('DELETE FROM Company');
-    bd.exec('DELETE FROM User');
+    bd.exec('DELETE FROM Employe');
+    bd.exec('DELETE FROM Compagnie');
+    bd.exec('DELETE FROM Utilisateur');
     bd.close();
   });
 

@@ -17,45 +17,45 @@ function setupTestDatabase() {
   const db = new Database(dbPath);
 
   // Nettoyer les tables
-  db.exec(`DELETE FROM Payslip`);
-  db.exec(`DELETE FROM Employee`);
-  db.exec(`DELETE FROM Company`);
-  db.exec(`DELETE FROM User`);
+  db.exec(`DELETE FROM FichePaie`);
+  db.exec(`DELETE FROM Employe`);
+  db.exec(`DELETE FROM Compagnie`);
+  db.exec(`DELETE FROM Utilisateur`);
 
   return db;
 }
 
-function createTestUser(db: DatabaseType, email: string, password: string = 'password123'): string {
+function createTestUser(db: DatabaseType, email: string, motDePasse: string = 'password123'): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO User (id, email, password, createdAt, updatedAt)
+    INSERT INTO Utilisateur (id, email, motDePasse, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
-  `).run(id, email, password);
+  `).run(id, email, motDePasse);
   return id;
 }
 
-function createTestCompany(db: DatabaseType, name: string, ownerId: string): string {
+function createTestCompany(db: DatabaseType, nom: string, proprietaireId: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
+    INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
-  `).run(id, name, ownerId);
+  `).run(id, nom, proprietaireId);
   return id;
 }
 
 function createTestEmployee(
   db: DatabaseType,
-  firstName: string,
-  lastName: string,
+  prenom: string,
+  nom: string,
   email: string,
-  grossSalary: number,
-  companyId: string
+  salaireBrut: number,
+  compagnieId: string
 ): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt)
+    INSERT INTO Employe (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `).run(id, firstName, lastName, email, grossSalary, companyId);
+  `).run(id, prenom, nom, email, salaireBrut, compagnieId);
   return id;
 }
 
@@ -98,10 +98,10 @@ describe('Payroll API Endpoints', () => {
   afterAll(() => {
     // Nettoyage final
     const cleanupDb = new Database(dbPath);
-    cleanupDb.exec(`DELETE FROM Payslip`);
-    cleanupDb.exec(`DELETE FROM Employee`);
-    cleanupDb.exec(`DELETE FROM Company`);
-    cleanupDb.exec(`DELETE FROM User`);
+    cleanupDb.exec(`DELETE FROM FichePaie`);
+    cleanupDb.exec(`DELETE FROM Employe`);
+    cleanupDb.exec(`DELETE FROM Compagnie`);
+    cleanupDb.exec(`DELETE FROM Utilisateur`);
     cleanupDb.close();
   });
 
@@ -305,8 +305,8 @@ describe('Payroll API Endpoints', () => {
       expect(res.statusCode).toEqual(200);
       expect(res.body.id).toBe(payslipId);
       expect(res.body.payPeriod).toBe('2025-08');
-      expect(res.body.grossSalary).toBeDefined();
-      expect(res.body.netSalary).toBeDefined();
+      expect(res.body.salaireBrut).toBeDefined();
+      expect(res.body.salaireNet).toBeDefined();
       expect(res.body.deductions).toBeDefined();
     });
 

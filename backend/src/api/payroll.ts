@@ -41,7 +41,7 @@ function isCompanyOwner(companyId: string, userId: string): boolean {
 
   const result = db.prepare(`
     SELECT COUNT(*) as count
-    FROM Company
+    FROM Compagnie
     WHERE id = ? AND ownerId = ?
   `).get(companyId, userId) as { count: number };
 
@@ -262,14 +262,14 @@ router.get('/:id/pdf', authenticateToken, (req: Request, res: Response) => {
 
     const payslip = db.prepare(`
       SELECT
-        p.id, p.payPeriod, p.grossSalary, p.deductions, p.netSalary, p.employeeId, p.createdAt,
-        e.firstName as employeeFirstName,
-        e.lastName as employeeLastName,
+        p.id, p.payPeriod, p.salaireBrut as grossSalary, p.deductions, p.salaireNet as netSalary, p.employeId as employeeId, p.createdAt,
+        e.prenom as employeeFirstName,
+        e.nom as employeeLastName,
         e.email as employeeEmail,
-        c.name as companyName
-      FROM Payslip p
-      INNER JOIN Employee e ON p.employeeId = e.id
-      INNER JOIN Company c ON e.companyId = c.id
+        c.nom as companyName
+      FROM FichePaie p
+      INNER JOIN Employe e ON p.employeId = e.id
+      INNER JOIN Compagnie c ON e.compagnieId = c.id
       WHERE p.id = ?
     `).get(id) as PayslipWithEmployee | undefined;
 

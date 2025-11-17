@@ -14,10 +14,18 @@ router.use(authenticateToken);
 // Récupère toutes les entreprises de l'utilisateur authentifié
 router.get('/', async (req, res) => {
   try {
-    const companies = await prisma.company.findMany({
-      where: { ownerId: req.userId },
+    const companies = await prisma.compagnie.findMany({
+      where: { proprietaireId: req.userId },
     });
-    res.json(companies);
+    // Transformer les objets avant de les renvoyer
+    const transformedCompanies = companies.map((c: any) => ({
+      id: c.id,
+      name: c.nom,
+      ownerId: c.proprietaireId,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    }));
+    res.json(transformedCompanies);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Échec de la récupération des entreprises' });
@@ -34,13 +42,19 @@ router.post('/', async (req, res) => {
   }
 
   try {
-    const newCompany = await prisma.company.create({
+    const newCompany = await prisma.compagnie.create({
       data: {
-        name,
-        ownerId: req.userId!,
+        nom: name,
+        proprietaireId: req.userId!,
       },
     });
-    res.status(201).json(newCompany);
+    res.status(201).json({
+      id: newCompany.id,
+      name: newCompany.nom,
+      ownerId: newCompany.proprietaireId,
+      createdAt: newCompany.createdAt,
+      updatedAt: newCompany.updatedAt,
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Échec de la création de l\'entreprise' });

@@ -164,7 +164,7 @@ export async function exportPayrollToSage(
   const fichesPaie = await prisma.fichePaie.findMany({
     where: {
       employee: {
-        companyId: companyId
+        compagnieId: companyId
       },
       payPeriod: payPeriod
     },
@@ -189,8 +189,8 @@ export async function exportPayrollToSage(
       date,
       journalCode,
       accountNumber: config.accountMapping.salaryExpense,
-      label: `Salaire ${fiche.employee.firstName} ${fiche.employee.lastName}`,
-      debit: fiche.grossSalary,
+      label: `Salaire ${fiche.employee.prenom} ${fiche.employee.nom}`,
+      debit: fiche.salaireBrut,
       credit: 0,
       piece: `PAIE-${payPeriod}`
     });
@@ -201,7 +201,7 @@ export async function exportPayrollToSage(
         date,
         journalCode,
         accountNumber: config.accountMapping.socialDebt,
-        label: `Cotisations salariales ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+        label: `Cotisations salariales ${fiche.employee.prenom} ${fiche.employee.nom}`,
         debit: 0,
         credit: fiche.totalCotisationsSalariales,
         piece: `PAIE-${payPeriod}`
@@ -214,7 +214,7 @@ export async function exportPayrollToSage(
         date,
         journalCode,
         accountNumber: config.accountMapping.socialCharges,
-        label: `Cotisations patronales ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+        label: `Cotisations patronales ${fiche.employee.prenom} ${fiche.employee.nom}`,
         debit: fiche.totalCotisationsPatronales,
         credit: 0,
         piece: `PAIE-${payPeriod}`
@@ -224,7 +224,7 @@ export async function exportPayrollToSage(
         date,
         journalCode,
         accountNumber: config.accountMapping.socialDebt,
-        label: `Dette sociale ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+        label: `Dette sociale ${fiche.employee.prenom} ${fiche.employee.nom}`,
         debit: 0,
         credit: fiche.totalCotisationsPatronales,
         piece: `PAIE-${payPeriod}`
@@ -236,9 +236,9 @@ export async function exportPayrollToSage(
       date,
       journalCode,
       accountNumber: config.accountMapping.employeeDebt,
-      label: `Net à payer ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+      label: `Net à payer ${fiche.employee.prenom} ${fiche.employee.nom}`,
       debit: 0,
-      credit: fiche.netSalary,
+      credit: fiche.salaireNet,
       piece: `PAIE-${payPeriod}`
     });
   });

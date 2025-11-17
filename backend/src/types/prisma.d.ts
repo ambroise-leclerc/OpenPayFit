@@ -4,43 +4,60 @@
  */
 
 declare module '@prisma/client' {
-  export interface User {
+  export interface Utilisateur {
     id: string;
     email: string;
-    name: string | null;
-    password: string;
+    nom: string | null;
+    motDePasse: string;
+    role: Role;
     createdAt: Date;
     updatedAt: Date;
   }
 
-  export interface Company {
+  export interface Compagnie {
     id: string;
-    name: string;
-    ownerId: string;
+    nom: string;
+    proprietaireId: string;
     createdAt: Date;
     updatedAt: Date;
   }
 
-  export interface Employee {
+  export interface Employe {
     id: string;
-    firstName: string;
-    lastName: string;
+    prenom: string;
+    nom: string;
     email: string;
-    grossSalary: number;
-    companyId: string;
+    salaireBrut: number;
+    department?: string;
+    compagnieId: string;
     createdAt: Date;
     updatedAt: Date;
   }
 
-  export interface Payslip {
+  export interface FichePaie {
     id: string;
     payPeriod: string;
-    grossSalary: number;
+    salaireBrut: number;
     deductions: number;
-    netSalary: number;
-    employeeId: string;
+    salaireNet: number;
+    totalCotisationsSalariales?: number;
+    totalCotisationsPatronales?: number;
+    totalChargesFiscales?: number;
+    coutTotal?: number;
+    employeId: string;
     createdAt: Date;
     updatedAt: Date;
+  }
+
+  // Alias pour compatibilité avec le code existant
+  export type User = Utilisateur;
+  export type Company = Compagnie;
+  export type Employee = Employe;
+  export type Payslip = FichePaie;
+
+  export enum Role {
+    USER = 'USER',
+    ADMIN = 'ADMIN'
   }
 
   export namespace Prisma {
@@ -53,10 +70,10 @@ declare module '@prisma/client' {
   }
 
   export class PrismaClient {
-    user: any;
-    company: any;
-    employee: any;
-    payslip: any;
+    utilisateur: any;
+    compagnie: any;
+    employe: any;
+    fichePaie: any;
     $disconnect(): Promise<void>;
     $connect(): Promise<void>;
   }

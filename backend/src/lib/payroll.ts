@@ -104,7 +104,7 @@ export function getCompanyEmployees(companyId: string): Employee[] {
 
   const employees = db.prepare(`
     SELECT id, firstName, lastName, email, grossSalary, companyId
-    FROM Employee
+    FROM Employe
     WHERE companyId = ?
   `).all(companyId) as Employee[];
 
@@ -120,7 +120,7 @@ export function payslipExists(employeeId: string, payPeriod: string): boolean {
 
   const result = db.prepare(`
     SELECT COUNT(*) as count
-    FROM Payslip
+    FROM FichePaie
     WHERE employeeId = ? AND payPeriod = ?
   `).get(employeeId, payPeriod) as { count: number };
 
@@ -136,8 +136,8 @@ export function getPayslipsByPeriod(companyId: string, payPeriod: string): Paysl
 
   const payslips = db.prepare(`
     SELECT p.id, p.payPeriod, p.grossSalary, p.deductions, p.netSalary, p.employeeId, e.firstName as employeeFirstName, e.lastName as employeeLastName, p.createdAt, p.updatedAt
-    FROM Payslip p
-    INNER JOIN Employee e ON p.employeeId = e.id
+    FROM FichePaie p
+    INNER JOIN Employe e ON p.employeeId = e.id
     WHERE e.companyId = ? AND p.payPeriod = ?
     ORDER BY p.createdAt DESC
   `).all(companyId, payPeriod) as Payslip[];
@@ -153,8 +153,8 @@ export function getAllPayslips(companyId: string): Payslip[] {
 
   const payslips = db.prepare(`
     SELECT p.id, p.payPeriod, p.grossSalary, p.deductions, p.netSalary, p.employeeId, e.firstName as employeeFirstName, e.lastName as employeeLastName, p.createdAt, p.updatedAt
-    FROM Payslip p
-    INNER JOIN Employee e ON p.employeeId = e.id
+    FROM FichePaie p
+    INNER JOIN Employe e ON p.employeeId = e.id
     WHERE e.companyId = ?
     ORDER BY p.payPeriod DESC, p.createdAt DESC
   `).all(companyId) as Payslip[];
@@ -170,7 +170,7 @@ export function getPayslipById(id: string): Payslip | null {
 
   const payslip = db.prepare(`
     SELECT id, payPeriod, grossSalary, deductions, netSalary, employeeId, createdAt
-    FROM Payslip
+    FROM FichePaie
     WHERE id = ?
   `).get(id) as Payslip | undefined;
 
@@ -185,9 +185,9 @@ export function isPayslipOwner(payslipId: string, userId: string): boolean {
 
   const result = db.prepare(`
     SELECT COUNT(*) as count
-    FROM Payslip p
-    INNER JOIN Employee e ON p.employeeId = e.id
-    INNER JOIN Company c ON e.companyId = c.id
+    FROM FichePaie p
+    INNER JOIN Employe e ON p.employeeId = e.id
+    INNER JOIN Compagnie c ON e.companyId = c.id
     WHERE p.id = ? AND c.ownerId = ?
   `).get(payslipId, userId) as { count: number };
 
@@ -296,7 +296,7 @@ export async function creerFichePaie(
 
   // Commencer une transaction
   const insertFichePaie = db.prepare(`
-    INSERT INTO Payslip (
+    INSERT INTO FichePaie (
       id, payPeriod, grossSalary, deductions, netSalary,
       totalCotisationsSalariales, totalCotisationsPatronales, totalChargesFiscales, coutTotal,
       employeeId, createdAt, updatedAt
@@ -389,8 +389,8 @@ export function getFichePaieDetails(payslipId: string): FichePaieDetaille | null
       p.employeeId, p.createdAt, p.updatedAt,
       e.firstName as employeeFirstName,
       e.lastName as employeeLastName
-    FROM Payslip p
-    INNER JOIN Employee e ON p.employeeId = e.id
+    FROM FichePaie p
+    INNER JOIN Employe e ON p.employeeId = e.id
     WHERE p.id = ?
   `).get(payslipId) as any;
 
@@ -550,7 +550,7 @@ export function createPayslip(
 
   try {
     db.prepare(`
-      INSERT INTO Payslip (id, payPeriod, grossSalary, deductions, netSalary, employeeId, createdAt, updatedAt)
+      INSERT INTO FichePaie (id, payPeriod, grossSalary, deductions, netSalary, employeeId, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(id, payPeriod, grossSalary, deductions, netSalary, employeeId, createdAt, createdAt);
 

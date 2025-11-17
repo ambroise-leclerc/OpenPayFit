@@ -16,16 +16,16 @@ interface User {
 
 interface Company {
   id: string;
-  name: string;
-  ownerId: string;
+  nom: string;
+  proprietaireId: string;
 }
 
 interface Employee {
   id: string;
-  firstName: string;
-  lastName: string;
+  prenom: string;
+  nom: string;
   email: string;
-  companyId: string;
+  compagnieId: string;
 }
 
 interface ExpenseReport {
@@ -57,16 +57,16 @@ describe.skip('Expense Reports API Endpoints (requires Prisma - skipped in CI)',
     // Nettoyage de la DB de test
     db.exec('DELETE FROM expense_items');
     db.exec('DELETE FROM expense_reports');
-    db.exec('DELETE FROM Employee');
-    db.exec('DELETE FROM Company');
-    db.exec('DELETE FROM User');
+    db.exec('DELETE FROM Employe');
+    db.exec('DELETE FROM Compagnie');
+    db.exec('DELETE FROM Utilisateur');
 
     // Création de 2 utilisateurs
     const user1Id = randomUUID();
     const user2Id = randomUUID();
-    db.prepare(`INSERT INTO User (id, email, password, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Utilisateur (id, email, motDePasse, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(user1Id, 'user1@test.com', 'p1');
-    db.prepare(`INSERT INTO User (id, email, password, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Utilisateur (id, email, motDePasse, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(user2Id, 'user2@test.com', 'p2');
 
     user1 = { id: user1Id, email: 'user1@test.com' };
@@ -75,24 +75,24 @@ describe.skip('Expense Reports API Endpoints (requires Prisma - skipped in CI)',
     // Création de 2 entreprises
     const company1Id = randomUUID();
     const company2Id = randomUUID();
-    db.prepare(`INSERT INTO Company (id, name, ownerId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(company1Id, 'Company 1', user1.id);
-    db.prepare(`INSERT INTO Company (id, name, ownerId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(company2Id, 'Company 2', user2.id);
 
-    company1 = { id: company1Id, name: 'Company 1', ownerId: user1.id };
-    company2 = { id: company2Id, name: 'Company 2', ownerId: user2.id };
+    company1 = { id: company1Id, nom: 'Company 1', proprietaireId: user1.id };
+    company2 = { id: company2Id, nom: 'Company 2', proprietaireId: user2.id };
 
     // Création d'employés
     const employee1Id = randomUUID();
     const employee2Id = randomUUID();
-    db.prepare(`INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(employee1Id, 'John', 'Doe', 'john.doe@company1.com', 50000, company1.id);
-    db.prepare(`INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
       .run(employee2Id, 'Jane', 'Smith', 'jane.smith@company2.com', 60000, company2.id);
 
-    employee1 = { id: employee1Id, firstName: 'John', lastName: 'Doe', email: 'john.doe@company1.com', companyId: company1.id };
-    employee2 = { id: employee2Id, firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@company2.com', companyId: company2.id };
+    employee1 = { id: employee1Id, prenom: 'John', nom: 'Doe', email: 'john.doe@company1.com', compagnieId: company1.id };
+    employee2 = { id: employee2Id, prenom: 'Jane', nom: 'Smith', email: 'jane.smith@company2.com', compagnieId: company2.id };
 
     // Génération de tokens JWT
     token1 = jwt.sign({ userId: user1.id }, JWT_SECRET);

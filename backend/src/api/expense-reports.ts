@@ -73,6 +73,22 @@ const upload = multer({
 
 const router = Router({ mergeParams: true });
 
+// Fonction helper pour transformer les objets expense report avec employee
+function transformExpenseReportWithEmployee(report: any) {
+  return {
+    ...report,
+    employee: report.employee ? {
+      id: report.employee.id,
+      firstName: report.employee.prenom,
+      lastName: report.employee.nom,
+      email: report.employee.email,
+      grossSalary: report.employee.salaireBrut,
+      department: report.employee.department,
+      companyId: report.employee.compagnieId,
+    } : undefined,
+  };
+}
+
 // Middleware de sécurité : vérifier que l'utilisateur est propriétaire de l'entreprise
 router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction) => {
   const { companyId } = req.params;
@@ -90,7 +106,7 @@ router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction
       return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
-    if (company.ownerId !== req.userId) {
+    if (company.proprietaireId !== req.userId) {
       return res.status(403).json({ error: 'Interdit' });
     }
 
@@ -112,10 +128,10 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
 
   try {
     // Vérifier que l'employé appartient à l'entreprise
-    const employee = await prisma.employee.findFirst({
+    const employee = await prisma.employe.findFirst({
       where: {
         id: employeeId,
-        companyId: companyId,
+        compagnieId: companyId,
       },
     });
 
@@ -173,7 +189,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
     // Créer le rapport avec ses items
     const newReport = await prisma.expenseReport.create({
       data: {
-        employeeId,
+        employeId: employeeId,
         title,
         totalAmount,
         items: {
@@ -185,15 +201,18 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            department: true,
+            compagnieId: true,
           },
         },
       },
     });
 
-    res.status(201).json(newReport);
+    res.status(201).json(transformExpenseReportWithEmployee(newReport));
   } catch (error) {
     console.error('Erreur lors de la création du rapport de notes de frais :', error);
     res.status(500).json({ error: 'Échec de la création du rapport de notes de frais' });
@@ -209,7 +228,7 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
   try {
     const where: any = {
       employee: {
-        companyId: companyId,
+        compagnieId: companyId,
       },
     };
 
@@ -220,7 +239,7 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
 
     // Filtrer par employé si fourni
     if (employeeId && typeof employeeId === 'string') {
-      where.employeeId = employeeId;
+      where.employeId = employeeId;
     }
 
     const reports = await prisma.expenseReport.findMany({
@@ -230,9 +249,12 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            department: true,
+            compagnieId: true,
           },
         },
       },
@@ -241,7 +263,7 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
       },
     });
 
-    res.json(reports);
+    res.json(reports.map(transformExpenseReportWithEmployee));
   } catch (error) {
     console.error('Erreur lors de la récupération des rapports de notes de frais :', error);
     res.status(500).json({ error: 'Échec de la récupération des rapports de notes de frais' });
@@ -258,7 +280,7 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
       include: {
@@ -270,9 +292,12 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            department: true,
+            compagnieId: true,
           },
         },
       },
@@ -282,7 +307,7 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
       return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
-    res.json(report);
+    res.json(transformExpenseReportWithEmployee(report));
   } catch (error) {
     console.error('Erreur lors de la récupération du rapport de notes de frais :', error);
     res.status(500).json({ error: 'Échec de la récupération du rapport de notes de frais' });
@@ -301,7 +326,7 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
@@ -329,15 +354,18 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            department: true,
+            compagnieId: true,
           },
         },
       },
     });
 
-    res.json(updatedReport);
+    res.json(transformExpenseReportWithEmployee(updatedReport));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
       return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
@@ -358,7 +386,7 @@ router.delete('/:reportId', async (req: Request<ReportParams>, res: Response) =>
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
@@ -419,7 +447,7 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
@@ -467,7 +495,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
         reportId: reportId,
         report: {
           employee: {
-            companyId: companyId,
+            compagnieId: companyId,
           },
         },
       },
@@ -553,7 +581,7 @@ router.post('/:reportId/upload-receipt', upload.single('receipt'), async (req: R
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
@@ -590,7 +618,7 @@ router.delete('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: 
         reportId: reportId,
         report: {
           employee: {
-            companyId: companyId,
+            compagnieId: companyId,
           },
         },
       },

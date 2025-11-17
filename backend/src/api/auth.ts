@@ -23,11 +23,11 @@ router.post('/register', async (req, res) => {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
+    const user = await prisma.utilisateur.create({
       data: {
         email,
-        name,
-        password: hashedPassword,
+        nom: name,
+        motDePasse: hashedPassword,
       },
     });
 
@@ -57,7 +57,7 @@ router.post('/login', async (req, res) => {
     }
 
     try {
-        const user = await prisma.user.findUnique({
+        const user = await prisma.utilisateur.findUnique({
             where: { email },
         });
 
@@ -65,7 +65,7 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ error: 'Identifiants invalides' });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.motDePasse);
 
         if (!isPasswordValid) {
             return res.status(401).json({ error: 'Identifiants invalides' });
