@@ -1,0 +1,163 @@
+.leaveList {
+  margin: 20px 0;
+}
+
+/* Section des soldes */
+.leaveBalances {
+  margin-bottom: 40px;
+}
+
+.leaveBalances h3 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.balancesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.balanceCard {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.balanceCard h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.balanceInfo p {
+  margin: 5px 0;
+  font-size: 14px;
+  color: #6c757d;
+}
+
+.balanceInfo .remainingDays {
+  color: #28a745;
+  font-weight: bold;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+/* Section des demandes */
+.leaveRequests {
+  margin-top: 30px;
+}
+
+.leaveRequests h3 {
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.leavesTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.leavesTable thead {
+  background: #f8f9fa;
+}
+
+.leavesTable th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.leavesTable td {
+  padding: 12px;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.leavesTable tbody tr:hover {
+  background: #f8f9fa;
+}
+
+.leavesTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Badges de statut */
+.statusBadge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.statusPending {
+  background: #ffc107;
+  color: #000;
+}
+
+.statusApproved {
+  background: #28a745;
+  color: white;
+}
+
+.statusRejected {
+  background: #dc3545;
+  color: white;
+}
+
+.statusCancelled {
+  background: #6c757d;
+  color: white;
+}
+
+/* Actions */
+.actions {
+  white-space: nowrap;
+}
+
+.actions button {
+  margin-right: 5px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btnApprove {
+  background: #28a745;
+  color: white;
+}
+
+.btnApprove:hover {
+  background: #218838;
+}
+
+.btnReject {
+  background: #dc3545;
+  color: white;
+}
+
+.btnReject:hover {
+  background: #c82333;
+}
+
+.btnDelete {
+  background: #6c757d;
+  color: white;
+}
+
+.btnDelete:hover {
+  background: #5a6268;
+}

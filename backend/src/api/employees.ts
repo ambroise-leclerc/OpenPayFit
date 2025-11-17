@@ -1,6 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../lib/db';
 import { Prisma } from '@prisma/client';
+import leavesRouter from './leaves';
 
 // Définition des types pour les paramètres d'URL pour plus de sécurité
 interface CompanyParams {
@@ -123,5 +124,9 @@ router.delete('/:employeeId', async (req: Request<EmployeeParams>, res: Response
     res.status(500).json({ error: 'Failed to delete employee' });
   }
 });
+
+// Mount the leaves router for nested routes
+// This will handle all routes starting with /api/companies/:companyId/employees/:employeeId/leaves
+router.use('/:employeeId/leaves', leavesRouter);
 
 export default router;
