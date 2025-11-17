@@ -24,10 +24,10 @@ function setupTestDatabase() {
   const db = new Database(dbPath);
 
   // Nettoyer les tables
-  db.exec(`DELETE FROM FichePaie`);
-  db.exec(`DELETE FROM Employe`);
-  db.exec(`DELETE FROM Compagnie`);
-  db.exec(`DELETE FROM Utilisateur`);
+  db.exec(`DELETE FROM Payslip`);
+  db.exec(`DELETE FROM Employee`);
+  db.exec(`DELETE FROM Company`);
+  db.exec(`DELETE FROM User`);
 
   return db;
 }
@@ -35,7 +35,7 @@ function setupTestDatabase() {
 function createTestUser(db: DatabaseType, email: string, motDePasse: string = 'password123'): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Utilisateur (id, email, motDePasse, createdAt, updatedAt)
+    INSERT INTO User (id, email, password, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, email, motDePasse);
   return id;
@@ -44,7 +44,7 @@ function createTestUser(db: DatabaseType, email: string, motDePasse: string = 'p
 function createTestCompany(db: DatabaseType, nom: string, proprietaireId: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt)
+    INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, nom, proprietaireId);
   return id;
@@ -60,7 +60,7 @@ function createTestEmployee(
 ): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Employe (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt)
+    INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, prenom, nom, email, salaireBrut, compagnieId);
   return id;
@@ -88,10 +88,10 @@ describe('Payroll Module Tests', () => {
   afterAll(() => {
     // Nettoyage final
     const cleanupDb = new Database(dbPath);
-    cleanupDb.exec(`DELETE FROM FichePaie`);
-    cleanupDb.exec(`DELETE FROM Employe`);
-    cleanupDb.exec(`DELETE FROM Compagnie`);
-    cleanupDb.exec(`DELETE FROM Utilisateur`);
+    cleanupDb.exec(`DELETE FROM Payslip`);
+    cleanupDb.exec(`DELETE FROM Employee`);
+    cleanupDb.exec(`DELETE FROM Company`);
+    cleanupDb.exec(`DELETE FROM User`);
     cleanupDb.close();
   });
 
@@ -223,7 +223,7 @@ describe('Payroll Module Tests', () => {
 
       // Nettoyage
       const cleanupDb = new Database(dbPath);
-      cleanupDb.prepare('DELETE FROM Compagnie WHERE id = ?').run(emptyCompanyId);
+      cleanupDb.prepare('DELETE FROM Company WHERE id = ?').run(emptyCompanyId);
       cleanupDb.close();
     });
   });

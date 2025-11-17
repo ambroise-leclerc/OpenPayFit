@@ -37,16 +37,16 @@ describe.skip('Employee API Endpoints (requires Prisma - skipped in CI)', () => 
     db = new Database(dbPath);
 
     // Nettoyage de la DB de test
-    db.exec('DELETE FROM Employe');
-    db.exec('DELETE FROM Compagnie');
-    db.exec('DELETE FROM Utilisateur');
+    db.exec('DELETE FROM Employee');
+    db.exec('DELETE FROM Company');
+    db.exec('DELETE FROM User');
 
     // Création de 2 utilisateurs
     const user1Id = randomUUID();
     const user2Id = randomUUID();
-    db.prepare(`INSERT INTO Utilisateur (id, email, motDePasse, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO User (id, email, motDePasse, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(user1Id, 'user1@test.com', 'p1');
-    db.prepare(`INSERT INTO Utilisateur (id, email, motDePasse, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO User (id, email, motDePasse, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(user2Id, 'user2@test.com', 'p2');
 
     user1 = { id: user1Id, email: 'user1@test.com' };
@@ -55,9 +55,9 @@ describe.skip('Employee API Endpoints (requires Prisma - skipped in CI)', () => 
     // Création de 2 entreprises
     const company1Id = randomUUID();
     const company2Id = randomUUID();
-    db.prepare(`INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Company (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(company1Id, 'Company 1', user1.id);
-    db.prepare(`INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
+    db.prepare(`INSERT INTO Company (id, nom, proprietaireId, createdAt, updatedAt) VALUES (?, ?, ?, datetime('now'), datetime('now'))`)
       .run(company2Id, 'Company 2', user2.id);
 
     company1 = { id: company1Id, name: 'Company 1', ownerId: user1.id };
@@ -146,7 +146,7 @@ describe.skip('Employee API Endpoints (requires Prisma - skipped in CI)', () => 
         // Re-create an employee for the test
         const tempDb = new Database(dbPath);
         const tempEmployeeId = randomUUID();
-        tempDb.prepare(`INSERT INTO Employe (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
+        tempDb.prepare(`INSERT INTO Employee (id, prenom, nom, email, salaireBrut, compagnieId, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`)
           .run(tempEmployeeId, 'Temp', 'Emp', 'temp@del.com', 1, company2.id);
         tempDb.close();
 

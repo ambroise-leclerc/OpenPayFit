@@ -18,7 +18,7 @@ const dbPath = path.join(__dirname, '../../prisma/test.db');
 function createTestUser(db: DatabaseType, email: string, nom: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Utilisateur (id, email, nom, motDePasse, createdAt, updatedAt)
+    INSERT INTO User (id, email, nom, motDePasse, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, email, nom, 'hashed-password-123');
   return id;
@@ -27,7 +27,7 @@ function createTestUser(db: DatabaseType, email: string, nom: string): string {
 function createTestCompany(db: DatabaseType, nom: string, proprietaireId: string): string {
   const id = randomUUID();
   db.prepare(`
-    INSERT INTO Compagnie (id, nom, proprietaireId, createdAt, updatedAt)
+    INSERT INTO Company (id, nom, proprietaireId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
   `).run(id, nom, proprietaireId);
   return id;
@@ -77,9 +77,9 @@ describe('Accounting Integrations API', () => {
     // Nettoyer les données de test existantes
     db.exec(`DELETE FROM accounting_export_logs`);
     db.exec(`DELETE FROM accounting_integrations`);
-    db.exec(`DELETE FROM Employe WHERE email LIKE '%accounting-test%'`);
-    db.exec(`DELETE FROM Compagnie WHERE nom LIKE '%Accounting Test%'`);
-    db.exec(`DELETE FROM Utilisateur WHERE email LIKE '%accounting-test%'`);
+    db.exec(`DELETE FROM Employee WHERE email LIKE '%accounting-test%'`);
+    db.exec(`DELETE FROM Company WHERE nom LIKE '%Accounting Test%'`);
+    db.exec(`DELETE FROM User WHERE email LIKE '%accounting-test%'`);
 
     // Créer un utilisateur de test
     const timestamp = Date.now();
@@ -101,8 +101,8 @@ describe('Accounting Integrations API', () => {
     const cleanupDb = new Database(dbPath);
     cleanupDb.exec(`DELETE FROM accounting_export_logs`);
     cleanupDb.exec(`DELETE FROM accounting_integrations WHERE companyId = '${companyId}'`);
-    cleanupDb.exec(`DELETE FROM Compagnie WHERE id = '${companyId}'`);
-    cleanupDb.exec(`DELETE FROM Utilisateur WHERE id = '${userId}' OR id = '${otherUserId}'`);
+    cleanupDb.exec(`DELETE FROM Company WHERE id = '${companyId}'`);
+    cleanupDb.exec(`DELETE FROM User WHERE id = '${userId}' OR id = '${otherUserId}'`);
     cleanupDb.close();
   });
 
