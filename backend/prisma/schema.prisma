@@ -37,6 +37,7 @@ model Compagnie {
   proprietaire               Utilisateur              @relation(fields: [proprietaireId], references: [id])
   proprietaireId             String                   @map("ownerId") // Clé étrangère vers Utilisateur
   employes                   Employe[]                // Une entreprise a plusieurs employés
+  organismesSpecifiques      OrganismeCotisation[]    // Organismes collecteurs spécifiques à cette entreprise (caisses de retraite de branche, mutuelles, etc.)
   integrationsComptables     AccountingIntegration[]  @map("accountingIntegrations") // Intégrations comptables (Sage, QuickBooks, etc.)
   dateCreation               DateTime                 @default(now()) @map("createdAt")
   dateModification           DateTime                 @updatedAt @map("updatedAt")
@@ -167,23 +168,58 @@ model CategorieCotisation {
   @@map("categories_cotisation")
 }
 
+/// Type d'organisme collecteur
+enum TypeOrganisme {
+  URSSAF              // URSSAF (Sécurité sociale générale)
+  RETRAITE            // Caisse de retraite complémentaire (AGIRC-ARRCO, etc.)
+  CHOMAGE             // Pôle Emploi (assurance chômage)
+  PREVOYANCE          // Institution de prévoyance
+  MUTUELLE            // Mutuelle santé obligatoire
+  FORMATION           // OPCO (Opérateur de compétences)
+  AUTRE               // Autre organisme
+}
+
 /// Organisme collecteur : entité qui collecte les cotisations
-/// Exemples de codes standards :
+/// Deux types d'organismes :
+/// - Globaux (estGlobal = true) : Obligatoires pour toutes les entreprises (URSSAF, Pôle Emploi, AGIRC-ARRCO)
+/// - Spécifiques (estGlobal = false) : Liés à une entreprise particulière (caisses de retraite spécifiques, mutuelles de branche, etc.)
+///
+/// Exemples de codes standards pour les organismes globaux :
 /// - "URSSAF" : Union de recouvrement des cotisations de sécurité sociale et d'allocations familiales
 /// - "AGIRC_ARRCO" : Association générale des institutions de retraite des cadres -
 ///                    Association pour le régime de retraite complémentaire des salariés
 /// - "POLE_EMPLOI" : Service public de l'emploi (assurance chômage)
-/// - "CPAM" : Caisse primaire d'assurance maladie
-/// - "CARSAT" : Caisse d'assurance retraite et de la santé au travail
 model OrganismeCotisation {
-  id          String             @id @default(cuid())
-  code        String             @unique
-  nom         String
-  description String?
-  regles      RegleCotisation[]
-  dateCreation   DateTime           @default(now()) @map("createdAt")
-  dateModification   DateTime           @updatedAt @map("updatedAt")
+  id               String              @id @default(cuid())
+  code             String              @unique
+  nom              String
+  typeOrganisme    TypeOrganisme       // Type d'organisme (URSSAF, RETRAITE, etc.)
+  description      String?
+  estGlobal        Boolean             @default(false) // true = obligatoire pour toutes les entreprises, false = spécifique à une entreprise
 
+  // Informations de contact (optionnelles)
+  adresse          String?
+  codePostal       String?
+  ville            String?
+  telephone        String?
+  email            String?
+  siteWeb          String?
+
+  // Identification (optionnel)
+  numeroSiret      String?             // Numéro SIRET de l'organisme
+
+  // Relation vers l'entreprise (uniquement pour les organismes spécifiques)
+  compagnie        Compagnie?          @relation(fields: [compagnieId], references: [id], onDelete: Cascade)
+  compagnieId      String?
+
+  // Relations
+  regles           RegleCotisation[]
+
+  dateCreation     DateTime            @default(now()) @map("createdAt")
+  dateModification DateTime            @updatedAt @map("updatedAt")
+
+  @@index([compagnieId])
+  @@index([estGlobal])
   @@map("organismes_cotisation")
 }
 
