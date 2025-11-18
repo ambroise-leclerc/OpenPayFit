@@ -128,12 +128,6 @@ describe('Accounting Integrations API', () => {
           configuration: sageConfig
         });
 
-      if (res.statusCode !== 201) {
-        console.log('ERROR Response:', res.statusCode, res.body);
-      }
-
-      console.log('SUCCESS Response:', res.statusCode, res.body);
-
       expect(res.statusCode).toBe(201);
       expect(res.body.type).toBe('SAGE');
       expect(res.body.status).toBe('ACTIVE');
