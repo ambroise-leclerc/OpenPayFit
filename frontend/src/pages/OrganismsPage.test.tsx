@@ -98,8 +98,9 @@ describe('OrganismsPage', () => {
       expect(screen.getByText('Organismes Globaux (Obligatoires)')).toBeInTheDocument();
     });
 
-    // Vérifier que l'organisme global est affiché
-    expect(screen.getByText('URSSAF')).toBeInTheDocument();
+    // Vérifier que l'organisme global est affiché (vérifier plusieurs occurrences de URSSAF)
+    const urssafElements = screen.getAllByText('URSSAF');
+    expect(urssafElements.length).toBeGreaterThan(0);
     expect(screen.getByText(/Organisme collecteur principal/)).toBeInTheDocument();
 
     // Vérifier que l'organisme spécifique est affiché
