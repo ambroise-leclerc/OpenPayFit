@@ -51,7 +51,7 @@ function SimulateurPage() {
     <div className={styles.container}>
       <h1>Simulateur de Cotisations</h1>
       <p className={styles.description}>
-        Simulez le calcul des cotisations sociales pour un salaire brut donn� � une date sp�cifique.
+        Simulez le calcul des cotisations sociales pour un salaire brut donné à une date spécifique.
       </p>
 
       <form onSubmit={handleSimulate} className={styles.form}>
@@ -90,7 +90,7 @@ function SimulateurPage() {
 
       {result && (
         <div className={styles.results}>
-          <h2>R�sultats de la simulation</h2>
+          <h2>Résultats de la simulation</h2>
 
           <div className={styles.summary}>
             <div className={styles.summaryCard}>
@@ -118,12 +118,12 @@ function SimulateurPage() {
             </div>
 
             <div className={styles.summaryCard}>
-              <div className={styles.summaryLabel}>Co�t total employeur</div>
+              <div className={styles.summaryLabel}>Coût total employeur</div>
               <div className={styles.summaryValue}>{formatEuro(result.coutTotal)}</div>
             </div>
           </div>
 
-          <h3>D�tail des cotisations</h3>
+          <h3>Détail des cotisations</h3>
 
           <div className={styles.tableContainer}>
             <table className={styles.table}>
@@ -131,7 +131,7 @@ function SimulateurPage() {
                 <tr>
                   <th>Code</th>
                   <th>Cotisation</th>
-                  <th>Cat�gorie</th>
+                  <th>Catégorie</th>
                   <th>Type</th>
                   <th>Assiette</th>
                   <th>Taux</th>

@@ -5,6 +5,31 @@ import { Prisma } from '@prisma/client';
 // Constantes
 const DEFAULT_ANNUAL_LEAVE_DAYS = 25; // Jours de congés payés annuels par défaut (France)
 
+// Fonction de transformation pour les objets Leave avec Employee
+function transformLeaveWithEmployee(leave: any) {
+  return {
+    id: leave.id,
+    type: leave.typeDemande,
+    status: leave.statut,
+    startDate: leave.dateDebut,
+    endDate: leave.dateFin,
+    days: leave.nombreJours,
+    reason: leave.motif,
+    employeeId: leave.employeId,
+    createdAt: leave.dateCreation,
+    updatedAt: leave.dateModification,
+    employee: leave.employe ? {
+      id: leave.employe.id,
+      firstName: leave.employe.prenom,
+      lastName: leave.employe.nom,
+      email: leave.employe.email,
+      grossSalary: leave.employe.salaireBrut,
+      department: leave.employe.departement,
+      companyId: leave.employe.compagnieId,
+    } : undefined,
+  };
+}
+
 // Définition des types pour les paramètres d'URL
 interface EmployeeParams {
   companyId: string;
@@ -26,24 +51,24 @@ async function restoreLeaveBalance(
 ): Promise<void> {
   const balance = await prisma.leaveBalance.findUnique({
     where: {
-      employeeId_type_year: {
-        employeeId,
-        type: 'PAID_LEAVE',
-        year,
+      employeId_typeDemande_annee: {
+        employeId: employeeId,
+        typeDemande: 'PAID_LEAVE',
+        annee: year,
       },
     },
   });
 
   if (balance) {
     // Utiliser Math.max pour éviter les soldes négatifs en cas de données incohérentes
-    const newUsedDays = Math.max(0, balance.usedDays - leaveDays);
-    const newRemainingDays = balance.totalDays - newUsedDays;
+    const newUsedDays = Math.max(0, balance.joursUtilises - leaveDays);
+    const newRemainingDays = balance.joursTotal - newUsedDays;
 
     await prisma.leaveBalance.update({
       where: { id: balance.id },
       data: {
-        usedDays: newUsedDays,
-        remainingDays: newRemainingDays,
+        joursUtilises: newUsedDays,
+        joursRestants: newRemainingDays,
       },
     });
   }
@@ -57,23 +82,23 @@ async function consumeLeaveBalance(
 ): Promise<void> {
   const balance = await prisma.leaveBalance.findUnique({
     where: {
-      employeeId_type_year: {
-        employeeId,
-        type: 'PAID_LEAVE',
-        year,
+      employeId_typeDemande_annee: {
+        employeId: employeeId,
+        typeDemande: 'PAID_LEAVE',
+        annee: year,
       },
     },
   });
 
   if (balance) {
-    const newUsedDays = balance.usedDays + leaveDays;
-    const newRemainingDays = balance.totalDays - newUsedDays;
+    const newUsedDays = balance.joursUtilises + leaveDays;
+    const newRemainingDays = balance.joursTotal - newUsedDays;
 
     await prisma.leaveBalance.update({
       where: { id: balance.id },
       data: {
-        usedDays: newUsedDays,
-        remainingDays: newRemainingDays,
+        joursUtilises: newUsedDays,
+        joursRestants: newRemainingDays,
       },
     });
   }
@@ -98,39 +123,39 @@ router.use(async (req: Request<EmployeeParams>, res: Response, next: NextFunctio
   const { companyId, employeeId } = req.params;
 
   if (!companyId || !employeeId) {
-    return res.status(400).json({ error: 'Company ID and Employee ID are required' });
+    return res.status(400).json({ error: 'L\'ID de l\'entreprise et l\'ID de l\'employé sont requis' });
   }
 
   try {
     // Vérifier que l'entreprise existe et appartient à l'utilisateur
-    const company = await prisma.company.findUnique({
+    const company = await prisma.compagnie.findUnique({
       where: { id: companyId },
     });
 
     if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
-    if (company.ownerId !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+    if (company.proprietaireId !== req.userId) {
+      return res.status(403).json({ error: 'Interdit' });
     }
 
     // Vérifier que l'employé existe et appartient à cette entreprise
-    const employee = await prisma.employee.findUnique({
+    const employee = await prisma.employe.findUnique({
       where: { id: employeeId },
     });
 
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found' });
+      return res.status(404).json({ error: 'Employé non trouvé' });
     }
 
-    if (employee.companyId !== companyId) {
-      return res.status(403).json({ error: 'Employee does not belong to this company' });
+    if (employee.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'L\'employé n\'appartient pas à cette entreprise' });
     }
 
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Erreur serveur interne' });
   }
 });
 
@@ -141,12 +166,14 @@ router.get('/', async (req: Request<EmployeeParams>, res: Response) => {
 
   try {
     const leaves = await prisma.leave.findMany({
-      where: { employeeId },
+      where: { employeId: employeeId },
+      include: { employee: true },
       orderBy: { startDate: 'desc' },
     });
-    res.json(leaves);
+    const transformedLeaves = leaves.map(transformLeaveWithEmployee);
+    res.json(transformedLeaves);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch leaves' });
+    res.status(500).json({ error: 'Échec de la récupération des congés' });
   }
 });
 
@@ -157,24 +184,24 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
   const { type, startDate, endDate, days, reason } = req.body;
 
   if (!type || !startDate || !endDate || days == null) {
-    return res.status(400).json({ error: 'type, startDate, endDate, and days are required' });
+    return res.status(400).json({ error: 'type, startDate, endDate et days sont requis' });
   }
 
   // Valider le nombre de jours
   const parsedDays = typeof days === 'number' ? days : parseFloat(days);
   if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
-    return res.status(400).json({ error: 'days must be a positive number' });
+    return res.status(400).json({ error: 'days doit être un nombre positif' });
   }
 
   // Valider les dates
   const start = new Date(startDate);
   const end = new Date(endDate);
   if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    return res.status(400).json({ error: 'Invalid date format' });
+    return res.status(400).json({ error: 'Format de date invalide' });
   }
 
   if (start > end) {
-    return res.status(400).json({ error: 'Start date must be before end date' });
+    return res.status(400).json({ error: 'La date de début doit être avant la date de fin' });
   }
 
   try {
@@ -186,10 +213,10 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
         const currentYear = new Date().getFullYear();
         const balance = await tx.leaveBalance.findUnique({
           where: {
-            employeeId_type_year: {
-              employeeId,
-              type: 'PAID_LEAVE',
-              year: currentYear,
+            employeId_typeDemande_annee: {
+              employeId: employeeId,
+              typeDemande: 'PAID_LEAVE',
+              annee: currentYear,
             },
           },
         });
@@ -198,19 +225,19 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
           // Créer un solde par défaut si inexistant
           await tx.leaveBalance.create({
             data: {
-              employeeId,
-              type: 'PAID_LEAVE',
-              year: currentYear,
-              totalDays: DEFAULT_ANNUAL_LEAVE_DAYS,
-              usedDays: 0,
-              remainingDays: DEFAULT_ANNUAL_LEAVE_DAYS,
+              employeId: employeeId,
+              typeDemande: 'PAID_LEAVE',
+              annee: currentYear,
+              joursTotal: DEFAULT_ANNUAL_LEAVE_DAYS,
+              joursUtilises: 0,
+              joursRestants: DEFAULT_ANNUAL_LEAVE_DAYS,
             },
           });
-        } else if (balance.remainingDays < parsedDays) {
+        } else if (balance.joursRestants < parsedDays) {
           throw new Error(
             JSON.stringify({
               code: 'INSUFFICIENT_BALANCE',
-              remainingDays: balance.remainingDays,
+              remainingDays: balance.joursRestants,
               requestedDays: parsedDays,
             })
           );
@@ -220,7 +247,7 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
       // Créer la demande de congé
       return await tx.leave.create({
         data: {
-          employeeId,
+          employeId: employeeId,
           type,
           startDate: start,
           endDate: end,
@@ -228,17 +255,18 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
           reason: reason || null,
           status: 'PENDING',
         },
+        include: { employee: true },
       });
     });
 
-    res.status(201).json(newLeave);
+    res.status(201).json(transformLeaveWithEmployee(newLeave));
   } catch (error) {
     if (error instanceof Error && error.message.startsWith('{')) {
       try {
         const errorData = JSON.parse(error.message);
         if (errorData.code === 'INSUFFICIENT_BALANCE') {
           return res.status(400).json({
-            error: 'Insufficient leave balance',
+            error: 'Solde de congés insuffisant',
             remainingDays: errorData.remainingDays,
             requestedDays: errorData.requestedDays,
           });
@@ -247,8 +275,8 @@ router.post('/', async (req: Request<EmployeeParams>, res: Response) => {
         // Continue avec la gestion d'erreur générique
       }
     }
-    console.error('Error creating leave:', error);
-    res.status(500).json({ error: 'Failed to create leave request' });
+    console.error('Erreur lors de la création du congé:', error);
+    res.status(500).json({ error: 'Échec de la création de la demande de congé' });
   }
 });
 
@@ -265,11 +293,11 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     });
 
     if (!currentLeave) {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
 
-    if (currentLeave.employeeId !== employeeId) {
-      return res.status(403).json({ error: 'Leave request does not belong to this employee' });
+    if (currentLeave.employeId !== employeeId) {
+      return res.status(403).json({ error: 'La demande de congé n\'appartient pas à cet employé' });
     }
 
     // Préparer les données de mise à jour
@@ -279,7 +307,7 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
       // Valider la transition d'état
       if (!isValidStatusTransition(currentLeave.status, status)) {
         return res.status(400).json({
-          error: 'Invalid status transition',
+          error: 'Transition de statut invalide',
           currentStatus: currentLeave.status,
           requestedStatus: status,
         });
@@ -306,7 +334,7 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     if (days !== undefined) {
       const parsedDays = typeof days === 'number' ? days : parseFloat(days);
       if (!Number.isFinite(parsedDays) || parsedDays <= 0) {
-        return res.status(400).json({ error: 'days must be a positive number' });
+        return res.status(400).json({ error: 'days doit être un nombre positif' });
       }
       updateData.days = parsedDays;
     }
@@ -315,15 +343,16 @@ router.put('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     const updatedLeave = await prisma.leave.update({
       where: { id: leaveId },
       data: updateData,
+      include: { employee: true },
     });
 
-    res.json(updatedLeave);
+    res.json(transformLeaveWithEmployee(updatedLeave));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
-    console.error('Error updating leave:', error);
-    res.status(500).json({ error: 'Failed to update leave request' });
+    console.error('Erreur lors de la mise à jour du congé:', error);
+    res.status(500).json({ error: 'Échec de la mise à jour de la demande de congé' });
   }
 });
 
@@ -339,11 +368,11 @@ router.delete('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     });
 
     if (!leave) {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
 
-    if (leave.employeeId !== employeeId) {
-      return res.status(403).json({ error: 'Leave request does not belong to this employee' });
+    if (leave.employeId !== employeeId) {
+      return res.status(403).json({ error: 'La demande de congé n\'appartient pas à cet employé' });
     }
 
     // Si le congé était approuvé, restaurer le solde
@@ -356,10 +385,10 @@ router.delete('/:leaveId', async (req: Request<LeaveParams>, res: Response) => {
     res.status(204).send();
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Leave request not found' });
+      return res.status(404).json({ error: 'Demande de congé non trouvée' });
     }
-    console.error('Error deleting leave:', error);
-    res.status(500).json({ error: 'Failed to delete leave request' });
+    console.error('Erreur lors de la suppression du congé:', error);
+    res.status(500).json({ error: 'Échec de la suppression de la demande de congé' });
   }
 });
 
@@ -372,8 +401,8 @@ router.get('/balances', async (req: Request<EmployeeParams>, res: Response) => {
   try {
     let balances = await prisma.leaveBalance.findMany({
       where: {
-        employeeId,
-        year: currentYear,
+        employeId: employeeId,
+        annee: currentYear,
       },
     });
 
@@ -381,21 +410,34 @@ router.get('/balances', async (req: Request<EmployeeParams>, res: Response) => {
     if (balances.length === 0) {
       const defaultBalance = await prisma.leaveBalance.create({
         data: {
-          employeeId,
-          type: 'PAID_LEAVE',
-          year: currentYear,
-          totalDays: DEFAULT_ANNUAL_LEAVE_DAYS,
-          usedDays: 0,
-          remainingDays: DEFAULT_ANNUAL_LEAVE_DAYS,
+          employeId: employeeId,
+          typeDemande: 'PAID_LEAVE',
+          annee: currentYear,
+          joursTotal: DEFAULT_ANNUAL_LEAVE_DAYS,
+          joursUtilises: 0,
+          joursRestants: DEFAULT_ANNUAL_LEAVE_DAYS,
         },
       });
       balances = [defaultBalance];
     }
 
-    res.json(balances);
+    // Transformer les balances pour l'API
+    const transformedBalances = balances.map((b: any) => ({
+      id: b.id,
+      employeeId: b.employeId,
+      type: b.typeDemande,
+      year: b.annee,
+      totalDays: b.joursTotal,
+      usedDays: b.joursUtilises,
+      remainingDays: b.joursRestants,
+      createdAt: b.dateCreation,
+      updatedAt: b.dateModification,
+    }));
+
+    res.json(transformedBalances);
   } catch (error) {
-    console.error('Error fetching leave balances:', error);
-    res.status(500).json({ error: 'Failed to fetch leave balances' });
+    console.error('Erreur lors de la récupération des soldes de congés:', error);
+    res.status(500).json({ error: 'Échec de la récupération des soldes de congés' });
   }
 });
 

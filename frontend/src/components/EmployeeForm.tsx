@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { CreateEmployeeData } from '../services/api';
 
-// TODO: Define props for this component, e.g., for submitting the form
+// TODO: Définir les props pour ce composant, par exemple pour soumettre le formulaire
 // interface EmployeeFormProps {
 //   onSubmit: (employeeData: CreateEmployeeData) => void;
 //   initialData?: Employee;

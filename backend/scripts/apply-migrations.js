@@ -11,6 +11,12 @@ const path = require('path');
 const dbFileName = process.env.NODE_ENV === 'test' ? 'test.db' : 'dev.db';
 const dbPath = path.join(__dirname, '../prisma', dbFileName);
 
+// En mode test, supprimer la base existante pour repartir à zéro
+if (process.env.NODE_ENV === 'test' && fs.existsSync(dbPath)) {
+  fs.unlinkSync(dbPath);
+  console.log(`Deleted existing ${dbFileName} to start fresh`);
+}
+
 console.log(`Applying migrations to ${dbFileName}...`);
 
 // Créer ou ouvrir la base de données

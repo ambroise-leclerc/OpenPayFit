@@ -59,7 +59,7 @@ const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFil
   if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
-    cb(new Error('Invalid file type. Only JPG, PNG, and PDF files are allowed.'));
+    cb(new Error('Type de fichier invalide. Seuls les fichiers JPG, PNG et PDF sont autorisés.'));
   }
 };
 
@@ -73,30 +73,63 @@ const upload = multer({
 
 const router = Router({ mergeParams: true });
 
+// Fonction helper pour transformer les objets expense report avec employee
+function transformExpenseReportWithEmployee(report: any) {
+  return {
+    id: report.id,
+    employeeId: report.employeId,
+    title: report.titre,
+    status: report.statut,
+    totalAmount: report.montantTotal,
+    items: report.lignes ? report.lignes.map((item: any) => ({
+      id: item.id,
+      reportId: item.rapportId,
+      category: item.categorie,
+      amount: item.montant,
+      date: item.date,
+      description: item.description,
+      receiptPath: item.cheminRecu,
+      createdAt: item.dateCreation,
+      updatedAt: item.dateModification,
+    })) : undefined,
+    createdAt: report.dateCreation,
+    updatedAt: report.dateModification,
+    employee: report.employe ? {
+      id: report.employe.id,
+      firstName: report.employe.prenom,
+      lastName: report.employe.nom,
+      email: report.employe.email,
+      grossSalary: report.employe.salaireBrut,
+      department: report.employe.departement,
+      companyId: report.employe.compagnieId,
+    } : undefined,
+  };
+}
+
 // Middleware de sécurité : vérifier que l'utilisateur est propriétaire de l'entreprise
 router.use(async (req: Request<CompanyParams>, res: Response, next: NextFunction) => {
   const { companyId } = req.params;
 
   if (!companyId) {
-    return res.status(400).json({ error: 'Company ID is required' });
+    return res.status(400).json({ error: 'L\'ID de l\'entreprise est requis' });
   }
 
   try {
-    const company = await prisma.company.findUnique({
+    const company = await prisma.compagnie.findUnique({
       where: { id: companyId },
     });
 
     if (!company) {
-      return res.status(404).json({ error: 'Company not found' });
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
-    if (company.ownerId !== req.userId) {
-      return res.status(403).json({ error: 'Forbidden' });
+    if (company.proprietaireId !== req.userId) {
+      return res.status(403).json({ error: 'Interdit' });
     }
 
     next();
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Erreur interne du serveur' });
   }
 });
 
@@ -107,20 +140,20 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
   const { companyId } = req.params;
 
   if (!employeeId || !title) {
-    return res.status(400).json({ error: 'employeeId and title are required' });
+    return res.status(400).json({ error: 'employeeId et title sont requis' });
   }
 
   try {
     // Vérifier que l'employé appartient à l'entreprise
-    const employee = await prisma.employee.findFirst({
+    const employee = await prisma.employe.findFirst({
       where: {
         id: employeeId,
-        companyId: companyId,
+        compagnieId: companyId,
       },
     });
 
     if (!employee) {
-      return res.status(404).json({ error: 'Employee not found in this company' });
+      return res.status(404).json({ error: 'Employé non trouvé dans cette entreprise' });
     }
 
     // Calculer le montant total si des items sont fournis
@@ -133,21 +166,21 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
 
         if (!category || amount == null || !date || !description) {
           return res.status(400).json({
-            error: 'Each item must have category, amount, date, and description'
+            error: 'Chaque item doit avoir category, amount, date et description'
           });
         }
 
         // Valider la catégorie
         if (!isValidCategory(category)) {
           return res.status(400).json({
-            error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+            error: `Catégorie invalide. Doit être parmi : ${VALID_CATEGORIES.join(', ')}`
           });
         }
 
         const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
         if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
           return res.status(400).json({
-            error: 'Each item amount must be a valid non-negative number'
+            error: 'Chaque montant d\'item doit être un nombre positif valide'
           });
         }
 
@@ -155,7 +188,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
         const parsedDate = new Date(date);
         if (isNaN(parsedDate.getTime())) {
           return res.status(400).json({
-            error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+            error: 'Format de date invalide. Utilisez le format ISO 8601 (YYYY-MM-DD)'
           });
         }
 
@@ -173,7 +206,7 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
     // Créer le rapport avec ses items
     const newReport = await prisma.expenseReport.create({
       data: {
-        employeeId,
+        employeId: employeeId,
         title,
         totalAmount,
         items: {
@@ -185,18 +218,21 @@ router.post('/', async (req: Request<CompanyParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            departement: true,
+            compagnieId: true,
           },
         },
       },
     });
 
-    res.status(201).json(newReport);
+    res.status(201).json(transformExpenseReportWithEmployee(newReport));
   } catch (error) {
-    console.error('Error creating expense report:', error);
-    res.status(500).json({ error: 'Failed to create expense report' });
+    console.error('Erreur lors de la création du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la création du rapport de notes de frais' });
   }
 });
 
@@ -209,7 +245,7 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
   try {
     const where: any = {
       employee: {
-        companyId: companyId,
+        compagnieId: companyId,
       },
     };
 
@@ -220,7 +256,7 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
 
     // Filtrer par employé si fourni
     if (employeeId && typeof employeeId === 'string') {
-      where.employeeId = employeeId;
+      where.employeId = employeeId;
     }
 
     const reports = await prisma.expenseReport.findMany({
@@ -230,21 +266,24 @@ router.get('/', async (req: Request<CompanyParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            departement: true,
+            compagnieId: true,
           },
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        dateCreation: 'desc',
       },
     });
 
-    res.json(reports);
+    res.json(reports.map(transformExpenseReportWithEmployee));
   } catch (error) {
-    console.error('Error fetching expense reports:', error);
-    res.status(500).json({ error: 'Failed to fetch expense reports' });
+    console.error('Erreur lors de la récupération des rapports de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la récupération des rapports de notes de frais' });
   }
 });
 
@@ -258,7 +297,7 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
       include: {
@@ -270,22 +309,25 @@ router.get('/:reportId', async (req: Request<ReportParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            departement: true,
+            compagnieId: true,
           },
         },
       },
     });
 
     if (!report) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
-    res.json(report);
+    res.json(transformExpenseReportWithEmployee(report));
   } catch (error) {
-    console.error('Error fetching expense report:', error);
-    res.status(500).json({ error: 'Failed to fetch expense report' });
+    console.error('Erreur lors de la récupération du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la récupération du rapport de notes de frais' });
   }
 });
 
@@ -301,13 +343,13 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
 
     if (!existingReport) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     const updateData: { title?: string; status?: string } = {};
@@ -315,7 +357,7 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
     if (status !== undefined) {
       if (!isValidStatus(status)) {
         return res.status(400).json({
-          error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}`
+          error: `Statut invalide. Doit être parmi : ${VALID_STATUSES.join(', ')}`
         });
       }
       updateData.status = status;
@@ -329,21 +371,24 @@ router.put('/:reportId', async (req: Request<ReportParams>, res: Response) => {
         employee: {
           select: {
             id: true,
-            firstName: true,
-            lastName: true,
+            prenom: true,
+            nom: true,
             email: true,
+            salaireBrut: true,
+            departement: true,
+            compagnieId: true,
           },
         },
       },
     });
 
-    res.json(updatedReport);
+    res.json(transformExpenseReportWithEmployee(updatedReport));
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
-    console.error('Error updating expense report:', error);
-    res.status(500).json({ error: 'Failed to update expense report' });
+    console.error('Erreur lors de la mise à jour du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la mise à jour du rapport de notes de frais' });
   }
 });
 
@@ -358,13 +403,13 @@ router.delete('/:reportId', async (req: Request<ReportParams>, res: Response) =>
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
 
     if (!existingReport) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     await prisma.expenseReport.delete({
@@ -374,10 +419,10 @@ router.delete('/:reportId', async (req: Request<ReportParams>, res: Response) =>
     res.status(204).send();
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
-    console.error('Error deleting expense report:', error);
-    res.status(500).json({ error: 'Failed to delete expense report' });
+    console.error('Erreur lors de la suppression du rapport de notes de frais :', error);
+    res.status(500).json({ error: 'Échec de la suppression du rapport de notes de frais' });
   }
 });
 
@@ -389,27 +434,27 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
 
   if (!category || amount == null || !date || !description) {
     return res.status(400).json({
-      error: 'category, amount, date, and description are required'
+      error: 'category, amount, date et description sont requis'
     });
   }
 
   // Valider la catégorie
   if (!isValidCategory(category)) {
     return res.status(400).json({
-      error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+      error: `Catégorie invalide. Doit être parmi : ${VALID_CATEGORIES.join(', ')}`
     });
   }
 
   const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
   if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
-    return res.status(400).json({ error: 'amount must be a valid non-negative number' });
+    return res.status(400).json({ error: 'amount doit être un nombre positif valide' });
   }
 
   // Valider la date
   const parsedDate = new Date(date);
   if (isNaN(parsedDate.getTime())) {
     return res.status(400).json({
-      error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+      error: 'Format de date invalide. Utilisez le format ISO 8601 (YYYY-MM-DD)'
     });
   }
 
@@ -419,13 +464,13 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
 
     if (!existingReport) {
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     // Créer le nouvel item
@@ -448,8 +493,8 @@ router.post('/:reportId/items', async (req: Request<ReportParams>, res: Response
 
     res.status(201).json(newItem);
   } catch (error) {
-    console.error('Error creating expense item:', error);
-    res.status(500).json({ error: 'Failed to create expense item' });
+    console.error('Erreur lors de la création de l\'item de note de frais :', error);
+    res.status(500).json({ error: 'Échec de la création de l\'item de note de frais' });
   }
 });
 
@@ -467,14 +512,14 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
         reportId: reportId,
         report: {
           employee: {
-            companyId: companyId,
+            compagnieId: companyId,
           },
         },
       },
     });
 
     if (!existingItem) {
-      return res.status(404).json({ error: 'Expense item not found' });
+      return res.status(404).json({ error: 'Item de note de frais non trouvé' });
     }
 
     const updateData: {
@@ -489,7 +534,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
     if (category !== undefined) {
       if (!isValidCategory(category)) {
         return res.status(400).json({
-          error: `Invalid category. Must be one of: ${VALID_CATEGORIES.join(', ')}`
+          error: `Catégorie invalide. Doit être parmi : ${VALID_CATEGORIES.join(', ')}`
         });
       }
       updateData.category = category;
@@ -499,7 +544,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
       const parsedDate = new Date(date);
       if (isNaN(parsedDate.getTime())) {
         return res.status(400).json({
-          error: 'Invalid date format. Use ISO 8601 format (YYYY-MM-DD)'
+          error: 'Format de date invalide. Utilisez le format ISO 8601 (YYYY-MM-DD)'
         });
       }
       updateData.date = parsedDate;
@@ -511,7 +556,7 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
     if (amount !== undefined) {
       const parsedAmount = typeof amount === 'number' ? amount : parseFloat(amount);
       if (!Number.isFinite(parsedAmount) || parsedAmount < 0) {
-        return res.status(400).json({ error: 'amount must be a valid non-negative number' });
+        return res.status(400).json({ error: 'amount doit être un nombre positif valide' });
       }
       updateData.amount = parsedAmount;
       amountDifference = parsedAmount - existingItem.amount;
@@ -532,8 +577,8 @@ router.put('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: Res
 
     res.json(updatedItem);
   } catch (error) {
-    console.error('Error updating expense item:', error);
-    res.status(500).json({ error: 'Failed to update expense item' });
+    console.error('Erreur lors de la mise à jour de l\'item de note de frais :', error);
+    res.status(500).json({ error: 'Échec de la mise à jour de l\'item de note de frais' });
   }
 });
 
@@ -545,7 +590,7 @@ router.post('/:reportId/upload-receipt', upload.single('receipt'), async (req: R
 
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      return res.status(400).json({ error: 'Aucun fichier uploadé' });
     }
 
     // Vérifier que le rapport existe et appartient à l'entreprise
@@ -553,7 +598,7 @@ router.post('/:reportId/upload-receipt', upload.single('receipt'), async (req: R
       where: {
         id: reportId,
         employee: {
-          companyId: companyId,
+          compagnieId: companyId,
         },
       },
     });
@@ -561,19 +606,19 @@ router.post('/:reportId/upload-receipt', upload.single('receipt'), async (req: R
     if (!existingReport) {
       // Supprimer le fichier uploadé si le rapport n'existe pas
       fs.unlinkSync(req.file.path);
-      return res.status(404).json({ error: 'Expense report not found' });
+      return res.status(404).json({ error: 'Rapport de notes de frais non trouvé' });
     }
 
     // Retourner le chemin relatif du fichier
     const receiptPath = `/uploads/receipts/${req.file.filename}`;
     res.status(200).json({ receiptPath });
   } catch (error) {
-    console.error('Error uploading receipt:', error);
+    console.error('Erreur lors de l\'upload du reçu :', error);
     // Supprimer le fichier en cas d'erreur
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
-    res.status(500).json({ error: 'Failed to upload receipt' });
+    res.status(500).json({ error: 'Échec de l\'upload du reçu' });
   }
 });
 
@@ -590,14 +635,14 @@ router.delete('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: 
         reportId: reportId,
         report: {
           employee: {
-            companyId: companyId,
+            compagnieId: companyId,
           },
         },
       },
     });
 
     if (!existingItem) {
-      return res.status(404).json({ error: 'Expense item not found' });
+      return res.status(404).json({ error: 'Item de note de frais non trouvé' });
     }
 
     // Supprimer l'item
@@ -613,8 +658,8 @@ router.delete('/:reportId/items/:itemId', async (req: Request<ItemParams>, res: 
 
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting expense item:', error);
-    res.status(500).json({ error: 'Failed to delete expense item' });
+    console.error('Erreur lors de la suppression de l\'item de note de frais :', error);
+    res.status(500).json({ error: 'Échec de la suppression de l\'item de note de frais' });
   }
 });
 

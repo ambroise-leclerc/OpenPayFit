@@ -35,16 +35,16 @@ app.use('/api/cotisations', authenticateToken, cotisationsRouter); // Routes des
 // Servir les fichiers uploadés (reçus) avec authentification
 app.use('/uploads', authenticateToken, express.static(path.join(__dirname, '../uploads')));
 
-// Health check route
+// Route de vérification de santé
 app.get('/', (_req: Request, res: Response) => {
-  res.send('Hello, OpenPayFit Backend!');
+  res.send('Bonjour, OpenPayFit Backend!');
 });
 
-// Start the server only if this file is run directly
+// Démarrer le serveur uniquement si ce fichier est exécuté directement
 if (require.main === module) {
   app.listen(port, () => {
-    console.log(`Server is running on http://localhost:${port}`);
+    console.log(`Le serveur fonctionne sur http://localhost:${port}`);
   });
 }
 
-export default app; // Export for testing
+export default app; // Export pour les tests

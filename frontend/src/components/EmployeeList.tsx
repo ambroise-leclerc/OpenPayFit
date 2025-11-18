@@ -2,8 +2,8 @@ import type { Employee } from '../services/api';
 
 interface EmployeeListProps {
   employees: Employee[];
-  // onEdit: (employee: Employee) => void; // Future implementation
-  // onDelete: (employeeId: string) => void; // Future implementation
+  // onEdit: (employee: Employee) => void; // Implémentation future
+  // onDelete: (employeeId: string) => void; // Implémentation future
 }
 
 export default function EmployeeList({ employees }: EmployeeListProps) {

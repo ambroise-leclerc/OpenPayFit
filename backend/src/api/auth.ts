@@ -5,11 +5,11 @@ import prisma from '../lib/db';
 
 const router = Router();
 
-// JWT secret should be set via environment variable for security
+// Le secret JWT doit être défini via une variable d'environnement pour la sécurité
 const JWT_SECRET = process.env.JWT_SECRET;
 
 if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET environment variable is not set.');
+  throw new Error('La variable d\'environnement JWT_SECRET n\'est pas définie.');
 }
 
 // POST /api/auth/register
@@ -17,34 +17,34 @@ router.post('/register', async (req, res) => {
   const { email, name, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+    return res.status(400).json({ error: 'L\'email et le mot de passe sont requis' });
   }
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await prisma.user.create({
+    const user = await prisma.utilisateur.create({
       data: {
         email,
-        name,
-        password: hashedPassword,
+        nom: name,
+        motDePasse: hashedPassword,
       },
     });
 
-    // Generate a token for the new user
+    // Générer un jeton pour le nouvel utilisateur
     const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
-      expiresIn: '24h', // Token expires in 24 hours
+      expiresIn: '24h', // Le jeton expire dans 24 heures
     });
 
     res.status(201).json({ token });
 
   } catch (error) {
-    // Check if it's a Prisma unique constraint violation error
+    // Vérifier s'il s'agit d'une erreur de violation de contrainte unique Prisma
     if (typeof error === 'object' && error !== null && 'code' in error && (error as { code: unknown }).code === 'P2002') {
-      return res.status(409).json({ error: 'Email already exists' });
+      return res.status(409).json({ error: 'L\'email existe déjà' });
     }
     console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Erreur serveur interne' });
   }
 });
 
@@ -53,25 +53,25 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
+        return res.status(400).json({ error: 'L\'email et le mot de passe sont requis' });
     }
 
     try {
-        const user = await prisma.user.findUnique({
+        const user = await prisma.utilisateur.findUnique({
             where: { email },
         });
 
         if (!user) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Identifiants invalides' });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
+        const isPasswordValid = await bcrypt.compare(password, user.motDePasse);
 
         if (!isPasswordValid) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'Identifiants invalides' });
         }
 
-        // Generate a token
+        // Générer un jeton
         const token = jwt.sign({ userId: user.id }, JWT_SECRET as string, {
             expiresIn: '24h',
         });
@@ -80,7 +80,7 @@ router.post('/login', async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Erreur serveur interne' });
     }
 });
 

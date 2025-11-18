@@ -177,9 +177,9 @@ export async function exportPayrollToQuickBooks(
   const fichesPaie = await prisma.fichePaie.findMany({
     where: {
       employee: {
-        companyId: companyId
+        compagnieId: companyId
       },
-      payPeriod: payPeriod
+      periodeVersement: payPeriod
     },
     include: {
       employee: true,
@@ -201,8 +201,8 @@ export async function exportPayrollToQuickBooks(
 
     // 1. Débit : Charge de salaire brut
     lines.push({
-      Description: `Salaire ${fiche.employee.firstName} ${fiche.employee.lastName}`,
-      Amount: fiche.grossSalary,
+      Description: `Salaire ${fiche.employee.prenom} ${fiche.employee.nom}`,
+      Amount: fiche.salaireBrut,
       DetailType: 'JournalEntryLineDetail',
       JournalEntryLineDetail: {
         PostingType: 'Debit',
@@ -215,7 +215,7 @@ export async function exportPayrollToQuickBooks(
     // 2. Débit : Cotisations patronales
     if (fiche.totalCotisationsPatronales && fiche.totalCotisationsPatronales > 0) {
       lines.push({
-        Description: `Cotisations patronales ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+        Description: `Cotisations patronales ${fiche.employee.prenom} ${fiche.employee.nom}`,
         Amount: fiche.totalCotisationsPatronales,
         DetailType: 'JournalEntryLineDetail',
         JournalEntryLineDetail: {
@@ -228,7 +228,7 @@ export async function exportPayrollToQuickBooks(
 
       // Crédit : Dette sociale (cotisations patronales)
       lines.push({
-        Description: `Dette sociale patronale ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+        Description: `Dette sociale patronale ${fiche.employee.prenom} ${fiche.employee.nom}`,
         Amount: fiche.totalCotisationsPatronales,
         DetailType: 'JournalEntryLineDetail',
         JournalEntryLineDetail: {
@@ -243,7 +243,7 @@ export async function exportPayrollToQuickBooks(
     // 3. Crédit : Dette sociale (cotisations salariales)
     if (fiche.totalCotisationsSalariales && fiche.totalCotisationsSalariales > 0) {
       lines.push({
-        Description: `Dette sociale salariale ${fiche.employee.firstName} ${fiche.employee.lastName}`,
+        Description: `Dette sociale salariale ${fiche.employee.prenom} ${fiche.employee.nom}`,
         Amount: fiche.totalCotisationsSalariales,
         DetailType: 'JournalEntryLineDetail',
         JournalEntryLineDetail: {
@@ -257,8 +257,8 @@ export async function exportPayrollToQuickBooks(
 
     // 4. Crédit : Net à payer
     lines.push({
-      Description: `Net à payer ${fiche.employee.firstName} ${fiche.employee.lastName}`,
-      Amount: fiche.netSalary,
+      Description: `Net à payer ${fiche.employee.prenom} ${fiche.employee.nom}`,
+      Amount: fiche.salaireNet,
       DetailType: 'JournalEntryLineDetail',
       JournalEntryLineDetail: {
         PostingType: 'Credit',

@@ -32,7 +32,7 @@ router.get('/categories', async (req: Request, res: Response) => {
     });
     res.json(categories);
   } catch (error) {
-    console.error('Error fetching categories:', error);
+    console.error('Erreur lors de la récupération des catégories:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des catégories' });
   }
 });
@@ -60,7 +60,7 @@ router.get('/categories/:id', async (req: Request, res: Response) => {
 
     res.json(categorie);
   } catch (error) {
-    console.error('Error fetching category:', error);
+    console.error('Erreur lors de la récupération de la catégorie:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de la catégorie' });
   }
 });
@@ -87,7 +87,7 @@ router.post('/categories', async (req: Request, res: Response) => {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'Une catégorie avec ce code existe déjà' });
     }
-    console.error('Error creating category:', error);
+    console.error('Erreur lors de la création de la catégorie:', error);
     res.status(500).json({ error: 'Erreur lors de la création de la catégorie' });
   }
 });
@@ -116,7 +116,7 @@ router.put('/categories/:id', async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Une catégorie avec ce code existe déjà' });
       }
     }
-    console.error('Error updating category:', error);
+    console.error('Erreur lors de la modification de la catégorie:', error);
     res.status(500).json({ error: 'Erreur lors de la modification de la catégorie' });
   }
 });
@@ -139,7 +139,7 @@ router.delete('/categories/:id', async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Impossible de supprimer : des règles sont associées à cette catégorie' });
       }
     }
-    console.error('Error deleting category:', error);
+    console.error('Erreur lors de la suppression de la catégorie:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression de la catégorie' });
   }
 });
@@ -159,7 +159,7 @@ router.get('/organismes', async (req: Request, res: Response) => {
     });
     res.json(organismes);
   } catch (error) {
-    console.error('Error fetching organismes:', error);
+    console.error('Erreur lors de la récupération des organismes:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des organismes' });
   }
 });
@@ -187,7 +187,7 @@ router.get('/organismes/:id', async (req: Request, res: Response) => {
 
     res.json(organisme);
   } catch (error) {
-    console.error('Error fetching organisme:', error);
+    console.error('Erreur lors de la récupération de l\'organisme:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de l\'organisme' });
   }
 });
@@ -214,7 +214,7 @@ router.post('/organismes', async (req: Request, res: Response) => {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return res.status(409).json({ error: 'Un organisme avec ce code existe déjà' });
     }
-    console.error('Error creating organisme:', error);
+    console.error('Erreur lors de la création de l\'organisme:', error);
     res.status(500).json({ error: 'Erreur lors de la création de l\'organisme' });
   }
 });
@@ -243,7 +243,7 @@ router.put('/organismes/:id', async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Un organisme avec ce code existe déjà' });
       }
     }
-    console.error('Error updating organisme:', error);
+    console.error('Erreur lors de la modification de l\'organisme:', error);
     res.status(500).json({ error: 'Erreur lors de la modification de l\'organisme' });
   }
 });
@@ -266,7 +266,7 @@ router.delete('/organismes/:id', async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Impossible de supprimer : des règles sont associées à cet organisme' });
       }
     }
-    console.error('Error deleting organisme:', error);
+    console.error('Erreur lors de la suppression de l\'organisme:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression de l\'organisme' });
   }
 });
@@ -293,7 +293,7 @@ router.get('/regles', async (req: Request, res: Response) => {
     });
     res.json(regles);
   } catch (error) {
-    console.error('Error fetching regles:', error);
+    console.error('Erreur lors de la récupération des règles:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des règles' });
   }
 });
@@ -323,7 +323,7 @@ router.get('/regles/:id', async (req: Request, res: Response) => {
 
     res.json(regle);
   } catch (error) {
-    console.error('Error fetching regle:', error);
+    console.error('Erreur lors de la récupération de la règle:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération de la règle' });
   }
 });
@@ -400,7 +400,7 @@ router.post('/regles', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Catégorie ou organisme invalide' });
       }
     }
-    console.error('Error creating regle:', error);
+    console.error('Erreur lors de la création de la règle:', error);
     res.status(500).json({ error: 'Erreur lors de la création de la règle' });
   }
 });
@@ -475,7 +475,7 @@ router.put('/regles/:id', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Catégorie ou organisme invalide' });
       }
     }
-    console.error('Error updating regle:', error);
+    console.error('Erreur lors de la modification de la règle:', error);
     res.status(500).json({ error: 'Erreur lors de la modification de la règle' });
   }
 });
@@ -495,7 +495,7 @@ router.delete('/regles/:id', async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'Règle non trouvée' });
       }
     }
-    console.error('Error deleting regle:', error);
+    console.error('Erreur lors de la suppression de la règle:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression de la règle' });
   }
 });
@@ -515,7 +515,7 @@ router.get('/regles/:regleId/taux', async (req: Request, res: Response) => {
     });
     res.json(taux);
   } catch (error) {
-    console.error('Error fetching taux:', error);
+    console.error('Erreur lors de la récupération des taux:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des taux' });
   }
 });
@@ -575,7 +575,7 @@ router.post('/regles/:regleId/taux', async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Règle invalide' });
       }
     }
-    console.error('Error creating taux:', error);
+    console.error('Erreur lors de la création du taux:', error);
     res.status(500).json({ error: 'Erreur lors de la création du taux' });
   }
 });
@@ -636,7 +636,7 @@ router.put('/taux/:id', async (req: Request, res: Response) => {
         return res.status(409).json({ error: 'Un taux avec cette date de début existe déjà pour cette règle' });
       }
     }
-    console.error('Error updating taux:', error);
+    console.error('Erreur lors de la modification du taux:', error);
     res.status(500).json({ error: 'Erreur lors de la modification du taux' });
   }
 });
@@ -656,7 +656,7 @@ router.delete('/taux/:id', async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'Taux non trouvé' });
       }
     }
-    console.error('Error deleting taux:', error);
+    console.error('Erreur lors de la suppression du taux:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression du taux' });
   }
 });
@@ -814,7 +814,7 @@ router.post('/import', async (req: Request, res: Response) => {
 
     res.status(201).json(result);
   } catch (error) {
-    console.error('Error importing data:', error);
+    console.error('Erreur lors de l\'importation des données:', error);
     if (error instanceof SyntaxError) {
       return res.status(400).json({ error: `Erreur de parsing ${format.toUpperCase()}: ${error.message}` });
     }
@@ -895,7 +895,7 @@ router.get('/export', async (req: Request, res: Response) => {
       res.json(exportData);
     }
   } catch (error) {
-    console.error('Error exporting data:', error);
+    console.error('Erreur lors de l\'exportation des données:', error);
     res.status(500).json({ error: 'Erreur lors de l\'exportation des données' });
   }
 });
@@ -1017,7 +1017,7 @@ router.post('/simulation', async (req: Request, res: Response) => {
       details: detailsCotisations,
     });
   } catch (error) {
-    console.error('Error simulating payroll:', error);
+    console.error('Erreur lors de la simulation du calcul de paie:', error);
     res.status(500).json({ error: 'Erreur lors de la simulation du calcul de paie' });
   }
 });

@@ -1,7 +1,7 @@
-// Use environment variable for API URL, fallback to localhost for development
+// Utiliser la variable d'environnement pour l'URL de l'API, repli sur localhost pour le développement
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
-// Custom error class with HTTP status code
+// Classe d'erreur personnalisée avec code de statut HTTP
 export class ApiError extends Error {
   status: number;
 
@@ -12,25 +12,25 @@ export class ApiError extends Error {
   }
 }
 
-// Define the registration data interface
+// Définir l'interface des données d'inscription
 export interface RegisterUserData {
   name: string;
   email: string;
   password: string;
 }
 
-// Define the login credentials interface
+// Définir l'interface des identifiants de connexion
 export interface LoginCredentials {
   email: string;
   password: string;
 }
 
-// Define API response interfaces
+// Définir les interfaces de réponse API
 export interface AuthResponse {
   token: string;
 }
 
-// Helper function for error handling
+// Fonction utilitaire pour la gestion des erreurs
 async function handleErrorResponse(response: Response, fallbackMessage: string): Promise<never> {
   let errorMessage = fallbackMessage;
   try {
@@ -45,7 +45,7 @@ async function handleErrorResponse(response: Response, fallbackMessage: string):
       if (text) errorMessage = response.statusText || text;
     }
   } catch {
-    // Use fallback message if parsing fails
+    // Utiliser le message de repli si l'analyse échoue
     errorMessage = response.statusText || fallbackMessage;
   }
   throw new ApiError(errorMessage, response.status);
@@ -83,9 +83,9 @@ export async function loginUser(credentials: LoginCredentials): Promise<AuthResp
   return response.json();
 }
 
-// --- Company and Employee Management ---
+// --- Gestion des Entreprises et Employés ---
 
-// Data Interfaces based on Prisma Schema
+// Interfaces de données basées sur le schéma Prisma
 export interface Company {
   id: string;
   name: string;
@@ -118,7 +118,7 @@ export interface CreateEmployeeData {
 
 export type UpdateEmployeeData = Partial<CreateEmployeeData>;
 
-// Helper function to get headers with auth token
+// Fonction utilitaire pour obtenir les en-têtes avec le token d'authentification
 function getAuthHeaders(token: string) {
   return {
     'Content-Type': 'application/json',
@@ -126,9 +126,9 @@ function getAuthHeaders(token: string) {
   };
 }
 
-// --- API Functions ---
+// --- Fonctions API ---
 
-// Companies
+// Entreprises
 export async function getCompanies(token: string): Promise<Company[]> {
   const response = await fetch(`${API_URL}/companies`, {
     headers: getAuthHeaders(token),
@@ -151,7 +151,7 @@ export async function createCompany(companyData: CreateCompanyData, token: strin
   return response.json();
 }
 
-// Employees
+// Employés
 export async function getEmployees(companyId: string, token: string): Promise<Employee[]> {
   const response = await fetch(`${API_URL}/companies/${companyId}/employees`, {
     headers: getAuthHeaders(token),
@@ -204,9 +204,9 @@ export async function deleteEmployee(employeeId: string, token: string): Promise
   }
 }
 
-// --- Payroll Management ---
+// --- Gestion de la Paie ---
 
-// Payroll Data Interfaces
+// Interfaces de données de paie
 export interface Payslip {
   id: string;
   payPeriod: string;
@@ -222,7 +222,7 @@ export interface Payslip {
 
 export interface RunPayrollData {
   companyId: string;
-  period: string; // Format: YYYY-MM
+  period: string; // Format : YYYY-MM
 }
 
 export interface PayrollRunResult {
@@ -231,7 +231,7 @@ export interface PayrollRunResult {
   errors?: string[];
 }
 
-// --- Payroll API Functions ---
+// --- Fonctions API de Paie ---
 
 /**
  * Lance le calcul de paie pour une entreprise et une période donnée
@@ -335,14 +335,14 @@ export async function downloadPayslipPDF(payslipId: string, token: string): Prom
   window.URL.revokeObjectURL(url);
 }
 
-// --- Cotisations (Contribution Rules) Management ---
+// --- Gestion des Cotisations (Règles de Cotisation) ---
 
-// Enums
+// Énumérations
 export type TypeCotisation = 'COTISATION_SALARIALE' | 'COTISATION_PATRONALE' | 'CHARGE_FISCALE';
 export type TypeCalcul = 'POURCENTAGE' | 'MONTANT_FIXE' | 'TRANCHES';
 export type TypeAssiette = 'SALAIRE_BRUT' | 'SALAIRE_NET' | 'SALAIRE_PLAFONNE';
 
-// Data Interfaces
+// Interfaces de données
 export interface CategorieCotisation {
   id: string;
   code: string;
@@ -438,7 +438,7 @@ export interface SimulationResult {
   }[];
 }
 
-// --- Catégories API Functions ---
+// --- Fonctions API des Catégories ---
 
 export async function getCategories(token: string): Promise<CategorieCotisation[]> {
   const response = await fetch(`${API_URL}/cotisations/categories`, {
@@ -460,7 +460,7 @@ export async function getCategoryById(id: string, token: string): Promise<Catego
   return response.json();
 }
 
-// --- Organismes API Functions ---
+// --- Fonctions API des Organismes ---
 
 export async function getOrganismes(token: string): Promise<OrganismeCotisation[]> {
   const response = await fetch(`${API_URL}/cotisations/organismes`, {
@@ -482,7 +482,7 @@ export async function getOrganismeById(id: string, token: string): Promise<Organ
   return response.json();
 }
 
-// --- Règles de Cotisation API Functions ---
+// --- Fonctions API des Règles de Cotisation ---
 
 export async function getRegles(token: string): Promise<RegleCotisation[]> {
   const response = await fetch(`${API_URL}/cotisations/regles`, {
@@ -542,7 +542,7 @@ export async function deleteRegle(id: string, token: string): Promise<void> {
   }
 }
 
-// --- Taux de Cotisation API Functions ---
+// --- Fonctions API des Taux de Cotisation ---
 
 export async function createTaux(
   regleId: string,
@@ -586,7 +586,7 @@ export async function deleteTaux(id: string, token: string): Promise<void> {
   }
 }
 
-// --- Simulation API Function ---
+// --- Fonction API de Simulation ---
 
 export async function simulateCotisations(
   salaireBrut: number,
@@ -604,7 +604,7 @@ export async function simulateCotisations(
   return response.json();
 }
 
-// --- Import/Export API Functions ---
+// --- Fonctions API d'Import/Export ---
 
 export async function exportCotisations(
   format: 'yaml' | 'json',
@@ -635,7 +635,7 @@ export async function importCotisations(
   return response.json();
 }
 
-// --- Analytics (Indicateurs RH) Management ---
+// --- Gestion des Analytics (Indicateurs RH) ---
 
 // Interfaces pour les données analytics
 export interface DonneesMasseSalariale {
@@ -801,7 +801,7 @@ export async function getAnalyticsDepenses(
   return response.json();
 }
 
-// --- Leave Management (Gestion des Congés) ---
+// --- Gestion des Congés ---
 
 // Enums pour les congés
 export type LeaveType = 'PAID_LEAVE' | 'SICK_LEAVE' | 'UNPAID_LEAVE' | 'PARENTAL_LEAVE' | 'OTHER';
@@ -850,7 +850,7 @@ export interface UpdateLeaveData {
   reason?: string;
 }
 
-// --- Leave API Functions ---
+// --- Fonctions API des Congés ---
 
 /**
  * Récupère toutes les demandes de congés d'un employé
@@ -988,7 +988,7 @@ export async function getLeaveBalances(
   return response.json();
 }
 
-// --- Expense Reports Management (Gestion des Notes de Frais) ---
+// --- Gestion des Notes de Frais ---
 
 // Enums pour les notes de frais
 export type ExpenseStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'PAID';
@@ -1057,7 +1057,7 @@ export interface UpdateExpenseItemData {
   receiptPath?: string;
 }
 
-// --- Expense Reports API Functions ---
+// --- Fonctions API des Notes de Frais ---
 
 /**
  * Récupère tous les rapports de notes de frais d'une entreprise
@@ -1314,7 +1314,7 @@ export async function uploadReceipt(
   return response.json();
 }
 
-// --- Accounting Integrations Management (Gestion des Intégrations Comptables) ---
+// --- Gestion des Intégrations Comptables ---
 
 // Enums pour les intégrations comptables
 export type AccountingIntegrationType = 'SAGE' | 'QUICKBOOKS';
@@ -1409,7 +1409,7 @@ export interface QuickBooksTokens {
   realmId: string;
 }
 
-// --- Accounting Integrations API Functions ---
+// --- Fonctions API des Intégrations Comptables ---
 
 /**
  * Récupère toutes les intégrations comptables d'une entreprise
