@@ -305,9 +305,11 @@ describe('Payroll API Endpoints', () => {
       expect(res.statusCode).toEqual(200);
       expect(res.body.id).toBe(payslipId);
       expect(res.body.payPeriod).toBe('2025-08');
-      expect(res.body.salaireBrut).toBeDefined();
-      expect(res.body.salaireNet).toBeDefined();
+      expect(res.body.grossSalary).toBeDefined();
+      expect(res.body.netSalary).toBeDefined();
       expect(res.body.deductions).toBeDefined();
+      expect(res.body.employeeId).toBeDefined();
+      expect(res.body.createdAt).toBeDefined();
     });
 
     it('should reject request without authentication', async () => {
