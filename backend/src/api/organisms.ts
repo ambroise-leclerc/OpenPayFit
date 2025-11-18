@@ -165,6 +165,14 @@ router.post('/', authenticateToken, async (req: Request, res: Response) => {
       });
     }
 
+    // Validation du type d'organisme
+    const validTypes = ['URSSAF', 'RETRAITE', 'CHOMAGE', 'PREVOYANCE', 'MUTUELLE', 'FORMATION', 'AUTRE'];
+    if (!validTypes.includes(typeOrganisme)) {
+      return res.status(400).json({
+        error: `Type d'organisme invalide. Valeurs acceptées: ${validTypes.join(', ')}`,
+      });
+    }
+
     // Vérifier que l'entreprise existe et appartient à l'utilisateur
     const company = await prisma.compagnie.findUnique({
       where: { id: compagnieId },
@@ -267,6 +275,16 @@ router.put('/:id', authenticateToken, async (req: Request, res: Response) => {
       return res.status(403).json({
         error: 'Vous n\'êtes pas autorisé à modifier cet organisme',
       });
+    }
+
+    // Validation du type d'organisme si fourni
+    if (typeOrganisme) {
+      const validTypes = ['URSSAF', 'RETRAITE', 'CHOMAGE', 'PREVOYANCE', 'MUTUELLE', 'FORMATION', 'AUTRE'];
+      if (!validTypes.includes(typeOrganisme)) {
+        return res.status(400).json({
+          error: `Type d'organisme invalide. Valeurs acceptées: ${validTypes.join(', ')}`,
+        });
+      }
     }
 
     // Mettre à jour l'organisme (ne pas permettre de changer le code ou compagnieId)

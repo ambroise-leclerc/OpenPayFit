@@ -1,3 +1,7 @@
+-- CreateEnum TypeOrganisme
+-- Note: SQLite ne supporte pas les enums natifs, la validation se fait au niveau applicatif
+-- Les valeurs possibles sont: URSSAF, RETRAITE, CHOMAGE, PREVOYANCE, MUTUELLE, FORMATION, AUTRE
+
 -- RedefineTables
 PRAGMA foreign_keys=OFF;
 

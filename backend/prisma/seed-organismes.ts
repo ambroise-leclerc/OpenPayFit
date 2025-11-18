@@ -14,7 +14,7 @@ const prisma = new PrismaClient();
  * Organismes collecteurs obligatoires en France (2025)
  * Sources :
  * - URSSAF : Collecteur unique pour la Sécurité sociale
- * - Pôle Emploi : Assurance chômage
+ * - France Travail : Assurance chômage (anciennement Pôle Emploi)
  * - AGIRC-ARRCO : Retraite complémentaire obligatoire
  */
 const organismesObligatoires = [
@@ -30,10 +30,10 @@ const organismesObligatoires = [
     ville: 'Paris',
   },
   {
-    code: 'POLE_EMPLOI',
-    nom: 'France Travail (ex-Pôle Emploi)',
+    code: 'FRANCE_TRAVAIL',
+    nom: 'France Travail',
     typeOrganisme: 'CHOMAGE' as const,
-    description: 'Service public de l\'emploi - Collecteur des cotisations d\'assurance chômage',
+    description: 'Service public de l\'emploi - Collecteur des cotisations d\'assurance chômage (anciennement Pôle Emploi)',
     estGlobal: true,
     siteWeb: 'https://www.francetravail.fr',
     telephone: '3949',

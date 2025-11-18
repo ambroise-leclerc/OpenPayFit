@@ -378,6 +378,9 @@ function OrganismsPage() {
       {/* Modal de formulaire */}
       {formMode && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="modal-title"
           style={{
             position: 'fixed',
             top: 0,
@@ -404,25 +407,27 @@ function OrganismsPage() {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <h2>{formMode === 'create' ? 'Ajouter un organisme' : 'Modifier un organisme'}</h2>
+            <h2 id="modal-title">{formMode === 'create' ? 'Ajouter un organisme' : 'Modifier un organisme'}</h2>
 
             <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                  Code *
-                </label>
-                <input
-                  type="text"
-                  name="code"
-                  value={formData.code}
-                  onChange={handleInputChange}
-                  required
-                  disabled={formMode === 'edit'}
-                  style={{ width: '100%', padding: '0.5rem', fontSize: '1rem', border: '1px solid #ddd', borderRadius: '4px' }}
-                  placeholder="Ex: AG2R, MALAKOFF, PRO_BTP"
-                />
-                <small style={{ color: '#666' }}>Code unique de l'organisme (ne peut pas être modifié)</small>
-              </div>
+              {formMode === 'create' && (
+                <div style={{ marginBottom: '1rem' }}>
+                  <label htmlFor="organism-code" style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+                    Code *
+                  </label>
+                  <input
+                    type="text"
+                    id="organism-code"
+                    name="code"
+                    value={formData.code}
+                    onChange={handleInputChange}
+                    required
+                    style={{ width: '100%', padding: '0.5rem', fontSize: '1rem', border: '1px solid #ddd', borderRadius: '4px' }}
+                    placeholder="Ex: AG2R, MALAKOFF, PRO_BTP"
+                  />
+                  <small style={{ color: '#666' }}>Code unique de l'organisme</small>
+                </div>
+              )}
 
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>

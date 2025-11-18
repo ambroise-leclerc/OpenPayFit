@@ -8,6 +8,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import OrganismsPage from './OrganismsPage';
 import * as api from '../services/api';
+import type { Company } from '../services/api';
 
 // Mock du module API
 vi.mock('../services/api');
@@ -21,7 +22,7 @@ describe('OrganismsPage', () => {
     logout: vi.fn(),
   };
 
-  const mockCompanies = [
+  const mockCompanies: Company[] = [
     {
       id: 'company-1',
       name: 'Entreprise A',
