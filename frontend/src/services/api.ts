@@ -352,11 +352,27 @@ export interface CategorieCotisation {
   updatedAt: string;
 }
 
+export type TypeOrganisme = 'URSSAF' | 'RETRAITE' | 'CHOMAGE' | 'PREVOYANCE' | 'MUTUELLE' | 'FORMATION' | 'AUTRE';
+
 export interface OrganismeCotisation {
   id: string;
   code: string;
   nom: string;
+  typeOrganisme: TypeOrganisme;
   description?: string;
+  estGlobal: boolean;
+  adresse?: string;
+  codePostal?: string;
+  ville?: string;
+  telephone?: string;
+  email?: string;
+  siteWeb?: string;
+  numeroSiret?: string;
+  compagnieId?: string;
+  compagnie?: {
+    id: string;
+    nom: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -480,6 +496,127 @@ export async function getOrganismeById(id: string, token: string): Promise<Organ
     await handleErrorResponse(response, 'Échec de la récupération de l\'organisme');
   }
   return response.json();
+}
+
+// --- Gestion des Organismes Collecteurs (Nouvelle API dédiée) ---
+
+// Interfaces de données pour les organismes collecteurs
+export interface CreateOrganismData {
+  code: string;
+  nom: string;
+  typeOrganisme: TypeOrganisme;
+  description?: string;
+  compagnieId: string;
+  adresse?: string;
+  codePostal?: string;
+  ville?: string;
+  telephone?: string;
+  email?: string;
+  siteWeb?: string;
+  numeroSiret?: string;
+}
+
+export type UpdateOrganismData = Omit<Partial<CreateOrganismData>, 'code' | 'compagnieId'>;
+
+// --- Fonctions API des Organismes Collecteurs ---
+
+/**
+ * Récupère tous les organismes collecteurs (globaux + spécifiques à l'utilisateur)
+ * @param token - Token d'authentification
+ */
+export async function getAllOrganisms(token: string): Promise<OrganismeCotisation[]> {
+  const response = await fetch(`${API_URL}/organisms`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des organismes collecteurs');
+  }
+  return response.json();
+}
+
+/**
+ * Récupère uniquement les organismes globaux (obligatoires)
+ */
+export async function getGlobalOrganisms(): Promise<OrganismeCotisation[]> {
+  const response = await fetch(`${API_URL}/organisms/global`);
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des organismes globaux');
+  }
+  return response.json();
+}
+
+/**
+ * Récupère un organisme collecteur spécifique par son ID
+ * @param id - ID de l'organisme
+ * @param token - Token d'authentification
+ */
+export async function getOrganismById(id: string, token: string): Promise<OrganismeCotisation> {
+  const response = await fetch(`${API_URL}/organisms/${id}`, {
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de l\'organisme');
+  }
+  return response.json();
+}
+
+/**
+ * Crée un nouvel organisme collecteur spécifique à une entreprise
+ * @param organismData - Données de l'organisme
+ * @param token - Token d'authentification
+ */
+export async function createOrganism(
+  organismData: CreateOrganismData,
+  token: string
+): Promise<OrganismeCotisation> {
+  const response = await fetch(`${API_URL}/organisms`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(organismData),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création de l\'organisme');
+  }
+  return response.json();
+}
+
+/**
+ * Met à jour un organisme collecteur spécifique
+ * Les organismes globaux ne peuvent pas être modifiés
+ * @param id - ID de l'organisme
+ * @param organismData - Données à mettre à jour
+ * @param token - Token d'authentification
+ */
+export async function updateOrganism(
+  id: string,
+  organismData: UpdateOrganismData,
+  token: string
+): Promise<OrganismeCotisation> {
+  const response = await fetch(`${API_URL}/organisms/${id}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(organismData),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la mise à jour de l\'organisme');
+  }
+  return response.json();
+}
+
+/**
+ * Supprime un organisme collecteur spécifique
+ * Les organismes globaux ne peuvent pas être supprimés
+ * @param id - ID de l'organisme
+ * @param token - Token d'authentification
+ */
+export async function deleteOrganism(id: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/organisms/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de l\'organisme');
+  }
 }
 
 // --- Fonctions API des Règles de Cotisation ---
