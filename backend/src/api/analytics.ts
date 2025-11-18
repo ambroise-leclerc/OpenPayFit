@@ -3,29 +3,29 @@ import prisma from '../lib/db';
 
 // Définition des types pour les paramètres d'URL
 interface ParamsEntreprise {
-  companyId: string;
+  compagnieId: string;
 }
 
 const router = Router({ mergeParams: true });
 
 // Middleware de sécurité pour vérifier que l'utilisateur est propriétaire de l'entreprise
 router.use(async (req: Request<ParamsEntreprise>, res: Response, next: NextFunction) => {
-  const { companyId } = req.params;
+  const { compagnieId } = req.params;
 
-  if (!companyId) {
+  if (!compagnieId) {
     return res.status(400).json({ error: 'L\'ID de l\'entreprise est requis' });
   }
 
   try {
-    const entreprise = await prisma.company.findUnique({
-      where: { id: companyId },
+    const entreprise = await prisma.compagnie.findUnique({
+      where: { id: compagnieId },
     });
 
     if (!entreprise) {
       return res.status(404).json({ error: 'Entreprise non trouvée' });
     }
 
-    if (entreprise.ownerId !== req.userId) {
+    if (entreprise.proprietaireId !== req.userId) {
       return res.status(403).json({ error: 'Accès interdit' });
     }
 
@@ -63,7 +63,7 @@ function obtenirPlageDates(periode?: string, annee?: string, mois?: string, trim
 // GET /api/companies/:companyId/analytics/payroll
 // Retourne l'évolution de la masse salariale par mois
 router.get('/payroll', async (req: Request<ParamsEntreprise>, res: Response) => {
-  const { companyId } = req.params;
+  const { compagnieId } = req.params;
   const { period, year, month, quarter } = req.query;
 
   try {
@@ -75,8 +75,8 @@ router.get('/payroll', async (req: Request<ParamsEntreprise>, res: Response) => 
     );
 
     // Récupérer tous les employés de l'entreprise
-    const employes = await prisma.employee.findMany({
-      where: { companyId },
+    const employes = await prisma.employe.findMany({
+      where: { compagnieId },
       select: { id: true },
     });
 
@@ -85,7 +85,7 @@ router.get('/payroll', async (req: Request<ParamsEntreprise>, res: Response) => 
     // Récupérer toutes les fiches de paie de l'entreprise dans la période
     const fichesPaie = await prisma.fichePaie.findMany({
       where: {
-        employeeId: { in: idsEmployes },
+        employeId: { in: idsEmployes },
         createdAt: {
           gte: dateDebut,
           lte: dateFin,
@@ -133,11 +133,11 @@ router.get('/payroll', async (req: Request<ParamsEntreprise>, res: Response) => 
 // GET /api/companies/:companyId/analytics/headcount
 // Retourne la répartition des effectifs par département
 router.get('/headcount', async (req: Request<ParamsEntreprise>, res: Response) => {
-  const { companyId } = req.params;
+  const { compagnieId } = req.params;
 
   try {
-    const employes = await prisma.employee.findMany({
-      where: { companyId },
+    const employes = await prisma.employe.findMany({
+      where: { compagnieId },
       select: {
         department: true,
       },
@@ -165,7 +165,7 @@ router.get('/headcount', async (req: Request<ParamsEntreprise>, res: Response) =
 // GET /api/companies/:companyId/analytics/leaves
 // Retourne les statistiques de congés
 router.get('/leaves', async (req: Request<ParamsEntreprise>, res: Response) => {
-  const { companyId } = req.params;
+  const { compagnieId } = req.params;
   const { period, year, month, quarter } = req.query;
 
   try {
@@ -177,8 +177,8 @@ router.get('/leaves', async (req: Request<ParamsEntreprise>, res: Response) => {
     );
 
     // Récupérer tous les employés de l'entreprise
-    const employes = await prisma.employee.findMany({
-      where: { companyId },
+    const employes = await prisma.employe.findMany({
+      where: { compagnieId },
       select: { id: true },
     });
 
@@ -187,7 +187,7 @@ router.get('/leaves', async (req: Request<ParamsEntreprise>, res: Response) => {
     // Récupérer les congés dans la période
     const conges = await prisma.leave.findMany({
       where: {
-        employeeId: { in: idsEmployes },
+        employeId: { in: idsEmployes },
         startDate: {
           gte: dateDebut,
           lte: dateFin,
@@ -249,7 +249,7 @@ router.get('/leaves', async (req: Request<ParamsEntreprise>, res: Response) => {
 // GET /api/companies/:companyId/analytics/expenses
 // Retourne les statistiques de notes de frais
 router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) => {
-  const { companyId } = req.params;
+  const { compagnieId } = req.params;
   const { period, year, month, quarter, limit } = req.query;
 
   try {
@@ -261,13 +261,13 @@ router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) =>
     );
 
     // Récupérer tous les employés de l'entreprise avec leurs noms
-    const employes = await prisma.employee.findMany({
-      where: { companyId },
-      select: { id: true, firstName: true, lastName: true },
+    const employes = await prisma.employe.findMany({
+      where: { compagnieId },
+      select: { id: true, prenom: true, nom: true },
     });
 
     const idsEmployes = employes.map((e: any) => e.id);
-    const mapEmployes = new Map(employes.map((e: any) => [e.id, `${e.firstName} ${e.lastName}`]));
+    const mapEmployes = new Map(employes.map((e: any) => [e.id, `${e.prenom} ${e.nom}`]));
 
     // Valider et limiter le paramètre limit entre 1 et 100
     let limiteParsee: number | undefined = undefined;
@@ -281,7 +281,7 @@ router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) =>
     // Récupérer les notes de frais dans la période
     const notesDeFrais = await prisma.expense.findMany({
       where: {
-        employeeId: { in: idsEmployes },
+        employeId: { in: idsEmployes },
         date: {
           gte: dateDebut,
           lte: dateFin,
@@ -289,7 +289,7 @@ router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) =>
       },
       select: {
         id: true,
-        employeeId: true,
+        employeId: true,
         category: true,
         status: true,
         amount: true,
@@ -320,7 +320,7 @@ router.get('/expenses', async (req: Request<ParamsEntreprise>, res: Response) =>
     // Top 10 des dépenses les plus élevées avec le nom de l'employé
     const topDepenses = notesDeFrais.slice(0, 10).map((note: any) => ({
       id: note.id,
-      nomEmploye: mapEmployes.get(note.employeeId) || 'Inconnu',
+      nomEmploye: mapEmployes.get(note.employeId) || 'Inconnu',
       categorie: note.category,
       montant: note.amount,
       date: note.date,

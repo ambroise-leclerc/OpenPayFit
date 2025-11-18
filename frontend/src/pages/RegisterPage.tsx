@@ -19,12 +19,12 @@ export default function RegisterPage() {
       auth.login(data.token);
       navigate('/dashboard');
     } catch (err: unknown) {
-      // Try to extract user-friendly error message using error codes when possible
+      // Essayer d'extraire un message d'erreur convivial en utilisant les codes d'erreur si possible
       let message = 'Échec de l\'inscription. Veuillez vérifier vos informations.';
-      
-      // Check for structured error response with error codes
+
+      // Vérifier la réponse d'erreur structurée avec les codes d'erreur
       const errorCode =
-        // Check if error has a code property
+        // Vérifier si l'erreur a une propriété code
         (typeof err === 'object' && err !== null && 'code' in err && (err as Record<string, unknown>).code) ||
         null;
 
@@ -40,7 +40,7 @@ export default function RegisterPage() {
           message = 'Informations invalides. Veuillez vérifier vos données.';
           break;
         default:
-          // Fallback to message parsing for backward compatibility
+          // Repli sur l'analyse du message pour la rétrocompatibilité
           if (err instanceof Error) {
             if (err.message.includes('already exists') || err.message.includes('existe déjà')) {
               message = 'Cette adresse email est déjà utilisée.';

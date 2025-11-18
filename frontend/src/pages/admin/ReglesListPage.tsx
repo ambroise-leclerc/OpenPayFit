@@ -59,7 +59,7 @@ function ReglesListPage() {
   async function handleDelete(id: string, code: string) {
     if (!token) return;
 
-    if (!confirm(`�tes-vous s�r de vouloir supprimer la r�gle "${code}" ?`)) {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer la règle "${code}" ?`)) {
       return;
     }
 
@@ -124,7 +124,7 @@ function ReglesListPage() {
   return (
     <div className={styles.container}>
       <div className={styles.header}>
-        <h1>R�gles de Cotisations</h1>
+        <h1>Règles de Cotisations</h1>
         <div className={styles.actions}>
           <button onClick={() => handleExport('yaml')} className={styles.btnSecondary}>
             Exporter YAML
@@ -133,7 +133,7 @@ function ReglesListPage() {
             Exporter JSON
           </button>
           <Link to="/admin/cotisations/regles/new" className={styles.btnPrimary}>
-            Nouvelle r�gle
+            Nouvelle règle
           </Link>
         </div>
       </div>
@@ -151,7 +151,7 @@ function ReglesListPage() {
         />
 
         <select value={filterCategorie} onChange={(e) => setFilterCategorie(e.target.value)}>
-          <option value="">Toutes les cat�gories</option>
+          <option value="">Toutes les catégories</option>
           {categories.map((cat) => (
             <option key={cat.id} value={cat.id}>
               {cat.nom}
@@ -200,7 +200,7 @@ function ReglesListPage() {
             {filteredRegles.length === 0 ? (
               <tr>
                 <td colSpan={7} className={styles.empty}>
-                  Aucune r�gle trouv�e
+                  Aucune règle trouvée
                 </td>
               </tr>
             ) : (
@@ -234,7 +234,7 @@ function ReglesListPage() {
                         Voir
                       </Link>
                       <Link to={`/admin/cotisations/regles/${regle.id}/edit`} className={styles.btnEdit}>
-                        �diter
+                        Éditer
                       </Link>
                       <button
                         onClick={() => handleDelete(regle.id, regle.code)}
@@ -252,7 +252,7 @@ function ReglesListPage() {
       </div>
 
       <div className={styles.summary}>
-        {filteredRegles.length} r�gle(s) affich�e(s) sur {regles.length} au total
+        {filteredRegles.length} règle(s) affichée(s) sur {regles.length} au total
       </div>
     </div>
   );

@@ -12,7 +12,7 @@ if (!shouldUseBetterSqlite) {
     prisma = new PrismaClient();
   } catch (error) {
     // Si Prisma ne peut pas être initialisé, utiliser better-sqlite3
-    console.warn('Warning: Prisma Client could not be initialized. Using better-sqlite3 directly.');
+    console.warn('Attention: Le client Prisma n\'a pas pu être initialisé. Utilisation de better-sqlite3 directement.');
   }
 }
 
@@ -40,11 +40,60 @@ if (!prisma || shouldUseBetterSqlite) {
     'accounting_export_logs'
   ]);
 
+  // Mapping des noms de champs Prisma (français) vers les noms de colonnes SQL (anglais)
+  const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
+    Company: {
+      nom: 'name',
+      proprietaireId: 'ownerId',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    accounting_integrations: {
+      compagnieId: 'companyId',
+      typeIntegration: 'type',
+      statut: 'status',
+      dateDerniereSynchro: 'lastSyncAt',
+      derniereErreur: 'lastError',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    accounting_export_logs: {
+      statut: 'status',
+      periodeVersement: 'payPeriod',
+      nombreEnregistrements: 'recordCount',
+      cheminFichier: 'filePath',
+      messageErreur: 'errorMessage',
+      nombreTentatives: 'retryCount',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    }
+  };
+
+  // Fonction helper pour traduire les noms de champs (Prisma → SQL)
+  const mapFieldName = (tableName: string, fieldName: string): string => {
+    return FIELD_MAPPINGS[tableName]?.[fieldName] || fieldName;
+  };
+
+  // Fonction helper pour traduire les résultats de SQL vers Prisma (reverse mapping)
+  const reverseMapRow = (tableName: string, row: any): any => {
+    if (!row) return row;
+    const mapping = FIELD_MAPPINGS[tableName];
+    if (!mapping) return row;
+
+    const reversedRow: any = {};
+    for (const [key, value] of Object.entries(row)) {
+      // Trouver la clé Prisma correspondante
+      const prismaKey = Object.keys(mapping).find(k => mapping[k] === key) || key;
+      reversedRow[prismaKey] = value;
+    }
+    return reversedRow;
+  };
+
   // Créer un wrapper Prisma-like pour better-sqlite3
   const createModelWrapper = (tableName: string) => {
     // Valider le nom de table pour prévenir les injections SQL
     if (!ALLOWED_TABLES.has(tableName)) {
-      throw new Error(`Table name not allowed: ${tableName}`);
+      throw new Error(`Nom de table non autorisé: ${tableName}`);
     }
 
     return {
@@ -65,11 +114,12 @@ if (!prisma || shouldUseBetterSqlite) {
         }
 
         const fields = Object.keys(data);
+        const mappedFields = fields.map(f => mapFieldName(tableName, f));
         const values = Object.values(data).map(v =>
           typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
         );
-        const placeholders = fields.map(() => '?').join(', ');
-        const query = `INSERT INTO ${tableName} (${fields.join(', ')}) VALUES (${placeholders})`;
+        const placeholders = mappedFields.map(() => '?').join(', ');
+        const query = `INSERT INTO ${tableName} (${mappedFields.join(', ')}) VALUES (${placeholders})`;
 
         const stmt = db.prepare(query);
         stmt.run(...values);
@@ -79,9 +129,9 @@ if (!prisma || shouldUseBetterSqlite) {
         const selectStmt = db.prepare(selectQuery);
         const row = selectStmt.get(data.id);
 
-        return Promise.resolve(row);
+        return Promise.resolve(reverseMapRow(tableName, row));
       } catch (e) {
-        console.error(`Error in create for ${tableName}:`, e);
+        console.error(`Erreur dans create pour ${tableName}:`, e);
         return Promise.reject(e);
       }
     },
@@ -94,14 +144,15 @@ if (!prisma || shouldUseBetterSqlite) {
         let query = `SELECT * FROM ${tableName}`;
         const params: any[] = [];
 
-        // Handle unique constraint queries (e.g., companyId_type)
+        // Gérer les requêtes de contraintes uniques (par ex., companyId_type)
         const whereKeys = Object.keys(args.where);
         if (whereKeys.length === 1 && typeof args.where[whereKeys[0]] === 'object') {
-          // Composite unique constraint
+          // Contrainte unique composite
           const compositeWhere = args.where[whereKeys[0]];
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(compositeWhere)) {
-            conditions.push(`${key} = ?`);
+            const mappedKey = mapFieldName(tableName, key);
+            conditions.push(`${mappedKey} = ?`);
             params.push(value);
           }
           query += ` WHERE ${conditions.join(' AND ')}`;
@@ -109,7 +160,8 @@ if (!prisma || shouldUseBetterSqlite) {
           // Simple where
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
-            conditions.push(`${key} = ?`);
+            const mappedKey = mapFieldName(tableName, key);
+            conditions.push(`${mappedKey} = ?`);
             params.push(value);
           }
           query += ` WHERE ${conditions.join(' AND ')}`;
@@ -119,9 +171,9 @@ if (!prisma || shouldUseBetterSqlite) {
 
         const stmt = db.prepare(query);
         const row = stmt.get(...params);
-        return Promise.resolve(row || null);
+        return Promise.resolve(reverseMapRow(tableName, row) || null);
       } catch (e) {
-        console.error(`Error in findUnique for ${tableName}:`, e);
+        console.error(`Erreur dans findUnique pour ${tableName}:`, e);
         return Promise.resolve(null);
       }
     },
@@ -134,11 +186,12 @@ if (!prisma || shouldUseBetterSqlite) {
         if (args?.where) {
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
+            const mappedKey = mapFieldName(tableName, key);
             if (typeof value === 'boolean') {
-              conditions.push(`${key} = ?`);
+              conditions.push(`${mappedKey} = ?`);
               params.push(value ? 1 : 0);
             } else if (value !== null && value !== undefined) {
-              conditions.push(`${key} = ?`);
+              conditions.push(`${mappedKey} = ?`);
               params.push(value);
             }
           }
@@ -197,9 +250,11 @@ if (!prisma || shouldUseBetterSqlite) {
           }
         }
 
-        return Promise.resolve(rows);
+        // Appliquer le reverse mapping à tous les résultats
+        const mappedRows = rows.map((row: any) => reverseMapRow(tableName, row));
+        return Promise.resolve(mappedRows);
       } catch (e) {
-        console.error(`Error in findMany for ${tableName}:`, e);
+        console.error(`Erreur dans findMany pour ${tableName}:`, e);
         return Promise.resolve([]);
       }
     },
@@ -297,14 +352,14 @@ if (!prisma || shouldUseBetterSqlite) {
         const row = stmt.get(...params);
         return Promise.resolve(row || null);
       } catch (e) {
-        console.error(`Error in findFirst for ${tableName}:`, e);
+        console.error(`Erreur dans findFirst pour ${tableName}:`, e);
         return Promise.resolve(null);
       }
     },
     update: (args?: any) => {
       try {
         if (!args?.where || !args?.data) {
-          throw new Error('Update requires where and data');
+          throw new Error('Update nécessite where et data');
         }
 
         const data = { ...args.data };
@@ -315,16 +370,18 @@ if (!prisma || shouldUseBetterSqlite) {
         }
 
         const setFields = Object.keys(data);
+        const mappedSetFields = setFields.map(f => mapFieldName(tableName, f));
         const setValues = Object.values(data).map(v =>
           typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
         );
 
-        const setClause = setFields.map(f => `${f} = ?`).join(', ');
+        const setClause = mappedSetFields.map(f => `${f} = ?`).join(', ');
         const whereConditions: string[] = [];
         const whereValues: any[] = [];
 
         for (const [key, value] of Object.entries(args.where)) {
-          whereConditions.push(`${key} = ?`);
+          const mappedKey = mapFieldName(tableName, key);
+          whereConditions.push(`${mappedKey} = ?`);
           whereValues.push(value);
         }
 
@@ -337,16 +394,16 @@ if (!prisma || shouldUseBetterSqlite) {
         const selectStmt = db.prepare(selectQuery);
         const row = selectStmt.get(...whereValues);
 
-        return Promise.resolve(row);
+        return Promise.resolve(reverseMapRow(tableName, row));
       } catch (e) {
-        console.error(`Error in update for ${tableName}:`, e);
+        console.error(`Erreur dans update pour ${tableName}:`, e);
         return Promise.reject(e);
       }
     },
     delete: (args?: any) => {
       try {
         if (!args?.where) {
-          throw new Error('Delete requires where');
+          throw new Error('Delete nécessite where');
         }
 
         const conditions: string[] = [];
@@ -363,7 +420,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve({ count: stmt.changes });
       } catch (e) {
-        console.error(`Error in delete for ${tableName}:`, e);
+        console.error(`Erreur dans delete pour ${tableName}:`, e);
         return Promise.reject(e);
       }
     },
@@ -388,7 +445,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         return Promise.resolve({ count: stmt.changes });
       } catch (e) {
-        console.error(`Error in deleteMany for ${tableName}:`, e);
+        console.error(`Erreur dans deleteMany pour ${tableName}:`, e);
         return Promise.reject(e);
       }
     },
@@ -398,6 +455,7 @@ if (!prisma || shouldUseBetterSqlite) {
   prisma = {
     user: createModelWrapper('User'),
     company: createModelWrapper('Company'),
+    compagnie: createModelWrapper('Company'), // Alias français pour Company
     employee: createModelWrapper('Employee'),
     regleCotisation: createModelWrapper('regles_cotisation'),
     tauxCotisation: createModelWrapper('taux_cotisation'),

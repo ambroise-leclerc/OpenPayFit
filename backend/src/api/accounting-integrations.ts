@@ -21,13 +21,58 @@ import {
 const router = Router();
 
 /**
+ * Fonction helper pour transformer et masquer les credentials
+ */
+function transformIntegration(integration: any, sanitize: boolean = true) {
+  return {
+    id: integration.id,
+    companyId: integration.compagnieId,
+    type: integration.typeIntegration,
+    status: integration.statut,
+    configuration: sanitize ? '***' : integration.configuration,
+    lastSyncAt: integration.dateDerniereSynchro,
+    lastError: integration.derniereErreur,
+    createdAt: integration.dateCreation,
+    updatedAt: integration.dateModification,
+    exportLogs: integration.journauxExport ? integration.journauxExport.map((log: any) => ({
+      id: log.id,
+      integrationId: log.integrationId,
+      status: log.statut,
+      payPeriod: log.periodeVersement,
+      recordCount: log.nombreEnregistrements,
+      filePath: log.cheminFichier,
+      errorMessage: log.messageErreur,
+      retryCount: log.nombreTentatives,
+      createdAt: log.dateCreation,
+      updatedAt: log.dateModification,
+    })) : undefined
+  };
+}
+
+/**
+ * Fonction helper pour transformer un log d'export
+ */
+function transformExportLog(log: any) {
+  return {
+    id: log.id,
+    integrationId: log.integrationId,
+    status: log.statut,
+    payPeriod: log.periodeVersement,
+    recordCount: log.nombreEnregistrements,
+    filePath: log.cheminFichier,
+    errorMessage: log.messageErreur,
+    retryCount: log.nombreTentatives,
+    createdAt: log.dateCreation,
+    updatedAt: log.dateModification,
+  };
+}
+
+/**
  * Fonction helper pour masquer les credentials dans la configuration
+ * @deprecated Utilisez transformIntegration() à la place
  */
 function sanitizeIntegration(integration: any) {
-  return {
-    ...integration,
-    configuration: '***' // Masquer les credentials
-  };
+  return transformIntegration(integration, true);
 }
 
 /**
@@ -37,7 +82,7 @@ async function verifyCompanyOwnership(req: Request, res: Response, next: any) {
   const userId = (req as any).userId;
   const companyId = req.params.companyId;
 
-  const company = await prisma.company.findUnique({
+  const company = await prisma.compagnie.findUnique({
     where: { id: companyId }
   });
 
@@ -45,7 +90,7 @@ async function verifyCompanyOwnership(req: Request, res: Response, next: any) {
     return res.status(404).json({ error: 'Entreprise non trouvée' });
   }
 
-  if (company.ownerId !== userId) {
+  if (company.proprietaireId !== userId) {
     return res.status(403).json({ error: 'Accès non autorisé' });
   }
 
@@ -65,22 +110,17 @@ router.get(
       const { companyId } = req.params;
 
       const integrations = await prisma.accountingIntegration.findMany({
-        where: { companyId },
+        where: { compagnieId: companyId },
         include: {
-          exportLogs: {
-            orderBy: { createdAt: 'desc' },
+          journauxExport: {
+            orderBy: { dateCreation: 'desc' },
             take: 5
           }
         }
       });
 
-      // Masquer les informations sensibles
-      const sanitized = integrations.map((integration: any) => ({
-        ...integration,
-        configuration: '***' // Ne pas exposer les credentials
-      }));
-
-      res.json(sanitized);
+      // Transformer et masquer les informations sensibles
+      res.json(integrations.map((integration: any) => transformIntegration(integration, true)));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -114,9 +154,9 @@ router.post(
       // Vérifier qu'il n'existe pas déjà une intégration de ce type
       const existing = await prisma.accountingIntegration.findUnique({
         where: {
-          companyId_type: {
-            companyId,
-            type
+          compagnieId_typeIntegration: {
+            compagnieId: companyId,
+            typeIntegration: type
           }
         }
       });
@@ -129,10 +169,10 @@ router.post(
 
       const integration = await prisma.accountingIntegration.create({
         data: {
-          companyId,
-          type,
+          compagnieId: companyId,
+          typeIntegration: type,
           configuration: JSON.stringify(configuration),
-          status: 'ACTIVE'
+          statut: 'ACTIVE'
         }
       });
 
@@ -167,9 +207,9 @@ router.put(
 
       // Valider la nouvelle configuration si fournie
       if (configuration) {
-        if (integration.type === 'SAGE') {
+        if (integration.typeIntegration === 'SAGE') {
           validateSageConfig(configuration);
-        } else if (integration.type === 'QUICKBOOKS') {
+        } else if (integration.typeIntegration === 'QUICKBOOKS') {
           validateQuickBooksConfig(configuration);
         }
       }
@@ -178,7 +218,7 @@ router.put(
         where: { id: integrationId },
         data: {
           ...(configuration && { configuration: JSON.stringify(configuration) }),
-          ...(status && { status })
+          ...(status && { statut: status })
         }
       });
 
@@ -238,7 +278,7 @@ router.post(
         return res.status(404).json({ error: 'Intégration non trouvée' });
       }
 
-      if (integration.status !== 'ACTIVE') {
+      if (integration.statut !== 'ACTIVE') {
         return res.status(400).json({ error: 'L\'intégration n\'est pas active' });
       }
 
@@ -248,8 +288,8 @@ router.post(
       const log = await prisma.accountingExportLog.create({
         data: {
           integrationId,
-          payPeriod,
-          status: 'PENDING'
+          periodeVersement: payPeriod,
+          statut: 'PENDING'
         }
       });
 
@@ -257,19 +297,19 @@ router.post(
         let result: { recordCount: number; filePath?: string };
 
         // Exporter selon le type d'intégration
-        if (integration.type === 'SAGE') {
+        if (integration.typeIntegration === 'SAGE') {
           result = await exportPayrollToSage(companyId, payPeriod, config as SageConfig);
 
           // Mettre à jour le log avec succès
           await prisma.accountingExportLog.update({
             where: { id: log.id },
             data: {
-              status: 'SUCCESS',
-              recordCount: result.recordCount,
-              filePath: result.filePath
+              statut: 'SUCCESS',
+              nombreEnregistrements: result.recordCount,
+              cheminFichier: result.filePath
             }
           });
-        } else if (integration.type === 'QUICKBOOKS') {
+        } else if (integration.typeIntegration === 'QUICKBOOKS') {
           const qbResult = await exportPayrollToQuickBooks(companyId, payPeriod, config as QuickBooksConfig);
           result = { recordCount: qbResult.recordCount };
 
@@ -294,8 +334,8 @@ router.post(
           await prisma.accountingExportLog.update({
             where: { id: log.id },
             data: {
-              status: 'SUCCESS',
-              recordCount: result.recordCount
+              statut: 'SUCCESS',
+              nombreEnregistrements: result.recordCount
             }
           });
         } else {
@@ -306,9 +346,9 @@ router.post(
         await prisma.accountingIntegration.update({
           where: { id: integrationId },
           data: {
-            lastSyncAt: new Date(),
-            lastError: null,
-            status: 'ACTIVE'
+            dateDerniereSynchro: new Date(),
+            derniereErreur: null,
+            statut: 'ACTIVE'
           }
         });
 
@@ -322,8 +362,8 @@ router.post(
         await prisma.accountingExportLog.update({
           where: { id: log.id },
           data: {
-            status: 'FAILED',
-            errorMessage: exportError.message
+            statut: 'FAILED',
+            messageErreur: exportError.message
           }
         });
 
@@ -331,8 +371,8 @@ router.post(
         await prisma.accountingIntegration.update({
           where: { id: integrationId },
           data: {
-            lastError: exportError.message,
-            status: 'ERROR'
+            derniereErreur: exportError.message,
+            statut: 'ERROR'
           }
         });
 
@@ -359,11 +399,11 @@ router.get(
 
       const logs = await prisma.accountingExportLog.findMany({
         where: { integrationId },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { dateCreation: 'desc' },
         take: limit
       });
 
-      res.json(logs);
+      res.json(logs.map(transformExportLog));
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

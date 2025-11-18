@@ -32,37 +32,37 @@ function setupTestDatabase() {
   return db;
 }
 
-function createTestUser(db: DatabaseType, email: string, password: string = 'password123'): string {
+function createTestUser(db: DatabaseType, email: string, motDePasse: string = 'password123'): string {
   const id = randomUUID();
   db.prepare(`
     INSERT INTO User (id, email, password, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
-  `).run(id, email, password);
+  `).run(id, email, motDePasse);
   return id;
 }
 
-function createTestCompany(db: DatabaseType, name: string, ownerId: string): string {
+function createTestCompany(db: DatabaseType, nom: string, proprietaireId: string): string {
   const id = randomUUID();
   db.prepare(`
     INSERT INTO Company (id, name, ownerId, createdAt, updatedAt)
     VALUES (?, ?, ?, datetime('now'), datetime('now'))
-  `).run(id, name, ownerId);
+  `).run(id, nom, proprietaireId);
   return id;
 }
 
 function createTestEmployee(
   db: DatabaseType,
-  firstName: string,
-  lastName: string,
+  prenom: string,
+  nom: string,
   email: string,
-  grossSalary: number,
-  companyId: string
+  salaireBrut: number,
+  compagnieId: string
 ): string {
   const id = randomUUID();
   db.prepare(`
     INSERT INTO Employee (id, firstName, lastName, email, grossSalary, companyId, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `).run(id, firstName, lastName, email, grossSalary, companyId);
+  `).run(id, prenom, nom, email, salaireBrut, compagnieId);
   return id;
 }
 

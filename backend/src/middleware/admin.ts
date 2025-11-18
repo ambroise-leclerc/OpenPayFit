@@ -23,7 +23,7 @@ export async function requireAdmin(req: Request, res: Response, next: NextFuncti
     }
 
     // Récupérer l'utilisateur depuis la base de données
-    const user = await prisma.user.findUnique({
+    const user = await prisma.utilisateur.findUnique({
       where: { id: req.userId },
       select: { role: true }
     });

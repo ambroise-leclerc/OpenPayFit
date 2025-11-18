@@ -6,11 +6,11 @@ import type { ReactNode } from 'react';
 export default function ProtectedRoute({ children }: { children: ReactNode }) {
   const { token, logout } = useAuth();
 
-  // Check if token exists and is valid
+  // Vérifier si le token existe et est valide
   if (!token || !isTokenValid(token)) {
-    // If token is invalid or expired, logout and redirect
+    // Si le token est invalide ou expiré, déconnecter et rediriger
     if (token && !isTokenValid(token)) {
-      logout(); // Clear invalid token
+      logout(); // Effacer le token invalide
     }
     return <Navigate to="/login" replace />;
   }

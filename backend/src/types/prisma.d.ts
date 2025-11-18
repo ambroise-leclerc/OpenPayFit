@@ -4,43 +4,60 @@
  */
 
 declare module '@prisma/client' {
-  export interface User {
+  export interface Utilisateur {
     id: string;
     email: string;
-    name: string | null;
-    password: string;
-    createdAt: Date;
-    updatedAt: Date;
+    nom: string | null;
+    motDePasse: string;
+    role: Role;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
-  export interface Company {
+  export interface Compagnie {
     id: string;
-    name: string;
-    ownerId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    nom: string;
+    proprietaireId: string;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
-  export interface Employee {
+  export interface Employe {
     id: string;
-    firstName: string;
-    lastName: string;
+    prenom: string;
+    nom: string;
     email: string;
-    grossSalary: number;
-    companyId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    salaireBrut: number;
+    departement?: string;
+    compagnieId: string;
+    dateCreation: Date;
+    dateModification: Date;
   }
 
-  export interface Payslip {
+  export interface FichePaie {
     id: string;
-    payPeriod: string;
-    grossSalary: number;
-    deductions: number;
-    netSalary: number;
-    employeeId: string;
-    createdAt: Date;
-    updatedAt: Date;
+    periodeVersement: string;
+    salaireBrut: number;
+    prelevements: number;
+    salaireNet: number;
+    totalCotisationsSalariales?: number;
+    totalCotisationsPatronales?: number;
+    totalChargesFiscales?: number;
+    coutTotal?: number;
+    employeId: string;
+    dateCreation: Date;
+    dateModification: Date;
+  }
+
+  // Alias pour compatibilité avec le code existant
+  export type User = Utilisateur;
+  export type Company = Compagnie;
+  export type Employee = Employe;
+  export type Payslip = FichePaie;
+
+  export enum Role {
+    USER = 'USER',
+    ADMIN = 'ADMIN'
   }
 
   export namespace Prisma {
@@ -53,10 +70,10 @@ declare module '@prisma/client' {
   }
 
   export class PrismaClient {
-    user: any;
-    company: any;
-    employee: any;
-    payslip: any;
+    utilisateur: any;
+    compagnie: any;
+    employe: any;
+    fichePaie: any;
     $disconnect(): Promise<void>;
     $connect(): Promise<void>;
   }

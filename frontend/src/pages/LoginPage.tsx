@@ -18,7 +18,7 @@ export default function LoginPage() {
       auth.login(data.token);
       navigate('/dashboard');
     } catch {
-      // Use generic message for security - don't expose API details
+      // Utiliser un message générique pour la sécurité - ne pas exposer les détails de l'API
       setError('Email ou mot de passe incorrect');
     }
   };
