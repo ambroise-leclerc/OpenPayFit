@@ -8,7 +8,105 @@ import prisma from '../lib/db';
 import { DSNGenerator, DonneesDSN, FichePaieDSN, CotisationDSN } from '../services/dsn/dsnGenerator';
 import { DSNValidator } from '../services/dsn/dsnValidator';
 
+/**
+ * Interface pour un employé (modèle Prisma de base)
+ */
+interface Employe {
+  id: string;
+  prenom: string;
+  nom: string;
+  email: string;
+  salaireBrut: number;
+  compagnieId: string;
+  numeroSecuriteSociale?: string | null;
+  dateNaissance?: Date | null;
+  lieuNaissance?: string | null;
+  nationalite?: string | null;
+  typeContrat?: string | null;
+  dateEmbauche?: Date | null;
+  dateFinContrat?: Date | null;
+  numeroMatricule?: string | null;
+  poste?: string | null;
+  qualification?: string | null;
+  dateCreation: Date;
+  dateModification: Date;
+}
+
+/**
+ * Interface pour une ligne de cotisation
+ */
+interface LigneCotisation {
+  id: string;
+  fichePaieId: string;
+  code: string;
+  nom: string;
+  categorie: string;
+  organisme: string;
+  typeCotisation: string;
+  assiette: number;
+  taux: number;
+  montantSalarial: number;
+  montantPatronal: number;
+  montantTotal: number;
+}
+
+/**
+ * Type pour une fiche de paie avec ses relations (employé et cotisations)
+ */
+interface FichePaieAvecRelations {
+  id: string;
+  employeId: string;
+  periodeVersement: string;
+  salaireBrut: number;
+  salaireNet: number;
+  totalCotisationsSalariales: number;
+  totalCotisationsPatronales: number;
+  coutTotal: number;
+  dateCreation: Date;
+  dateModification: Date;
+  employe: Employe;
+  lignesCotisations: LigneCotisation[];
+}
+
 const router = Router();
+
+/**
+ * Valide le format et la validité d'une période (YYYY-MM)
+ * @param periode La période à valider
+ * @returns true si valide, false sinon avec message d'erreur
+ */
+function validerPeriode(periode: string): { valide: boolean; erreur?: string } {
+  // Vérifier le format
+  if (!/^\d{4}-\d{2}$/.test(periode)) {
+    return {
+      valide: false,
+      erreur: 'La période doit être au format YYYY-MM (ex: 2025-03)'
+    };
+  }
+
+  const [anneeStr, moisStr] = periode.split('-');
+  const annee = parseInt(anneeStr, 10);
+  const mois = parseInt(moisStr, 10);
+
+  // Vérifier que le mois est valide (01-12)
+  if (mois < 1 || mois > 12) {
+    return {
+      valide: false,
+      erreur: 'Le mois doit être compris entre 01 et 12'
+    };
+  }
+
+  // Vérifier que l'année est raisonnable (pas avant 2000, pas plus de 2 ans dans le futur)
+  const anneeActuelle = new Date().getFullYear();
+  if (annee < 2000 || annee > anneeActuelle + 2) {
+    return {
+      valide: false,
+      erreur: `L'année doit être comprise entre 2000 et ${anneeActuelle + 2}`
+    };
+  }
+
+  return { valide: true };
+}
 
 /**
  * GET /api/companies/:companyId/dsn
@@ -60,9 +158,16 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
     const userId = req.userId;
 
     // Validation des paramètres
-    if (!periode || !/^\d{4}-\d{2}$/.test(periode)) {
+    if (!periode) {
       return res.status(400).json({
-        error: 'La période est obligatoire et doit être au format YYYY-MM (ex: 2025-03)'
+        error: 'La période est obligatoire'
+      });
+    }
+
+    const validationPeriode = validerPeriode(periode);
+    if (!validationPeriode.valide) {
+      return res.status(400).json({
+        error: validationPeriode.erreur
       });
     }
 
@@ -93,7 +198,7 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
     const fichesPaie = await prisma.fichePaie.findMany({
       where: {
         employeId: {
-          in: company.employes.map((e: any) => e.id)
+          in: company.employes.map((e: Employe) => e.id)
         },
         periodeVersement: periode
       },
@@ -122,8 +227,8 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
         numeroUrssaf: company.numeroUrssaf || undefined
       },
       periode: periode,
-      fichesPaie: fichesPaie.map((fp: any) => {
-        const cotisations: CotisationDSN[] = fp.lignesCotisations.map((lc: any) => ({
+      fichesPaie: fichesPaie.map((fp: FichePaieAvecRelations) => {
+        const cotisations: CotisationDSN[] = fp.lignesCotisations.map((lc: LigneCotisation) => ({
           code: lc.code,
           nom: lc.nom,
           organisme: lc.organisme,
@@ -303,9 +408,12 @@ router.get('/:companyId/dsn/:dsnId/download', authenticateToken, async (req: Req
       return res.status(400).json({ error: 'Le contenu XML de cette DSN n\'est pas disponible' });
     }
 
-    // Définir les en-têtes pour le téléchargement
-    const nomFichier = `DSN_${company.siret}_${declaration.periodeDeclaration}.xml`;
-    res.setHeader('Content-Type', 'application/xml');
+    // Sécuriser le nom de fichier (éviter l'injection)
+    const siretSecurise = company.siret?.replace(/[^0-9]/g, '') || 'XXXXXXXXXXXXXXX';
+    const periodeSecurisee = declaration.periodeDeclaration.replace(/[^0-9-]/g, '');
+    const nomFichier = `DSN_${siretSecurise}_${periodeSecurisee}.xml`;
+
+    res.setHeader('Content-Type', 'application/xml; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${nomFichier}"`);
     res.send(declaration.contenuXml);
   } catch (error) {
@@ -349,9 +457,16 @@ router.post('/:companyId/dsn/:dsnId/validate', authenticateToken, async (req: Re
       return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
     }
 
-    // Retourner les messages de validation stockés
-    const messages = declaration.messagesValidation ?
-      JSON.parse(declaration.messagesValidation) : [];
+    // Retourner les messages de validation stockés (avec parsing sécurisé)
+    let messages = [];
+    if (declaration.messagesValidation) {
+      try {
+        messages = JSON.parse(declaration.messagesValidation);
+      } catch (error) {
+        console.error('Erreur parsing messagesValidation:', error);
+        messages = [];
+      }
+    }
 
     res.json({
       valide: declaration.statut === 'VALIDEE',

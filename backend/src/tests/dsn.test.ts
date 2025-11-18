@@ -2,7 +2,7 @@
  * Tests pour le générateur et validateur DSN
  */
 
-import { DSNGenerator, DonneesDSN, FichePaieDSN, CotisationDSN } from '../services/dsn/dsnGenerator';
+import { DSNGenerator, DonneesDSN } from '../services/dsn/dsnGenerator';
 import { DSNValidator, TypeMessageValidation } from '../services/dsn/dsnValidator';
 
 describe('Générateur DSN', () => {

@@ -321,6 +321,7 @@ export class DSNValidator {
 
   /**
    * Formatte les messages de validation en texte lisible
+   * Échappe les caractères dangereux pour éviter les injections
    */
   static formaterMessagesTexte(messages: MessageValidation[]): string {
     if (messages.length === 0) {
@@ -331,10 +332,28 @@ export class DSNValidator {
     for (const message of messages) {
       const symbole = message.type === TypeMessageValidation.ERREUR ? '❌' :
                       message.type === TypeMessageValidation.AVERTISSEMENT ? '⚠️' : 'ℹ️';
-      lignes.push(`${symbole} [${message.code}] ${message.message}`);
+      // Échapper les caractères pour éviter les injections
+      const messageSecurise = this.echapperTexte(message.message);
+      lignes.push(`${symbole} [${message.code}] ${messageSecurise}`);
     }
 
     return lignes.join('\n');
+  }
+
+  /**
+   * Échappe les caractères dangereux dans le texte
+   * @param texte Texte à échapper
+   * @returns Texte sécurisé
+   */
+  private static echapperTexte(texte: string): string {
+    if (!texte) return '';
+    return texte
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#x27;')
+      .replace(/\//g, '&#x2F;');
   }
 }
 

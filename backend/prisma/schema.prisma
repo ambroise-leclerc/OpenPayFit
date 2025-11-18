@@ -38,7 +38,9 @@ model Compagnie {
   proprietaireId             String                   @map("ownerId") // Clé étrangère vers Utilisateur
 
   // Informations légales et administratives (pour DSN)
-  siret                      String?                  @unique // Numéro SIRET (14 chiffres) - identifiant unique de l'établissement
+  // Note: SIRET n'a pas de contrainte @unique car nullable. La validation d'unicité
+  // se fait au niveau applicatif pour les SIRET non-null uniquement.
+  siret                      String?                  // Numéro SIRET (14 chiffres) - identifiant unique de l'établissement
   codeNaf                    String?                  // Code NAF/APE (5 caractères) - activité principale
   adresse                    String?                  // Adresse complète de l'établissement
   codePostal                 String?                  // Code postal
