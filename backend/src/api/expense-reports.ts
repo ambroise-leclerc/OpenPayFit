@@ -76,15 +76,32 @@ const router = Router({ mergeParams: true });
 // Fonction helper pour transformer les objets expense report avec employee
 function transformExpenseReportWithEmployee(report: any) {
   return {
-    ...report,
-    employee: report.employee ? {
-      id: report.employee.id,
-      firstName: report.employee.prenom,
-      lastName: report.employee.nom,
-      email: report.employee.email,
-      grossSalary: report.employee.salaireBrut,
-      department: report.employee.departement,
-      companyId: report.employee.compagnieId,
+    id: report.id,
+    employeeId: report.employeId,
+    title: report.titre,
+    status: report.statut,
+    totalAmount: report.montantTotal,
+    items: report.lignes ? report.lignes.map((item: any) => ({
+      id: item.id,
+      reportId: item.rapportId,
+      category: item.categorie,
+      amount: item.montant,
+      date: item.date,
+      description: item.description,
+      receiptPath: item.cheminRecu,
+      createdAt: item.dateCreation,
+      updatedAt: item.dateModification,
+    })) : undefined,
+    createdAt: report.dateCreation,
+    updatedAt: report.dateModification,
+    employee: report.employe ? {
+      id: report.employe.id,
+      firstName: report.employe.prenom,
+      lastName: report.employe.nom,
+      email: report.employe.email,
+      grossSalary: report.employe.salaireBrut,
+      department: report.employe.departement,
+      companyId: report.employe.compagnieId,
     } : undefined,
   };
 }
