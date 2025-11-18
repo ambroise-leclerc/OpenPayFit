@@ -1,22 +1,43 @@
--- CreateEnum TypeOrganisme
--- AlterTable organismes_cotisation
+-- RedefineTables
+PRAGMA foreign_keys=OFF;
 
--- Ajouter les nouvelles colonnes
-ALTER TABLE "organismes_cotisation" ADD COLUMN "typeOrganisme" TEXT NOT NULL DEFAULT 'AUTRE';
-ALTER TABLE "organismes_cotisation" ADD COLUMN "estGlobal" BOOLEAN NOT NULL DEFAULT false;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "adresse" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "codePostal" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "ville" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "telephone" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "email" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "siteWeb" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "numeroSiret" TEXT;
-ALTER TABLE "organismes_cotisation" ADD COLUMN "companyId" TEXT;
+-- Créer une nouvelle table temporaire avec les nouveaux champs
+CREATE TABLE "new_organismes_cotisation" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "code" TEXT NOT NULL,
+    "nom" TEXT NOT NULL,
+    "typeOrganisme" TEXT NOT NULL DEFAULT 'AUTRE',
+    "description" TEXT,
+    "estGlobal" BOOLEAN NOT NULL DEFAULT 0,
+    "adresse" TEXT,
+    "codePostal" TEXT,
+    "ville" TEXT,
+    "telephone" TEXT,
+    "email" TEXT,
+    "siteWeb" TEXT,
+    "numeroSiret" TEXT,
+    "companyId" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL,
+    CONSTRAINT "organismes_cotisation_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
 
--- Ajouter la contrainte de clé étrangère
-ALTER TABLE "organismes_cotisation" ADD CONSTRAINT "organismes_cotisation_companyId_fkey"
-  FOREIGN KEY ("companyId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE;
+-- Copier les données existantes (si elles existent)
+INSERT INTO "new_organismes_cotisation" ("id", "code", "nom", "description", "createdAt", "updatedAt", "typeOrganisme", "estGlobal")
+SELECT "id", "code", "nom", "description", "createdAt", "updatedAt", 'AUTRE', 0
+FROM "organismes_cotisation";
 
--- Créer les index
+-- Supprimer l'ancienne table
+DROP TABLE "organismes_cotisation";
+
+-- Renommer la nouvelle table
+ALTER TABLE "new_organismes_cotisation" RENAME TO "organismes_cotisation";
+
+-- Recréer les index
+CREATE UNIQUE INDEX "organismes_cotisation_code_key" ON "organismes_cotisation"("code");
 CREATE INDEX "organismes_cotisation_companyId_idx" ON "organismes_cotisation"("companyId");
 CREATE INDEX "organismes_cotisation_estGlobal_idx" ON "organismes_cotisation"("estGlobal");
+
+PRAGMA foreign_key_check;
+PRAGMA foreign_keys=ON;
+
