@@ -42,6 +42,12 @@ if (!prisma || shouldUseBetterSqlite) {
 
   // Mapping des noms de champs Prisma (français) vers les noms de colonnes SQL (anglais)
   const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
+    Company: {
+      nom: 'name',
+      proprietaireId: 'ownerId',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
     accounting_integrations: {
       compagnieId: 'companyId',
       typeIntegration: 'type',
@@ -63,9 +69,24 @@ if (!prisma || shouldUseBetterSqlite) {
     }
   };
 
-  // Fonction helper pour traduire les noms de champs
+  // Fonction helper pour traduire les noms de champs (Prisma → SQL)
   const mapFieldName = (tableName: string, fieldName: string): string => {
     return FIELD_MAPPINGS[tableName]?.[fieldName] || fieldName;
+  };
+
+  // Fonction helper pour traduire les résultats de SQL vers Prisma (reverse mapping)
+  const reverseMapRow = (tableName: string, row: any): any => {
+    if (!row) return row;
+    const mapping = FIELD_MAPPINGS[tableName];
+    if (!mapping) return row;
+
+    const reversedRow: any = {};
+    for (const [key, value] of Object.entries(row)) {
+      // Trouver la clé Prisma correspondante
+      const prismaKey = Object.keys(mapping).find(k => mapping[k] === key) || key;
+      reversedRow[prismaKey] = value;
+    }
+    return reversedRow;
   };
 
   // Créer un wrapper Prisma-like pour better-sqlite3
@@ -108,7 +129,7 @@ if (!prisma || shouldUseBetterSqlite) {
         const selectStmt = db.prepare(selectQuery);
         const row = selectStmt.get(data.id);
 
-        return Promise.resolve(row);
+        return Promise.resolve(reverseMapRow(tableName, row));
       } catch (e) {
         console.error(`Erreur dans create pour ${tableName}:`, e);
         return Promise.reject(e);
@@ -150,7 +171,7 @@ if (!prisma || shouldUseBetterSqlite) {
 
         const stmt = db.prepare(query);
         const row = stmt.get(...params);
-        return Promise.resolve(row || null);
+        return Promise.resolve(reverseMapRow(tableName, row) || null);
       } catch (e) {
         console.error(`Erreur dans findUnique pour ${tableName}:`, e);
         return Promise.resolve(null);
@@ -165,11 +186,12 @@ if (!prisma || shouldUseBetterSqlite) {
         if (args?.where) {
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
+            const mappedKey = mapFieldName(tableName, key);
             if (typeof value === 'boolean') {
-              conditions.push(`${key} = ?`);
+              conditions.push(`${mappedKey} = ?`);
               params.push(value ? 1 : 0);
             } else if (value !== null && value !== undefined) {
-              conditions.push(`${key} = ?`);
+              conditions.push(`${mappedKey} = ?`);
               params.push(value);
             }
           }
@@ -228,7 +250,9 @@ if (!prisma || shouldUseBetterSqlite) {
           }
         }
 
-        return Promise.resolve(rows);
+        // Appliquer le reverse mapping à tous les résultats
+        const mappedRows = rows.map((row: any) => reverseMapRow(tableName, row));
+        return Promise.resolve(mappedRows);
       } catch (e) {
         console.error(`Erreur dans findMany pour ${tableName}:`, e);
         return Promise.resolve([]);
@@ -370,7 +394,7 @@ if (!prisma || shouldUseBetterSqlite) {
         const selectStmt = db.prepare(selectQuery);
         const row = selectStmt.get(...whereValues);
 
-        return Promise.resolve(row);
+        return Promise.resolve(reverseMapRow(tableName, row));
       } catch (e) {
         console.error(`Erreur dans update pour ${tableName}:`, e);
         return Promise.reject(e);
@@ -431,6 +455,7 @@ if (!prisma || shouldUseBetterSqlite) {
   prisma = {
     user: createModelWrapper('User'),
     company: createModelWrapper('Company'),
+    compagnie: createModelWrapper('Company'), // Alias français pour Company
     employee: createModelWrapper('Employee'),
     regleCotisation: createModelWrapper('regles_cotisation'),
     tauxCotisation: createModelWrapper('taux_cotisation'),
