@@ -15,6 +15,7 @@ export default function Layout() {
             <li><Link to="/register">Inscription</Link></li>
             <li><Link to="/dashboard">Tableau de Bord</Link></li>
             <li><Link to="/payroll">Paie</Link></li>
+            <li><Link to="/dsn">DSN</Link></li>
             <li><Link to="/organisms">Organismes</Link></li>
             <li><Link to="/expenses">Notes de Frais</Link></li>
             <li><Link to="/analytics">Analytics</Link></li>
