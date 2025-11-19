@@ -51,7 +51,7 @@ model Compagnie {
   // Relations
   employes                   Employe[]                // Une entreprise a plusieurs employés
   organismesSpecifiques      OrganismeCotisation[]    // Organismes collecteurs spécifiques à cette entreprise (caisses de retraite de branche, mutuelles, etc.)
-  integrationsComptables     AccountingIntegration[]  @map("accountingIntegrations") // Intégrations comptables (Sage, QuickBooks, etc.)
+  integrationsComptables     AccountingIntegration[]  // Intégrations comptables (Sage, QuickBooks, etc.)
   declarationsDSN            DSNDeclaration[]         // Déclarations sociales nominatives générées
 
   dateCreation               DateTime                 @default(now()) @map("createdAt")
@@ -86,10 +86,10 @@ model Employe {
   compagnie        Compagnie      @relation(fields: [compagnieId], references: [id])
   compagnieId      String         @map("companyId") // Clé étrangère vers Compagnie
   fichesPaie       FichePaie[]    // Un employé peut avoir plusieurs fiches de paie
-  conges           Leave[]        @map("leaves") // Un employé peut avoir plusieurs congés
-  soldesConges     LeaveBalance[] @map("leaveBalances") // Un employé peut avoir plusieurs soldes de congés (par type et année)
-  frais            Expense[]      @map("expenses") // Un employé peut avoir plusieurs notes de frais (ancien modèle)
-  rapportsFrais    ExpenseReport[] @map("expenseReports") // Un employé peut avoir plusieurs rapports de notes de frais
+  conges           Leave[]        // Un employé peut avoir plusieurs congés
+  soldesConges     LeaveBalance[] // Un employé peut avoir plusieurs soldes de congés (par type et année)
+  frais            Expense[]      // Un employé peut avoir plusieurs notes de frais (ancien modèle)
+  rapportsFrais    ExpenseReport[] // Un employé peut avoir plusieurs rapports de notes de frais
   dateCreation     DateTime       @default(now()) @map("createdAt")
   dateModification DateTime       @updatedAt @map("updatedAt")
 
@@ -458,7 +458,7 @@ model ExpenseReport {
   titre            String        @map("title") // Titre du rapport (ex: "Déplacement Paris - Mars 2025")
   statut           ExpenseStatus @default(PENDING) @map("status")
   montantTotal     Float         @default(0) @map("totalAmount") // Montant total calculé à partir des lignes
-  lignes           ExpenseItem[] @map("items") // Lignes de dépenses du rapport
+  lignes           ExpenseItem[] // Lignes de dépenses du rapport
   dateCreation     DateTime      @default(now()) @map("createdAt")
   dateModification DateTime      @updatedAt @map("updatedAt")
 
@@ -471,7 +471,7 @@ model ExpenseReport {
 /// Chaque ligne représente une dépense individuelle avec son justificatif
 model ExpenseItem {
   id               String          @id @default(cuid())
-  rapport          ExpenseReport   @relation(fields: [rapportId], references: [id], onDelete: Cascade) @map("report")
+  rapport          ExpenseReport   @relation(fields: [rapportId], references: [id], onDelete: Cascade)
   rapportId        String          @map("reportId")
   categorie        ExpenseCategory @map("category")
   montant          Float           @map("amount") // Montant en euros
@@ -512,7 +512,7 @@ model AccountingIntegration {
   configuration        String                       // JSON avec la configuration spécifique (mapping comptes, credentials OAuth, etc.)
   dateDerniereSynchro  DateTime?                    @map("lastSyncAt") // Date du dernier export réussi
   derniereErreur       String?                      @map("lastError") // Dernier message d'erreur (si status = ERROR)
-  journauxExport       AccountingExportLog[]        @map("exportLogs") // Historique des exports
+  journauxExport       AccountingExportLog[]        // Historique des exports
   dateCreation         DateTime                     @default(now()) @map("createdAt")
   dateModification     DateTime                     @updatedAt @map("updatedAt")
 
