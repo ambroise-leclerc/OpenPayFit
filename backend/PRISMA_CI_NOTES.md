@@ -3,14 +3,21 @@
 ## Problème connu : Génération du client Prisma en CI
 
 ### Symptôme
-Les tests d'intégration DSN (`dsn.api.test.ts`) échouent en CI avec l'erreur :
+Les tests d'intégration DSN (`dsn.api.test.ts`) peuvent échouer en CI avec l'erreur :
 ```
 TypeError: Cannot read properties of undefined (reading 'deleteMany')
   at prisma.dSNDeclaration.deleteMany()
 ```
 
 ### Cause
-L'environnement CI/CD ne peut pas télécharger les binaires Prisma en raison de restrictions réseau (403 Forbidden). Le client Prisma existant ne connaît pas le nouveau modèle `DSNDeclaration` car il n'a pas été régénéré après l'ajout du modèle.
+L'environnement CI/CD ne peut pas toujours télécharger les binaires Prisma en raison de restrictions réseau (403 Forbidden). Le client Prisma existant ne connaît pas le nouveau modèle `DSNDeclaration` s'il n'a pas été régénéré après l'ajout du modèle.
+
+### Solution automatique mise en place
+Le script `scripts/apply-migrations.js` tente maintenant automatiquement de régénérer le client Prisma après avoir appliqué les migrations :
+- Si la génération réussit, le client Prisma est à jour avec tous les modèles
+- Si la génération échoue (restrictions réseau en CI), un warning est affiché mais le script continue
+- Les tests unitaires DSN (`dsn.test.ts`) passeront toujours car ils n'utilisent pas le client Prisma
+- Les tests d'intégration DSN peuvent échouer si le client n'a pas pu être généré
 
 ### Solution pour le développement local
 
