@@ -18,7 +18,6 @@ import type {
   Company,
   DSNDeclaration,
   GenerateDSNResult,
-  TransmissionDSN,
   ConfigurationNetEntreprises,
 } from '../services/api';
 
@@ -33,8 +32,6 @@ export default function DSNPage() {
   const [generating, setGenerating] = useState(false);
   const [periode, setPeriode] = useState('');
   const [transmitting, setTransmitting] = useState<string | null>(null);
-  // Stocke les statuts de transmission pour affichage futur dans l'UI
-  const [_transmissions, setTransmissions] = useState<Record<string, TransmissionDSN | null>>({});
   const [config, setConfig] = useState<ConfigurationNetEntreprises | null>(null);
 
   // Charger les entreprises au montage
@@ -78,7 +75,7 @@ export default function DSNPage() {
         try {
           const fetchedConfig = await getNetEntreprisesConfig(selectedCompany.id, token);
           setConfig(fetchedConfig);
-        } catch (err) {
+        } catch {
           // Configuration non trouvée, c'est normal si pas encore configurée
           setConfig(null);
         }
@@ -188,14 +185,6 @@ export default function DSNPage() {
       // Recharger la liste des DSN
       const fetchedDeclarations = await getDSNDeclarations(selectedCompany.id, token);
       setDeclarations(fetchedDeclarations);
-
-      // Charger le statut de transmission
-      try {
-        const status = await getTransmissionStatus(selectedCompany.id, dsnId, token);
-        setTransmissions(prev => ({ ...prev, [dsnId]: status.derniere }));
-      } catch (err) {
-        // Ignore
-      }
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -208,7 +197,6 @@ export default function DSNPage() {
 
     try {
       const status = await getTransmissionStatus(selectedCompany.id, dsnId, token);
-      setTransmissions(prev => ({ ...prev, [dsnId]: status.derniere }));
       alert(`Statut de transmission : ${status.derniere.statut}\nNombre de tentatives : ${status.derniere.nombreTentatives}\n${status.derniere.derniereErreur ? 'Erreur : ' + status.derniere.derniereErreur : ''}`);
     } catch (err) {
       setError((err as Error).message);
