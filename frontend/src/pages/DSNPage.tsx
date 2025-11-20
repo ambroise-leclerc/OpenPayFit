@@ -33,7 +33,8 @@ export default function DSNPage() {
   const [generating, setGenerating] = useState(false);
   const [periode, setPeriode] = useState('');
   const [transmitting, setTransmitting] = useState<string | null>(null);
-  const [transmissions, setTransmissions] = useState<Record<string, TransmissionDSN | null>>({});
+  // Stocke les statuts de transmission pour affichage futur dans l'UI
+  const [_transmissions, setTransmissions] = useState<Record<string, TransmissionDSN | null>>({});
   const [config, setConfig] = useState<ConfigurationNetEntreprises | null>(null);
 
   // Charger les entreprises au montage
