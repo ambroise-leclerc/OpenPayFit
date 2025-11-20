@@ -6,6 +6,7 @@
 const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 // Déterminer le fichier de base de données selon l'environnement
 const dbFileName = process.env.NODE_ENV === 'test' ? 'test.db' : 'dev.db';
@@ -68,3 +69,19 @@ for (const migration of migrations) {
 
 db.close();
 console.log('Migrations completed successfully');
+
+// Régénérer le client Prisma pour prendre en compte les nouveaux modèles
+console.log('\nRegenerating Prisma client...');
+try {
+  execSync('npx prisma generate', {
+    stdio: 'inherit',
+    cwd: path.join(__dirname, '..')
+  });
+  console.log('✓ Prisma client generated successfully');
+} catch (error) {
+  console.warn('⚠️  Warning: Prisma client generation failed');
+  console.warn('   This is expected in CI environments with network restrictions');
+  console.warn('   Run "npx prisma generate" locally if tests fail');
+  console.warn('   Error:', error.message);
+  // Ne pas faire échouer le script si la génération échoue
+}
