@@ -24,7 +24,7 @@ CREATE TABLE "transmissions_dsn" (
 -- CreateTable ConfigurationNetEntreprises
 CREATE TABLE "configurations_net_entreprises" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "companyId" TEXT NOT NULL,
+    "compagnieId" TEXT NOT NULL,
     "siretDeclarant" TEXT NOT NULL,
     "numeroAdhesion" TEXT,
     "typeCertificat" TEXT NOT NULL DEFAULT 'PEM',
@@ -38,7 +38,7 @@ CREATE TABLE "configurations_net_entreprises" (
     "derniereErreur" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "configurations_net_entreprises_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "configurations_net_entreprises_compagnieId_fkey" FOREIGN KEY ("compagnieId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 -- CreateIndex
@@ -51,4 +51,4 @@ CREATE INDEX "transmissions_dsn_statut_idx" ON "transmissions_dsn"("statut");
 CREATE INDEX "transmissions_dsn_dateTransmission_idx" ON "transmissions_dsn"("dateTransmission");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "configurations_net_entreprises_companyId_key" ON "configurations_net_entreprises"("companyId");
+CREATE UNIQUE INDEX "configurations_net_entreprises_compagnieId_key" ON "configurations_net_entreprises"("compagnieId");
