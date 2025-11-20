@@ -19,6 +19,7 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.14.0",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
