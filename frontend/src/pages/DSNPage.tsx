@@ -10,8 +10,17 @@ import {
   generateDSN,
   downloadDSN,
   deleteDSN,
+  transmettreDS N,
+  getTransmissionStatus,
+  getNetEntreprisesConfig,
 } from '../services/api';
-import type { Company, DSNDeclaration, GenerateDSNResult } from '../services/api';
+import type {
+  Company,
+  DSNDeclaration,
+  GenerateDSNResult,
+  TransmissionDSN,
+  ConfigurationNetEntreprises,
+} from '../services/api';
 
 export default function DSNPage() {
   const { token } = useAuth();
@@ -23,6 +32,9 @@ export default function DSNPage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [periode, setPeriode] = useState('');
+  const [transmitting, setTransmitting] = useState<string | null>(null);
+  const [transmissions, setTransmissions] = useState<Record<string, TransmissionDSN | null>>({});
+  const [config, setConfig] = useState<ConfigurationNetEntreprises | null>(null);
 
   // Charger les entreprises au montage
   useEffect(() => {
@@ -59,8 +71,21 @@ export default function DSNPage() {
         }
       };
       fetchDSN();
+
+      // Charger la configuration Net-Entreprises
+      const fetchConfig = async () => {
+        try {
+          const fetchedConfig = await getNetEntreprisesConfig(selectedCompany.id, token);
+          setConfig(fetchedConfig);
+        } catch (err) {
+          // Configuration non trouvée, c'est normal si pas encore configurée
+          setConfig(null);
+        }
+      };
+      fetchConfig();
     } else {
       setDeclarations([]);
+      setConfig(null);
     }
   }, [token, selectedCompany]);
 
@@ -140,6 +165,55 @@ export default function DSNPage() {
     }
   };
 
+  const handleTransmit = async (dsnId: string) => {
+    if (!selectedCompany || !token) return;
+
+    // Vérifier que la configuration est active
+    if (!config || !config.estActif) {
+      setError('La transmission automatique n\'est pas configurée ou activée. Veuillez configurer Net-Entreprises d\'abord.');
+      return;
+    }
+
+    if (!confirm('Êtes-vous sûr de vouloir transmettre cette DSN vers net-entreprises.fr ?')) return;
+
+    setTransmitting(dsnId);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const result = await transmettreDS N(selectedCompany.id, dsnId, token);
+      setSuccess(result.message);
+
+      // Recharger la liste des DSN
+      const fetchedDeclarations = await getDSNDeclarations(selectedCompany.id, token);
+      setDeclarations(fetchedDeclarations);
+
+      // Charger le statut de transmission
+      try {
+        const status = await getTransmissionStatus(selectedCompany.id, dsnId, token);
+        setTransmissions(prev => ({ ...prev, [dsnId]: status.derniere }));
+      } catch (err) {
+        // Ignore
+      }
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setTransmitting(null);
+    }
+  };
+
+  const handleViewTransmission = async (dsnId: string) => {
+    if (!selectedCompany || !token) return;
+
+    try {
+      const status = await getTransmissionStatus(selectedCompany.id, dsnId, token);
+      setTransmissions(prev => ({ ...prev, [dsnId]: status.derniere }));
+      alert(`Statut de transmission : ${status.derniere.statut}\nNombre de tentatives : ${status.derniere.nombreTentatives}\n${status.derniere.derniereErreur ? 'Erreur : ' + status.derniere.derniereErreur : ''}`);
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
   const formatPeriode = (periode: string) => {
     const [annee, mois] = periode.split('-');
     const moisNoms = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -187,6 +261,21 @@ export default function DSNPage() {
 
       {selectedCompany && (
         <>
+          {/* Configuration Net-Entreprises */}
+          {!config || !config.estActif ? (
+            <div className="alert alert-info">
+              <strong>Transmission automatique DSN :</strong> La transmission automatique vers net-entreprises.fr n'est pas configurée.
+              Les DSN doivent être téléchargées et transmises manuellement via net-entreprises.fr.
+              <br />
+              <em>(Configuration automatique disponible dans une version ultérieure)</em>
+            </div>
+          ) : (
+            <div className="alert alert-success">
+              <strong>Transmission automatique active :</strong> Configuration Net-Entreprises activée
+              (SIRET : {config.siretDeclarant}, Mode : {config.modeTest ? 'Test' : 'Production'})
+            </div>
+          )}
+
           {/* Formulaire de génération */}
           <div className="card">
             <div className="card-header">
@@ -257,6 +346,27 @@ export default function DSNPage() {
                           >
                             Télécharger
                           </button>
+                          {dsn.statut === 'VALIDEE' && config?.estActif && (
+                            <button
+                              onClick={() => handleTransmit(dsn.id)}
+                              disabled={transmitting === dsn.id}
+                              className="btn btn-sm btn-primary"
+                              style={{ marginLeft: '8px' }}
+                              title="Transmettre automatiquement vers net-entreprises.fr"
+                            >
+                              {transmitting === dsn.id ? 'Transmission...' : 'Transmettre'}
+                            </button>
+                          )}
+                          {dsn.statut === 'TRANSMISE' && (
+                            <button
+                              onClick={() => handleViewTransmission(dsn.id)}
+                              className="btn btn-sm btn-info"
+                              style={{ marginLeft: '8px' }}
+                              title="Voir le statut de transmission"
+                            >
+                              Statut
+                            </button>
+                          )}
                           {dsn.statut === 'BROUILLON' && (
                             <button
                               onClick={() => handleDelete(dsn.id)}
@@ -311,6 +421,12 @@ export default function DSNPage() {
           background-color: #efe;
           border: 1px solid #cfc;
           color: #3c3;
+        }
+
+        .alert-info {
+          background-color: #e7f3ff;
+          border: 1px solid #b8daff;
+          color: #004085;
         }
 
         .form-group {
@@ -442,6 +558,15 @@ export default function DSNPage() {
 
         .btn-danger:hover {
           background-color: #c82333;
+        }
+
+        .btn-info {
+          background-color: #17a2b8;
+          color: white;
+        }
+
+        .btn-info:hover {
+          background-color: #138496;
         }
 
         .btn-sm {

@@ -1971,3 +1971,262 @@ export async function deleteDSN(companyId: string, dsnId: string, token: string)
     await handleErrorResponse(response, 'Échec de la suppression de la DSN');
   }
 }
+
+// ========== API de transmission automatique DSN ==========
+
+/**
+ * Type pour le statut de transmission
+ */
+export type StatutTransmission =
+  | 'EN_ATTENTE'
+  | 'EN_COURS'
+  | 'TRANSMISE'
+  | 'ACCUSE_RECEPTION'
+  | 'ERREUR'
+  | 'REJETEE';
+
+/**
+ * Interface pour une transmission DSN
+ */
+export interface TransmissionDSN {
+  id: string;
+  declarationId: string;
+  statut: StatutTransmission;
+  dateTransmission: string | null;
+  dateAccuseReception: string | null;
+  dateDerniereVerification: string | null;
+  idTransmission: string | null;
+  numeroProtocole: string | null;
+  codeRetour: string | null;
+  messagesRetour: string | null;
+  nombreTentatives: number;
+  derniereErreur: string | null;
+  prochaineTentative: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Interface pour le résultat de transmission
+ */
+export interface ResultatTransmission {
+  succes: boolean;
+  idTransmission?: string;
+  numeroProtocole?: string;
+  codeRetour?: string;
+  messages?: string[];
+  erreur?: string;
+}
+
+/**
+ * Transmet automatiquement une DSN vers net-entreprises.fr
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN à transmettre
+ * @param token - Token d'authentification
+ * @returns Résultat de la transmission
+ */
+export async function transmettreDS N(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<{ message: string; transmission: ResultatTransmission }> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/transmit`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la transmission de la DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère le statut de transmission d'une DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ * @returns Historique des transmissions
+ */
+export async function getTransmissionStatus(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<{ transmissions: TransmissionDSN[]; derniere: TransmissionDSN }> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/transmission-status`,
+    {
+      method: 'GET',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération du statut de transmission');
+  }
+
+  return response.json();
+}
+
+/**
+ * Retente une transmission échouée
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param transmissionId - ID de la transmission à retenter
+ * @param token - Token d'authentification
+ * @returns Résultat de la nouvelle tentative
+ */
+export async function retryTransmission(
+  companyId: string,
+  dsnId: string,
+  transmissionId: string,
+  token: string
+): Promise<{ message: string; transmission: ResultatTransmission }> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/transmission/${transmissionId}/retry`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la nouvelle tentative de transmission');
+  }
+
+  return response.json();
+}
+
+// ========== API de configuration Net-Entreprises ==========
+
+/**
+ * Interface pour la configuration Net-Entreprises
+ */
+export interface ConfigurationNetEntreprises {
+  id: string;
+  siretDeclarant: string;
+  numeroAdhesion: string | null;
+  urlApi: string;
+  modeTest: boolean;
+  estActif: boolean;
+  derniereVerification: string | null;
+  derniereErreur: string | null;
+  dateCreation: string;
+  dateModification: string;
+}
+
+/**
+ * Interface pour les données de configuration
+ */
+export interface ConfigurationNetEntreprisesData {
+  siretDeclarant: string;
+  numeroAdhesion?: string;
+  certificat?: string;
+  clePrivee?: string;
+  motDePasseCertificat?: string;
+  modeTest?: boolean;
+}
+
+/**
+ * Récupère la configuration Net-Entreprises d'une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param token - Token d'authentification
+ * @returns Configuration Net-Entreprises
+ */
+export async function getNetEntreprisesConfig(
+  companyId: string,
+  token: string
+): Promise<ConfigurationNetEntreprises> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/net-entreprises/config`, {
+    method: 'GET',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error('Configuration non trouvée');
+    }
+    await handleErrorResponse(response, 'Échec de la récupération de la configuration');
+  }
+
+  return response.json();
+}
+
+/**
+ * Crée ou met à jour la configuration Net-Entreprises
+ * @param companyId - ID de l'entreprise
+ * @param data - Données de configuration
+ * @param token - Token d'authentification
+ * @returns Configuration créée/mise à jour
+ */
+export async function saveNetEntreprisesConfig(
+  companyId: string,
+  data: ConfigurationNetEntreprisesData,
+  token: string
+): Promise<{ message: string; config: ConfigurationNetEntreprises }> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/net-entreprises/config`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la sauvegarde de la configuration');
+  }
+
+  return response.json();
+}
+
+/**
+ * Teste la configuration Net-Entreprises
+ * @param companyId - ID de l'entreprise
+ * @param token - Token d'authentification
+ * @returns Résultat du test
+ */
+export async function testNetEntreprisesConfig(
+  companyId: string,
+  token: string
+): Promise<{ message: string; valide: boolean; erreur?: string }> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/net-entreprises/config/test`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    return {
+      message: 'Test échoué',
+      valide: false,
+      erreur: data.erreur || data.message || 'Erreur inconnue'
+    };
+  }
+
+  return data;
+}
+
+/**
+ * Active ou désactive la configuration Net-Entreprises
+ * @param companyId - ID de l'entreprise
+ * @param estActif - true pour activer, false pour désactiver
+ * @param token - Token d'authentification
+ * @returns Configuration mise à jour
+ */
+export async function toggleNetEntreprisesConfig(
+  companyId: string,
+  estActif: boolean,
+  token: string
+): Promise<{ message: string; config: ConfigurationNetEntreprises }> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/net-entreprises/config/toggle`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ estActif }),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la modification du statut');
+  }
+
+  return response.json();
+}
