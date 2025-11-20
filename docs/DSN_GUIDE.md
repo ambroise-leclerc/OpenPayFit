@@ -144,14 +144,41 @@ Après la génération, vous verrez :
 
 ### Transmettre via net-entreprises.fr
 
-**Note** : La transmission automatique n'est pas encore implémentée. Vous devez transmettre manuellement via net-entreprises.fr.
+#### Option 1 : Transmission automatique (Recommandée)
 
-1. Rendez-vous sur https://www.net-entreprises.fr
-2. Connectez-vous avec vos identifiants
-3. Allez dans la section **DSN**
-4. Cliquez sur **Déposer une DSN**
-5. Sélectionnez le fichier XML téléchargé depuis OpenPayFit
-6. Validez l'envoi
+OpenPayFit propose désormais la **transmission automatique** des DSN vers net-entreprises.fr via l'API EDI Machine-to-Machine.
+
+**Prérequis** :
+- Disposer d'un certificat client Net-Entreprises (format PEM)
+- Avoir votre numéro de SIRET déclarant
+- Avoir configuré votre compte sur net-entreprises.fr
+
+**Activation** :
+1. Dans la page **DSN**, la configuration Net-Entreprises s'affiche en haut
+2. Si non configurée, suivez les instructions pour activer la transmission automatique
+3. Une fois activée, un bouton **"Transmettre"** apparaît sur chaque DSN validée
+4. Cliquez sur **"Transmettre"** pour envoyer automatiquement la DSN
+5. Le statut de transmission s'affiche directement dans l'interface
+
+**Avantages** :
+- ✅ Transmission en un clic
+- ✅ Gestion automatique des accusés de réception
+- ✅ Retry automatique en cas d'erreur temporaire
+- ✅ Traçabilité complète des transmissions
+
+**Mode Test** : Par défaut, la transmission est en mode test. Vous pouvez passer en mode production une fois vos tests validés.
+
+#### Option 2 : Transmission manuelle
+
+Si vous préférez ne pas utiliser la transmission automatique :
+
+1. Téléchargez le fichier XML depuis OpenPayFit
+2. Rendez-vous sur https://www.net-entreprises.fr
+3. Connectez-vous avec vos identifiants
+4. Allez dans la section **DSN**
+5. Cliquez sur **Déposer une DSN**
+6. Sélectionnez le fichier XML téléchargé
+7. Validez l'envoi
 
 **🎯 Échéances** :
 - **Entreprises < 50 salariés** : Avant le 15 du mois suivant la période de paie
@@ -217,6 +244,43 @@ Après la génération, vous verrez :
 **Actuellement** : La version actuelle gère uniquement les **DSN mensuelles** normales avec les salaires et cotisations.
 
 **À venir** : Les **DSN événementielles** (embauches, fins de contrat, arrêts maladie) seront ajoutées dans une future version.
+
+### Comment activer la transmission automatique DSN ?
+
+**Prérequis** :
+1. Disposer d'un certificat client Net-Entreprises (format PEM)
+2. Avoir un compte configuré sur net-entreprises.fr
+
+**Configuration** (via API) :
+```bash
+POST /api/companies/:companyId/net-entreprises/config
+{
+  "siretDeclarant": "12345678901234",
+  "numeroAdhesion": "ABC123",
+  "certificat": "base64_encoded_certificate",
+  "clePrivee": "base64_encoded_private_key",
+  "motDePasseCertificat": "optional_password",
+  "modeTest": true
+}
+```
+
+**Note** : Une interface de configuration conviviale sera ajoutée dans une future version.
+
+### La transmission automatique est-elle sécurisée ?
+
+**Oui**, la transmission automatique utilise :
+- ✅ **Authentification par certificat TLS** : Conforme aux standards Net-Entreprises
+- ✅ **Chiffrement des certificats** : Les certificats sont stockés encodés en base64 dans la base de données
+- ✅ **Mode test** : Par défaut, toutes les transmissions sont en mode test pour éviter les erreurs
+- ✅ **Traçabilité complète** : Historique de toutes les transmissions avec statuts et erreurs
+
+### Que faire en cas d'erreur de transmission ?
+
+OpenPayFit gère automatiquement les erreurs :
+- **Retry automatique** : En cas d'erreur temporaire (réseau, serveur), le système retente automatiquement avec un délai exponentiel (5 min, 15 min, 1h, 4h, 24h)
+- **Maximum 5 tentatives** : Pour éviter les boucles infinies
+- **Affichage des erreurs** : Les messages d'erreur détaillés sont affichés dans l'interface
+- **Bouton "Retenter"** : Vous pouvez aussi retenter manuellement une transmission échouée
 
 ### Comment vérifier que ma DSN est conforme ?
 

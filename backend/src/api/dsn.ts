@@ -533,4 +533,436 @@ router.delete('/:companyId/dsn/:dsnId', authenticateToken, async (req: Request, 
   }
 });
 
+// ========== Routes pour la transmission automatique DSN ==========
+
+/**
+ * POST /api/companies/:companyId/dsn/:dsnId/transmit
+ * Transmet automatiquement une DSN vers net-entreprises.fr
+ */
+router.post('/:companyId/dsn/:dsnId/transmit', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Importer dynamiquement le service
+    const { NetEntreprisesService } = await import('../services/dsn/netEntreprisesService');
+    const service = new NetEntreprisesService(companyId);
+
+    // Transmettre la DSN
+    const resultat = await service.transmettreDSN(dsnId);
+
+    if (resultat.succes) {
+      res.status(200).json({
+        message: 'DSN transmise avec succès',
+        transmission: resultat
+      });
+    } else {
+      res.status(400).json({
+        error: resultat.erreur || 'Erreur lors de la transmission',
+        details: resultat
+      });
+    }
+
+  } catch (error) {
+    console.error('Erreur lors de la transmission de la DSN:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la transmission de la DSN',
+      message: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/transmission-status
+ * Récupère le statut de transmission d'une DSN
+ */
+router.get('/:companyId/dsn/:dsnId/transmission-status', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer toutes les transmissions de cette DSN
+    const transmissions = await prisma.transmissionDSN.findMany({
+      where: {
+        declaration: {
+          id: dsnId,
+          compagnieId: companyId
+        }
+      },
+      orderBy: { dateCreation: 'desc' }
+    });
+
+    if (transmissions.length === 0) {
+      return res.status(404).json({ error: 'Aucune transmission trouvée pour cette DSN' });
+    }
+
+    res.json({
+      transmissions: transmissions,
+      derniere: transmissions[0]
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération du statut:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du statut de transmission' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/dsn/:dsnId/transmission/:transmissionId/retry
+ * Retente une transmission échouée
+ */
+router.post('/:companyId/dsn/:dsnId/transmission/:transmissionId/retry', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, transmissionId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Importer et utiliser le service
+    const { NetEntreprisesService } = await import('../services/dsn/netEntreprisesService');
+    const service = new NetEntreprisesService(companyId);
+
+    const resultat = await service.retenterTransmission(transmissionId);
+
+    if (resultat.succes) {
+      res.status(200).json({
+        message: 'Transmission retentée avec succès',
+        transmission: resultat
+      });
+    } else {
+      res.status(400).json({
+        error: resultat.erreur || 'Erreur lors de la nouvelle tentative',
+        details: resultat
+      });
+    }
+
+  } catch (error) {
+    console.error('Erreur lors de la nouvelle tentative:', error);
+    res.status(500).json({ error: 'Erreur lors de la nouvelle tentative de transmission' });
+  }
+});
+
+// ========== Routes pour la configuration Net-Entreprises ==========
+
+/**
+ * GET /api/companies/:companyId/net-entreprises/config
+ * Récupère la configuration Net-Entreprises de l'entreprise
+ */
+router.get('/:companyId/net-entreprises/config', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer la configuration (sans exposer les secrets)
+    const config = await prisma.configurationNetEntreprises.findUnique({
+      where: { compagnieId: companyId },
+      select: {
+        id: true,
+        siretDeclarant: true,
+        numeroAdhesion: true,
+        urlApi: true,
+        modeTest: true,
+        estActif: true,
+        derniereVerification: true,
+        derniereErreur: true,
+        dateCreation: true,
+        dateModification: true
+        // Ne pas exposer certificat, clePrivee, motDePasseCertificat
+      }
+    });
+
+    if (!config) {
+      return res.status(404).json({ error: 'Configuration non trouvée' });
+    }
+
+    res.json(config);
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la configuration:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de la configuration' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/net-entreprises/config
+ * Crée ou met à jour la configuration Net-Entreprises
+ *
+ * Body: {
+ *   siretDeclarant: string,
+ *   numeroAdhesion?: string,
+ *   certificat?: string (base64),
+ *   clePrivee?: string (base64),
+ *   motDePasseCertificat?: string,
+ *   modeTest?: boolean
+ * }
+ */
+router.post('/:companyId/net-entreprises/config', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const userId = req.userId;
+    const {
+      siretDeclarant,
+      numeroAdhesion,
+      certificat,
+      clePrivee,
+      motDePasseCertificat,
+      modeTest
+    } = req.body;
+
+    // Validation
+    if (!siretDeclarant || siretDeclarant.length !== 14) {
+      return res.status(400).json({
+        error: 'Le SIRET du déclarant est obligatoire et doit contenir 14 chiffres'
+      });
+    }
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier si une configuration existe déjà
+    const configExistante = await prisma.configurationNetEntreprises.findUnique({
+      where: { compagnieId: companyId }
+    });
+
+    const donnees: any = {
+      siretDeclarant,
+      numeroAdhesion,
+      modeTest: modeTest !== undefined ? modeTest : true
+    };
+
+    // Ajouter les certificats seulement s'ils sont fournis
+    if (certificat) donnees.certificat = certificat;
+    if (clePrivee) donnees.clePrivee = clePrivee;
+    if (motDePasseCertificat) donnees.motDePasseCertificat = motDePasseCertificat;
+
+    let config;
+    if (configExistante) {
+      // Mettre à jour
+      config = await prisma.configurationNetEntreprises.update({
+        where: { id: configExistante.id },
+        data: donnees,
+        select: {
+          id: true,
+          siretDeclarant: true,
+          numeroAdhesion: true,
+          urlApi: true,
+          modeTest: true,
+          estActif: true,
+          derniereVerification: true,
+          derniereErreur: true,
+          dateCreation: true,
+          dateModification: true
+        }
+      });
+    } else {
+      // Créer
+      config = await prisma.configurationNetEntreprises.create({
+        data: {
+          ...donnees,
+          compagnieId: companyId
+        },
+        select: {
+          id: true,
+          siretDeclarant: true,
+          numeroAdhesion: true,
+          urlApi: true,
+          modeTest: true,
+          estActif: true,
+          derniereVerification: true,
+          derniereErreur: true,
+          dateCreation: true,
+          dateModification: true
+        }
+      });
+    }
+
+    res.status(configExistante ? 200 : 201).json({
+      message: configExistante ? 'Configuration mise à jour' : 'Configuration créée',
+      config: config
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la sauvegarde de la configuration:', error);
+    res.status(500).json({ error: 'Erreur lors de la sauvegarde de la configuration' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/net-entreprises/config/test
+ * Teste la configuration Net-Entreprises
+ */
+router.post('/:companyId/net-entreprises/config/test', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Tester la configuration
+    const { NetEntreprisesService } = await import('../services/dsn/netEntreprisesService');
+    const service = new NetEntreprisesService(companyId);
+    const resultat = await service.testerConfiguration();
+
+    if (resultat.valide) {
+      res.json({
+        message: 'Configuration valide et fonctionnelle',
+        valide: true
+      });
+    } else {
+      res.status(400).json({
+        message: 'Configuration invalide',
+        valide: false,
+        erreur: resultat.erreur
+      });
+    }
+
+  } catch (error) {
+    console.error('Erreur lors du test de la configuration:', error);
+    res.status(500).json({
+      error: 'Erreur lors du test de la configuration',
+      message: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * PATCH /api/companies/:companyId/net-entreprises/config/toggle
+ * Active ou désactive la configuration Net-Entreprises
+ */
+router.patch('/:companyId/net-entreprises/config/toggle', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const { estActif } = req.body;
+    const userId = req.userId;
+
+    if (typeof estActif !== 'boolean') {
+      return res.status(400).json({ error: 'Le paramètre estActif doit être un booléen' });
+    }
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Mettre à jour le statut
+    const config = await prisma.configurationNetEntreprises.update({
+      where: { compagnieId: companyId },
+      data: { estActif },
+      select: {
+        id: true,
+        siretDeclarant: true,
+        numeroAdhesion: true,
+        urlApi: true,
+        modeTest: true,
+        estActif: true,
+        derniereVerification: true,
+        derniereErreur: true,
+        dateCreation: true,
+        dateModification: true
+      }
+    });
+
+    res.json({
+      message: `Configuration ${estActif ? 'activée' : 'désactivée'}`,
+      config: config
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la modification du statut:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification du statut de la configuration' });
+  }
+});
+
 export default router;

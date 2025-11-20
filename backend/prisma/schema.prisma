@@ -49,10 +49,11 @@ model Compagnie {
   numeroUrssaf               String?                  // Numéro d'adhérent URSSAF
 
   // Relations
-  employes                   Employe[]                // Une entreprise a plusieurs employés
-  organismesSpecifiques      OrganismeCotisation[]    // Organismes collecteurs spécifiques à cette entreprise (caisses de retraite de branche, mutuelles, etc.)
-  integrationsComptables     AccountingIntegration[]  // Intégrations comptables (Sage, QuickBooks, etc.)
-  declarationsDSN            DSNDeclaration[]         // Déclarations sociales nominatives générées
+  employes                   Employe[]                      // Une entreprise a plusieurs employés
+  organismesSpecifiques      OrganismeCotisation[]          // Organismes collecteurs spécifiques à cette entreprise (caisses de retraite de branche, mutuelles, etc.)
+  integrationsComptables     AccountingIntegration[]        // Intégrations comptables (Sage, QuickBooks, etc.)
+  declarationsDSN            DSNDeclaration[]               // Déclarations sociales nominatives générées
+  configurationNetEntreprises ConfigurationNetEntreprises? // Configuration pour la transmission automatique DSN
 
   dateCreation               DateTime                 @default(now()) @map("createdAt")
   dateModification           DateTime                 @updatedAt @map("updatedAt")
@@ -595,4 +596,89 @@ model DSNDeclaration {
   @@index([statut])
   @@index([periodeDeclaration])
   @@map("dsn_declarations")
+
+  // Relations
+  transmissions    TransmissionDSN[] // Historique des transmissions de cette DSN
+}
+
+// ========== Modèles pour la transmission automatique DSN via net-entreprises.fr ==========
+
+/// Statut d'une transmission DSN
+enum StatutTransmission {
+  EN_ATTENTE       // En attente d'envoi
+  EN_COURS         // Transmission en cours
+  TRANSMISE        // Transmise avec succès
+  ACCUSE_RECEPTION // Accusé de réception reçu
+  ERREUR           // Erreur lors de la transmission
+  REJETEE          // Rejetée par net-entreprises.fr
+}
+
+/// Transmission DSN vers net-entreprises.fr
+/// Stocke l'historique des transmissions automatiques via l'API EDI Machine-to-Machine
+model TransmissionDSN {
+  id                    String              @id @default(cuid())
+  declaration           DSNDeclaration      @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+  declarationId         String
+
+  // Statut de la transmission
+  statut                StatutTransmission  @default(EN_ATTENTE)
+
+  // Dates importantes
+  dateTransmission      DateTime?           // Date d'envoi effectif
+  dateAccuseReception   DateTime?           // Date de réception de l'AR
+  dateDerniereVerification DateTime?        // Date de dernière vérification du statut
+
+  // Identifiants et références
+  idTransmission        String?             // ID de transaction retourné par net-entreprises.fr
+  numeroProtocole       String?             // Numéro de protocole EDI
+
+  // Accusé de réception et retours
+  accuse                String?             // Contenu XML de l'accusé de réception (peut être volumineux)
+  codeRetour            String?             // Code retour (ex: "00" = succès, "01" = erreur, etc.)
+  messagesRetour        String?             // Messages de retour (JSON) - erreurs, avertissements
+
+  // Gestion des erreurs et retry
+  nombreTentatives      Int                 @default(0) // Nombre de tentatives de transmission
+  derniereErreur        String?             // Dernier message d'erreur rencontré
+  prochaineTentative    DateTime?           // Date de la prochaine tentative (pour retry automatique)
+
+  dateCreation          DateTime            @default(now()) @map("createdAt")
+  dateModification      DateTime            @updatedAt @map("updatedAt")
+
+  @@index([declarationId])
+  @@index([statut])
+  @@index([dateTransmission])
+  @@map("transmissions_dsn")
+}
+
+/// Configuration Net-Entreprises pour une entreprise
+/// Stocke les informations d'authentification et de configuration pour l'API EDI
+model ConfigurationNetEntreprises {
+  id                    String    @id @default(cuid())
+  compagnie             Compagnie @relation(fields: [compagnieId], references: [id], onDelete: Cascade)
+  compagnieId           String    @unique // Une seule configuration par entreprise
+
+  // Identifiants Net-Entreprises
+  siretDeclarant        String    // SIRET du déclarant (peut différer du SIRET de l'établissement)
+  numeroAdhesion        String?   // Numéro d'adhésion Net-Entreprises
+
+  // Configuration de l'authentification
+  typeCertificat        String    @default("PEM") // Type de certificat (PEM, PKCS12, etc.)
+  certificat            String?   // Certificat client (encodé en base64 pour sécurité)
+  clePrivee             String?   // Clé privée (encodée en base64, chiffrée)
+  motDePasseCertificat  String?   // Mot de passe du certificat (chiffré)
+
+  // Configuration EDI
+  urlApi                String    @default("https://www.net-entreprises.fr/api/dsn") // URL de l'API
+  modeTest              Boolean   @default(true) // Mode test/sandbox ou production
+
+  // Statut et validation
+  estActif              Boolean   @default(false) // Configuration active ou non
+  derniereVerification  DateTime? // Date de dernière vérification de la validité
+  derniereErreur        String?   // Dernière erreur de configuration
+
+  dateCreation          DateTime  @default(now()) @map("createdAt")
+  dateModification      DateTime  @updatedAt @map("updatedAt")
+
+  @@map("configurations_net_entreprises")
 }
