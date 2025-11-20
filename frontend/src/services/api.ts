@@ -2230,3 +2230,209 @@ export async function toggleNetEntreprisesConfig(
 
   return response.json();
 }
+
+// ========== Événements DSN ==========
+
+// Types pour les événements DSN
+export type TypeEvenementDSN =
+  | 'EMBAUCHE'
+  | 'FIN_CONTRAT'
+  | 'ARRET_MALADIE'
+  | 'CONGE_MATERNITE'
+  | 'CONGE_PATERNITE'
+  | 'CHANGEMENT_CONTRAT'
+  | 'AUTRE';
+
+export type StatutEvenementDSN = 'BROUILLON' | 'VALIDE' | 'DECLARE' | 'ERREUR';
+
+// Interfaces pour les événements DSN
+export interface DSNEvent {
+  id: string;
+  companyId: string;
+  employeeId: string;
+  typeEvenement: TypeEvenementDSN;
+  statut: StatutEvenementDSN;
+  dateEvenement: string;
+  dateDeclaration?: string;
+  donneesSpecifiques?: string;
+  motif?: string;
+  commentaires?: string;
+  declarationId?: string;
+  createdAt: string;
+  updatedAt: string;
+  employe?: {
+    id: string;
+    prenom: string;
+    nom: string;
+    email: string;
+    numeroSecuriteSociale?: string;
+    dateNaissance?: string;
+    typeContrat?: string;
+    dateEmbauche?: string;
+  };
+  declaration?: {
+    id: string;
+    periodeDeclaration: string;
+    statut: string;
+    numeroDeclaration?: string;
+  };
+}
+
+export interface CreateDSNEventData {
+  employeId: string;
+  typeEvenement: TypeEvenementDSN;
+  dateEvenement: string;
+  motif?: string;
+  commentaires?: string;
+  donneesSpecifiques?: Record<string, any>;
+}
+
+export interface UpdateDSNEventData {
+  typeEvenement?: TypeEvenementDSN;
+  dateEvenement?: string;
+  motif?: string;
+  commentaires?: string;
+  donneesSpecifiques?: Record<string, any>;
+}
+
+export interface ValidateDSNEventResult {
+  message: string;
+  evenement: DSNEvent;
+}
+
+// --- Fonctions API des événements DSN ---
+
+/**
+ * Récupère tous les événements DSN d'une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param token - Token d'authentification
+ */
+export async function getDSNEvents(companyId: string, token: string): Promise<DSNEvent[]> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn-events`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des événements DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Crée un nouvel événement DSN
+ * @param companyId - ID de l'entreprise
+ * @param data - Données de l'événement
+ * @param token - Token d'authentification
+ */
+export async function createDSNEvent(
+  companyId: string,
+  data: CreateDSNEventData,
+  token: string
+): Promise<DSNEvent> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn-events`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la création de l\'événement DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les détails d'un événement DSN
+ * @param companyId - ID de l'entreprise
+ * @param eventId - ID de l'événement
+ * @param token - Token d'authentification
+ */
+export async function getDSNEvent(
+  companyId: string,
+  eventId: string,
+  token: string
+): Promise<DSNEvent> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn-events/${eventId}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de l\'événement DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Modifie un événement DSN (uniquement si statut = BROUILLON)
+ * @param companyId - ID de l'entreprise
+ * @param eventId - ID de l'événement
+ * @param data - Données à modifier
+ * @param token - Token d'authentification
+ */
+export async function updateDSNEvent(
+  companyId: string,
+  eventId: string,
+  data: UpdateDSNEventData,
+  token: string
+): Promise<DSNEvent> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn-events/${eventId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la modification de l\'événement DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Supprime un événement DSN (uniquement si statut = BROUILLON ou ERREUR)
+ * @param companyId - ID de l'entreprise
+ * @param eventId - ID de l'événement
+ * @param token - Token d'authentification
+ */
+export async function deleteDSNEvent(
+  companyId: string,
+  eventId: string,
+  token: string
+): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn-events/${eventId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de l\'événement DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Valide un événement DSN (passe de BROUILLON à VALIDE)
+ * @param companyId - ID de l'entreprise
+ * @param eventId - ID de l'événement
+ * @param token - Token d'authentification
+ */
+export async function validateDSNEvent(
+  companyId: string,
+  eventId: string,
+  token: string
+): Promise<ValidateDSNEventResult> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn-events/${eventId}/validate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la validation de l\'événement DSN');
+  }
+
+  return response.json();
+}

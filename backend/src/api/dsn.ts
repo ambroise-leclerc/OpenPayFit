@@ -965,4 +965,464 @@ router.patch('/:companyId/net-entreprises/config/toggle', authenticateToken, asy
   }
 });
 
+// ========== Routes pour les événements DSN ==========
+
+/**
+ * GET /api/companies/:companyId/dsn-events
+ * Liste tous les événements DSN d'une entreprise
+ */
+router.get('/:companyId/dsn-events', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer tous les événements DSN de l'entreprise
+    const evenements = await prisma.dSNEvent.findMany({
+      where: { compagnieId: companyId },
+      include: {
+        employe: {
+          select: {
+            id: true,
+            prenom: true,
+            nom: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { dateEvenement: 'desc' }
+    });
+
+    res.json(evenements);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des événements DSN:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des événements DSN' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/dsn-events
+ * Crée un nouvel événement DSN
+ *
+ * Body: {
+ *   employeId: string,
+ *   typeEvenement: "EMBAUCHE" | "FIN_CONTRAT" | "ARRET_MALADIE" | "CONGE_MATERNITE" | "CONGE_PATERNITE" | "CHANGEMENT_CONTRAT" | "AUTRE",
+ *   dateEvenement: string (ISO date),
+ *   motif?: string,
+ *   commentaires?: string,
+ *   donneesSpecifiques?: object
+ * }
+ */
+router.post('/:companyId/dsn-events', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId } = req.params;
+    const { employeId, typeEvenement, dateEvenement, motif, commentaires, donneesSpecifiques } = req.body;
+    const userId = req.userId;
+
+    // Validation des paramètres obligatoires
+    if (!employeId || !typeEvenement || !dateEvenement) {
+      return res.status(400).json({
+        error: 'Les champs employeId, typeEvenement et dateEvenement sont obligatoires'
+      });
+    }
+
+    // Valider le type d'événement
+    const typesValides = ['EMBAUCHE', 'FIN_CONTRAT', 'ARRET_MALADIE', 'CONGE_MATERNITE', 'CONGE_PATERNITE', 'CHANGEMENT_CONTRAT', 'AUTRE'];
+    if (!typesValides.includes(typeEvenement)) {
+      return res.status(400).json({
+        error: `Le type d'événement doit être l'un des suivants: ${typesValides.join(', ')}`
+      });
+    }
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que l'employé existe et appartient à cette entreprise
+    const employe = await prisma.employe.findUnique({
+      where: { id: employeId }
+    });
+
+    if (!employe) {
+      return res.status(404).json({ error: 'Employé non trouvé' });
+    }
+
+    if (employe.compagnieId !== companyId) {
+      return res.status(400).json({ error: 'Cet employé n\'appartient pas à cette entreprise' });
+    }
+
+    // Créer l'événement DSN
+    const evenement = await prisma.dSNEvent.create({
+      data: {
+        compagnieId: companyId,
+        employeId: employeId,
+        typeEvenement: typeEvenement,
+        dateEvenement: new Date(dateEvenement),
+        motif: motif || null,
+        commentaires: commentaires || null,
+        donneesSpecifiques: donneesSpecifiques ? JSON.stringify(donneesSpecifiques) : null,
+        statut: 'BROUILLON'
+      },
+      include: {
+        employe: {
+          select: {
+            id: true,
+            prenom: true,
+            nom: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.status(201).json(evenement);
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'événement DSN:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de l\'événement DSN' });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn-events/:eventId
+ * Récupère les détails d'un événement DSN
+ */
+router.get('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, eventId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer l'événement DSN
+    const evenement = await prisma.dSNEvent.findUnique({
+      where: { id: eventId },
+      include: {
+        employe: {
+          select: {
+            id: true,
+            prenom: true,
+            nom: true,
+            email: true,
+            numeroSecuriteSociale: true,
+            dateNaissance: true,
+            typeContrat: true,
+            dateEmbauche: true
+          }
+        },
+        declaration: {
+          select: {
+            id: true,
+            periodeDeclaration: true,
+            statut: true,
+            numeroDeclaration: true
+          }
+        }
+      }
+    });
+
+    if (!evenement) {
+      return res.status(404).json({ error: 'Événement DSN non trouvé' });
+    }
+
+    if (evenement.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cet événement n\'appartient pas à cette entreprise' });
+    }
+
+    res.json(evenement);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'événement DSN:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de l\'événement DSN' });
+  }
+});
+
+/**
+ * PUT /api/companies/:companyId/dsn-events/:eventId
+ * Modifie un événement DSN (uniquement si statut = BROUILLON)
+ */
+router.put('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, eventId } = req.params;
+    const { typeEvenement, dateEvenement, motif, commentaires, donneesSpecifiques } = req.body;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer l'événement DSN
+    const evenement = await prisma.dSNEvent.findUnique({
+      where: { id: eventId }
+    });
+
+    if (!evenement) {
+      return res.status(404).json({ error: 'Événement DSN non trouvé' });
+    }
+
+    if (evenement.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cet événement n\'appartient pas à cette entreprise' });
+    }
+
+    // Ne permettre la modification que des événements en brouillon
+    if (evenement.statut !== 'BROUILLON') {
+      return res.status(400).json({
+        error: 'Impossible de modifier un événement qui n\'est pas en brouillon'
+      });
+    }
+
+    // Préparer les données de mise à jour
+    const dataToUpdate: any = {};
+    if (typeEvenement) {
+      const typesValides = ['EMBAUCHE', 'FIN_CONTRAT', 'ARRET_MALADIE', 'CONGE_MATERNITE', 'CONGE_PATERNITE', 'CHANGEMENT_CONTRAT', 'AUTRE'];
+      if (!typesValides.includes(typeEvenement)) {
+        return res.status(400).json({
+          error: `Le type d'événement doit être l'un des suivants: ${typesValides.join(', ')}`
+        });
+      }
+      dataToUpdate.typeEvenement = typeEvenement;
+    }
+    if (dateEvenement) dataToUpdate.dateEvenement = new Date(dateEvenement);
+    if (motif !== undefined) dataToUpdate.motif = motif || null;
+    if (commentaires !== undefined) dataToUpdate.commentaires = commentaires || null;
+    if (donneesSpecifiques !== undefined) {
+      dataToUpdate.donneesSpecifiques = donneesSpecifiques ? JSON.stringify(donneesSpecifiques) : null;
+    }
+
+    // Mettre à jour l'événement
+    const evenementMisAJour = await prisma.dSNEvent.update({
+      where: { id: eventId },
+      data: dataToUpdate,
+      include: {
+        employe: {
+          select: {
+            id: true,
+            prenom: true,
+            nom: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.json(evenementMisAJour);
+  } catch (error) {
+    console.error('Erreur lors de la modification de l\'événement DSN:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification de l\'événement DSN' });
+  }
+});
+
+/**
+ * DELETE /api/companies/:companyId/dsn-events/:eventId
+ * Supprime un événement DSN (uniquement si statut = BROUILLON ou ERREUR)
+ */
+router.delete('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, eventId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer l'événement DSN
+    const evenement = await prisma.dSNEvent.findUnique({
+      where: { id: eventId }
+    });
+
+    if (!evenement) {
+      return res.status(404).json({ error: 'Événement DSN non trouvé' });
+    }
+
+    if (evenement.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cet événement n\'appartient pas à cette entreprise' });
+    }
+
+    // Ne permettre la suppression que des événements en brouillon ou en erreur
+    if (evenement.statut !== 'BROUILLON' && evenement.statut !== 'ERREUR') {
+      return res.status(400).json({
+        error: 'Impossible de supprimer un événement validé ou déclaré'
+      });
+    }
+
+    // Supprimer l'événement
+    await prisma.dSNEvent.delete({
+      where: { id: eventId }
+    });
+
+    res.json({ message: 'Événement DSN supprimé avec succès' });
+  } catch (error) {
+    console.error('Erreur lors de la suppression de l\'événement DSN:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement DSN' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/dsn-events/:eventId/validate
+ * Valide un événement DSN (passe de BROUILLON à VALIDE)
+ */
+router.post('/:companyId/dsn-events/:eventId/validate', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, eventId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Récupérer l'événement DSN
+    const evenement = await prisma.dSNEvent.findUnique({
+      where: { id: eventId },
+      include: {
+        employe: true
+      }
+    });
+
+    if (!evenement) {
+      return res.status(404).json({ error: 'Événement DSN non trouvé' });
+    }
+
+    if (evenement.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cet événement n\'appartient pas à cette entreprise' });
+    }
+
+    // Ne permettre la validation que des événements en brouillon
+    if (evenement.statut !== 'BROUILLON') {
+      return res.status(400).json({
+        error: 'Seuls les événements en brouillon peuvent être validés'
+      });
+    }
+
+    // Valider les données selon le type d'événement
+    const erreurs: string[] = [];
+
+    // Vérifications communes
+    if (!evenement.employe.numeroSecuriteSociale) {
+      erreurs.push('Le numéro de sécurité sociale de l\'employé est obligatoire');
+    }
+
+    // Vérifications spécifiques selon le type
+    switch (evenement.typeEvenement) {
+      case 'EMBAUCHE':
+        if (!evenement.employe.dateEmbauche) {
+          erreurs.push('La date d\'embauche est obligatoire pour un événement EMBAUCHE');
+        }
+        if (!evenement.employe.typeContrat) {
+          erreurs.push('Le type de contrat est obligatoire pour un événement EMBAUCHE');
+        }
+        break;
+
+      case 'FIN_CONTRAT':
+        if (!evenement.motif) {
+          erreurs.push('Le motif est obligatoire pour un événement FIN_CONTRAT');
+        }
+        break;
+
+      case 'ARRET_MALADIE':
+        // Les données spécifiques devraient contenir dateDebut et dateFin
+        if (evenement.donneesSpecifiques) {
+          try {
+            const donnees = JSON.parse(evenement.donneesSpecifiques);
+            if (!donnees.dateDebut || !donnees.dateFin) {
+              erreurs.push('Les dates de début et fin sont obligatoires pour un arrêt maladie');
+            }
+          } catch (e) {
+            erreurs.push('Les données spécifiques sont mal formatées');
+          }
+        } else {
+          erreurs.push('Les dates de début et fin sont obligatoires pour un arrêt maladie');
+        }
+        break;
+    }
+
+    if (erreurs.length > 0) {
+      return res.status(400).json({
+        error: 'L\'événement ne peut pas être validé',
+        details: erreurs
+      });
+    }
+
+    // Valider l'événement
+    const evenementValide = await prisma.dSNEvent.update({
+      where: { id: eventId },
+      data: { statut: 'VALIDE' },
+      include: {
+        employe: {
+          select: {
+            id: true,
+            prenom: true,
+            nom: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    res.json({
+      message: 'Événement DSN validé avec succès',
+      evenement: evenementValide
+    });
+  } catch (error) {
+    console.error('Erreur lors de la validation de l\'événement DSN:', error);
+    res.status(500).json({ error: 'Erreur lors de la validation de l\'événement DSN' });
+  }
+});
+
 export default router;
