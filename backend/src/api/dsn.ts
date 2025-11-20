@@ -575,7 +575,7 @@ router.post('/:companyId/dsn/:dsnId/transmit', authenticateToken, async (req: Re
     const service = new NetEntreprisesService(companyId);
 
     // Transmettre la DSN
-    const resultat = await service.transmettreDS N(dsnId);
+    const resultat = await service.transmettreDSN(dsnId);
 
     if (resultat.succes) {
       res.status(200).json({

@@ -2025,7 +2025,7 @@ export interface ResultatTransmission {
  * @param token - Token d'authentification
  * @returns Résultat de la transmission
  */
-export async function transmettreDS N(
+export async function transmettreDSN(
   companyId: string,
   dsnId: string,
   token: string

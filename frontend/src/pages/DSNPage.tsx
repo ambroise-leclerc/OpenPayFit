@@ -10,7 +10,7 @@ import {
   generateDSN,
   downloadDSN,
   deleteDSN,
-  transmettreDS N,
+  transmettreDSN,
   getTransmissionStatus,
   getNetEntreprisesConfig,
 } from '../services/api';
@@ -181,7 +181,7 @@ export default function DSNPage() {
     setSuccess(null);
 
     try {
-      const result = await transmettreDS N(selectedCompany.id, dsnId, token);
+      const result = await transmettreDSN(selectedCompany.id, dsnId, token);
       setSuccess(result.message);
 
       // Recharger la liste des DSN

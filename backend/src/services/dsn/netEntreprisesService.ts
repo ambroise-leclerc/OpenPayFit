@@ -112,7 +112,7 @@ export class NetEntreprisesService {
    * @param dsnId ID de la déclaration DSN à transmettre
    * @returns Résultat de la transmission
    */
-  async transmettreDS N(dsnId: string): Promise<ResultatTransmission> {
+  async transmettreDSN(dsnId: string): Promise<ResultatTransmission> {
     try {
       // Charger la configuration
       await this.chargerConfiguration();
@@ -463,7 +463,7 @@ export class NetEntreprisesService {
     });
 
     // Retenter la transmission
-    return await this.transmettreDS N(transmission.declarationId);
+    return await this.transmettreDSN(transmission.declarationId);
   }
 
   /**
