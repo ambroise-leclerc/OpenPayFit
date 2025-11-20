@@ -1775,3 +1775,199 @@ export async function exchangeQuickBooksToken(
 
   return response.json();
 }
+
+// --- Gestion des DSN (Déclarations Sociales Nominatives) ---
+
+// Enums pour les DSN
+export type TypeDeclarationDSN = 'MENSUELLE' | 'EVENEMENTIELLE';
+export type StatutDSN = 'BROUILLON' | 'VALIDEE' | 'TRANSMISE' | 'ERREUR';
+export type TypeMessageValidation = 'ERREUR' | 'AVERTISSEMENT' | 'INFORMATION';
+
+// Interfaces pour les DSN
+export interface DSNDeclaration {
+  id: string;
+  companyId: string;
+  periodeDeclaration: string;
+  typeDeclaration: TypeDeclarationDSN;
+  statut: StatutDSN;
+  contenuXml?: string;
+  messagesValidation?: string;
+  numeroDeclaration?: string;
+  dateGeneration?: string;
+  dateTransmission?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MessageValidation {
+  type: TypeMessageValidation;
+  code: string;
+  message: string;
+  champ?: string;
+}
+
+export interface ResultatValidation {
+  valide: boolean;
+  messages: MessageValidation[];
+}
+
+export interface GenerateDSNData {
+  periode: string; // Format YYYY-MM
+}
+
+export interface GenerateDSNResult {
+  declaration: DSNDeclaration;
+  validation: ResultatValidation;
+}
+
+// --- Fonctions API des DSN ---
+
+/**
+ * Récupère toutes les déclarations DSN d'une entreprise
+ * @param companyId - ID de l'entreprise
+ * @param token - Token d'authentification
+ */
+export async function getDSNDeclarations(
+  companyId: string,
+  token: string
+): Promise<DSNDeclaration[]> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération des déclarations DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Génère une nouvelle déclaration DSN pour une période donnée
+ * @param companyId - ID de l'entreprise
+ * @param data - Données de génération (période)
+ * @param token - Token d'authentification
+ */
+export async function generateDSN(
+  companyId: string,
+  data: GenerateDSNData,
+  token: string
+): Promise<GenerateDSNResult> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/generate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la génération de la DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les détails d'une déclaration DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ */
+export async function getDSNDeclaration(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<DSNDeclaration> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de la déclaration DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Télécharge le fichier XML d'une déclaration DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ */
+export async function downloadDSN(companyId: string, dsnId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/download`, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec du téléchargement de la DSN');
+  }
+
+  // Récupérer le nom du fichier depuis les headers
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = 'dsn.xml';
+
+  if (contentDisposition) {
+    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+
+  // Créer un blob à partir de la réponse
+  const blob = await response.blob();
+
+  // Créer un lien de téléchargement et le déclencher
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+
+  // Nettoyer
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
+
+/**
+ * Valide une déclaration DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ */
+export async function validateDSN(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<ResultatValidation> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/validate`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la validation de la DSN');
+  }
+
+  return response.json();
+}
+
+/**
+ * Supprime une déclaration DSN (uniquement si elle est en brouillon)
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ */
+export async function deleteDSN(companyId: string, dsnId: string, token: string): Promise<void> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la suppression de la DSN');
+  }
+}

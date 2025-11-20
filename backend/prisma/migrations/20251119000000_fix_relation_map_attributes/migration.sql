@@ -1,0 +1,14 @@
+-- Migration vide : correction du schéma Prisma
+-- Suppression des attributs @map inappropriés sur les champs de relation
+-- Ces @map ne sont autorisés que sur les champs scalaires, pas sur les relations
+-- Aucune modification SQL nécessaire car ces attributs n'affectent pas la structure de la BDD
+
+-- Cette migration documente la correction suivante dans schema.prisma :
+-- - Compagnie.integrationsComptables : suppression de @map("accountingIntegrations")
+-- - Employe.conges : suppression de @map("leaves")
+-- - Employe.soldesConges : suppression de @map("leaveBalances")
+-- - Employe.frais : suppression de @map("expenses")
+-- - Employe.rapportsFrais : suppression de @map("expenseReports")
+-- - ExpenseReport.lignes : suppression de @map("items")
+-- - ExpenseItem.rapport : suppression de @map("report")
+-- - AccountingIntegration.journauxExport : suppression de @map("exportLogs")

@@ -14,6 +14,7 @@ import PayslipDetailPage from './pages/PayslipDetailPage';
 import AnalyticsDashboard from './pages/AnalyticsDashboard';
 import ExpensesPage from './pages/ExpensesPage';
 import OrganismsPage from './pages/OrganismsPage';
+import DSNPage from './pages/DSNPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import ReglesListPage from './pages/admin/ReglesListPage';
 import SimulateurPage from './pages/admin/SimulateurPage';
@@ -96,6 +97,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <OrganismsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'dsn',
+        element: (
+          <ProtectedRoute>
+            <DSNPage />
           </ProtectedRoute>
         ),
       },

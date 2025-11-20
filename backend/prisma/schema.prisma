@@ -36,9 +36,24 @@ model Compagnie {
   nom                        String                   @map("name")
   proprietaire               Utilisateur              @relation(fields: [proprietaireId], references: [id])
   proprietaireId             String                   @map("ownerId") // Clé étrangère vers Utilisateur
+
+  // Informations légales et administratives (pour DSN)
+  // Note: SIRET n'a pas de contrainte @unique car nullable. La validation d'unicité
+  // se fait au niveau applicatif pour les SIRET non-null uniquement.
+  siret                      String?                  // Numéro SIRET (14 chiffres) - identifiant unique de l'établissement
+  codeNaf                    String?                  // Code NAF/APE (5 caractères) - activité principale
+  adresse                    String?                  // Adresse complète de l'établissement
+  codePostal                 String?                  // Code postal
+  ville                      String?                  // Ville
+  conventionCollective       String?                  // Code IDCC de la convention collective appliquée
+  numeroUrssaf               String?                  // Numéro d'adhérent URSSAF
+
+  // Relations
   employes                   Employe[]                // Une entreprise a plusieurs employés
   organismesSpecifiques      OrganismeCotisation[]    // Organismes collecteurs spécifiques à cette entreprise (caisses de retraite de branche, mutuelles, etc.)
-  integrationsComptables     AccountingIntegration[]  @map("accountingIntegrations") // Intégrations comptables (Sage, QuickBooks, etc.)
+  integrationsComptables     AccountingIntegration[]  // Intégrations comptables (Sage, QuickBooks, etc.)
+  declarationsDSN            DSNDeclaration[]         // Déclarations sociales nominatives générées
+
   dateCreation               DateTime                 @default(now()) @map("createdAt")
   dateModification           DateTime                 @updatedAt @map("updatedAt")
 
@@ -52,13 +67,29 @@ model Employe {
   email            String         @unique
   salaireBrut      Float          @map("grossSalary")
   departement      String?        @map("department") // Département de l'employé (optionnel)
+
+  // Informations personnelles (pour DSN)
+  numeroSecuriteSociale  String?  @unique // Numéro de sécurité sociale (15 chiffres)
+  dateNaissance          DateTime? // Date de naissance
+  lieuNaissance          String?  // Lieu de naissance (ville et pays)
+  nationalite            String?  // Nationalité (code ISO pays sur 2 lettres, ex: "FR")
+
+  // Informations contractuelles (pour DSN)
+  typeContrat            TypeContrat? // Type de contrat de travail
+  dateEmbauche           DateTime?    // Date d'embauche dans l'entreprise
+  dateFinContrat         DateTime?    // Date de fin de contrat (pour CDD, intérim, etc.)
+  numeroMatricule        String?      // Numéro de matricule interne de l'employé
+  poste                  String?      // Intitulé du poste occupé
+  qualification          String?      // Qualification professionnelle ou coefficient
+
+  // Relations
   compagnie        Compagnie      @relation(fields: [compagnieId], references: [id])
   compagnieId      String         @map("companyId") // Clé étrangère vers Compagnie
   fichesPaie       FichePaie[]    // Un employé peut avoir plusieurs fiches de paie
-  conges           Leave[]        @map("leaves") // Un employé peut avoir plusieurs congés
-  soldesConges     LeaveBalance[] @map("leaveBalances") // Un employé peut avoir plusieurs soldes de congés (par type et année)
-  frais            Expense[]      @map("expenses") // Un employé peut avoir plusieurs notes de frais (ancien modèle)
-  rapportsFrais    ExpenseReport[] @map("expenseReports") // Un employé peut avoir plusieurs rapports de notes de frais
+  conges           Leave[]        // Un employé peut avoir plusieurs congés
+  soldesConges     LeaveBalance[] // Un employé peut avoir plusieurs soldes de congés (par type et année)
+  frais            Expense[]      // Un employé peut avoir plusieurs notes de frais (ancien modèle)
+  rapportsFrais    ExpenseReport[] // Un employé peut avoir plusieurs rapports de notes de frais
   dateCreation     DateTime       @default(now()) @map("createdAt")
   dateModification DateTime       @updatedAt @map("updatedAt")
 
@@ -111,6 +142,18 @@ model LigneCotisationFichePaie {
 
   @@index([fichePaieId])
   @@map("lignes_cotisation_fiche_paie")
+}
+
+// ========== Enums pour les employés ==========
+
+/// Type de contrat de travail
+enum TypeContrat {
+  CDI                   // Contrat à durée indéterminée
+  CDD                   // Contrat à durée déterminée
+  INTERIM               // Contrat de travail temporaire
+  APPRENTISSAGE         // Contrat d'apprentissage
+  PROFESSIONNALISATION  // Contrat de professionnalisation
+  STAGE                 // Convention de stage
 }
 
 // ========== Enums pour les règles de cotisations ==========
@@ -415,7 +458,7 @@ model ExpenseReport {
   titre            String        @map("title") // Titre du rapport (ex: "Déplacement Paris - Mars 2025")
   statut           ExpenseStatus @default(PENDING) @map("status")
   montantTotal     Float         @default(0) @map("totalAmount") // Montant total calculé à partir des lignes
-  lignes           ExpenseItem[] @map("items") // Lignes de dépenses du rapport
+  lignes           ExpenseItem[] // Lignes de dépenses du rapport
   dateCreation     DateTime      @default(now()) @map("createdAt")
   dateModification DateTime      @updatedAt @map("updatedAt")
 
@@ -428,7 +471,7 @@ model ExpenseReport {
 /// Chaque ligne représente une dépense individuelle avec son justificatif
 model ExpenseItem {
   id               String          @id @default(cuid())
-  rapport          ExpenseReport   @relation(fields: [rapportId], references: [id], onDelete: Cascade) @map("report")
+  rapport          ExpenseReport   @relation(fields: [rapportId], references: [id], onDelete: Cascade)
   rapportId        String          @map("reportId")
   categorie        ExpenseCategory @map("category")
   montant          Float           @map("amount") // Montant en euros
@@ -469,7 +512,7 @@ model AccountingIntegration {
   configuration        String                       // JSON avec la configuration spécifique (mapping comptes, credentials OAuth, etc.)
   dateDerniereSynchro  DateTime?                    @map("lastSyncAt") // Date du dernier export réussi
   derniereErreur       String?                      @map("lastError") // Dernier message d'erreur (si status = ERROR)
-  journauxExport       AccountingExportLog[]        @map("exportLogs") // Historique des exports
+  journauxExport       AccountingExportLog[]        // Historique des exports
   dateCreation         DateTime                     @default(now()) @map("createdAt")
   dateModification     DateTime                     @updatedAt @map("updatedAt")
 
@@ -503,4 +546,53 @@ model AccountingExportLog {
   @@index([integrationId])
   @@index([statut])
   @@map("accounting_export_logs")
+}
+
+// ========== Modèles pour la DSN (Déclaration Sociale Nominative) ==========
+
+/// Type de déclaration DSN
+enum TypeDeclarationDSN {
+  MENSUELLE       // Déclaration mensuelle normale
+  EVENEMENTIELLE  // Déclaration événementielle (ex: fin de contrat, arrêt maladie)
+}
+
+/// Statut d'une déclaration DSN
+enum StatutDSN {
+  BROUILLON   // En cours de préparation
+  VALIDEE     // Validée et prête à être transmise
+  TRANSMISE   // Transmise aux organismes sociaux
+  ERREUR      // Erreur lors de la génération ou transmission
+}
+
+/// Déclaration Sociale Nominative (DSN)
+/// Stocke l'historique des déclarations DSN générées pour une entreprise
+/// La DSN est une déclaration mensuelle obligatoire qui transmet aux organismes sociaux
+/// l'ensemble des données issues de la paie (salaires, cotisations, etc.)
+model DSNDeclaration {
+  id                    String              @id @default(cuid())
+  compagnie             Compagnie           @relation(fields: [compagnieId], references: [id], onDelete: Cascade)
+  compagnieId           String              @map("companyId")
+
+  // Informations de la déclaration
+  periodeDeclaration    String              // Format "YYYY-MM" - mois de paie concerné (ex: "2025-03")
+  typeDeclaration       TypeDeclarationDSN  @default(MENSUELLE) // Type de déclaration (mensuelle ou événementielle)
+  statut                StatutDSN           @default(BROUILLON) // Statut de la déclaration
+
+  // Contenu et métadonnées
+  contenuXml            String?             // Contenu XML de la DSN au format NORME 4DS (peut être volumineux)
+  messagesValidation    String?             // Messages de validation (JSON) - erreurs, avertissements, informations
+  numeroDeclaration     String?             // Numéro unique attribué par le système (ex: "DSN-2025-03-001")
+
+  // Dates importantes
+  dateGeneration        DateTime?           // Date de génération du fichier XML
+  dateTransmission      DateTime?           // Date de transmission effective aux organismes
+
+  dateCreation          DateTime            @default(now()) @map("createdAt")
+  dateModification      DateTime            @updatedAt @map("updatedAt")
+
+  @@unique([compagnieId, periodeDeclaration, typeDeclaration]) // Une seule déclaration par entreprise, période et type
+  @@index([compagnieId])
+  @@index([statut])
+  @@index([periodeDeclaration])
+  @@map("dsn_declarations")
 }
