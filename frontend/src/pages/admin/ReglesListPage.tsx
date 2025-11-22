@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -29,11 +29,7 @@ function ReglesListPage() {
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive'>('all');
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    loadData();
-  }, [token]);
-
-  async function loadData() {
+  const loadData = useCallback(async () => {
     if (!token) return;
 
     setLoading(true);
@@ -54,7 +50,11 @@ function ReglesListPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [token]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function handleDelete(id: string, code: string) {
     if (!token) return;

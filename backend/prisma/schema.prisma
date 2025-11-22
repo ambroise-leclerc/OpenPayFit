@@ -53,6 +53,7 @@ model Compagnie {
   organismesSpecifiques      OrganismeCotisation[]          // Organismes collecteurs spécifiques à cette entreprise (caisses de retraite de branche, mutuelles, etc.)
   integrationsComptables     AccountingIntegration[]        // Intégrations comptables (Sage, QuickBooks, etc.)
   declarationsDSN            DSNDeclaration[]               // Déclarations sociales nominatives générées
+  evenementsDSN              DSNEvent[]                     // Événements DSN (embauches, fins de contrat, etc.)
   configurationNetEntreprises ConfigurationNetEntreprises? // Configuration pour la transmission automatique DSN
 
   dateCreation               DateTime                 @default(now()) @map("createdAt")
@@ -91,6 +92,7 @@ model Employe {
   soldesConges     LeaveBalance[] // Un employé peut avoir plusieurs soldes de congés (par type et année)
   frais            Expense[]      // Un employé peut avoir plusieurs notes de frais (ancien modèle)
   rapportsFrais    ExpenseReport[] // Un employé peut avoir plusieurs rapports de notes de frais
+  evenementsDSN    DSNEvent[]     // Un employé peut avoir plusieurs événements DSN
   dateCreation     DateTime       @default(now()) @map("createdAt")
   dateModification DateTime       @updatedAt @map("updatedAt")
 
@@ -599,6 +601,7 @@ model DSNDeclaration {
 
   // Relations
   transmissions    TransmissionDSN[] // Historique des transmissions de cette DSN
+  evenements       DSNEvent[]        // Événements DSN inclus dans cette déclaration
 }
 
 // ========== Modèles pour la transmission automatique DSN via net-entreprises.fr ==========
@@ -681,4 +684,68 @@ model ConfigurationNetEntreprises {
   dateModification      DateTime  @updatedAt @map("updatedAt")
 
   @@map("configurations_net_entreprises")
+}
+
+// ========== Modèles pour les événements DSN ==========
+
+/// Type d'événement DSN
+/// Codes standard pour les déclarations événementielles
+enum TypeEvenementDSN {
+  EMBAUCHE              // Code 005 - Embauche d'un salarié
+  FIN_CONTRAT           // Code 010 - Fin de contrat de travail
+  ARRET_MALADIE         // Code 020 - Arrêt maladie
+  CONGE_MATERNITE       // Congé maternité
+  CONGE_PATERNITE       // Congé paternité
+  CHANGEMENT_CONTRAT    // Changement dans le contrat (modification salaire, temps de travail, etc.)
+  AUTRE                 // Autre événement DSN
+}
+
+/// Statut d'un événement DSN
+enum StatutEvenementDSN {
+  BROUILLON   // En cours de saisie, non validé
+  VALIDE      // Validé, prêt à être déclaré
+  DECLARE     // Déclaré via DSN événementielle
+  ERREUR      // Erreur lors de la déclaration
+}
+
+/// Événement DSN - Événements RH à déclarer en temps réel
+/// Stocke les événements de ressources humaines qui nécessitent une DSN événementielle
+/// conformément à la norme DSN (embauche, fin de contrat, arrêt maladie, etc.)
+model DSNEvent {
+  id                    String              @id @default(cuid())
+  employe               Employe             @relation(fields: [employeId], references: [id], onDelete: Cascade)
+  employeId             String
+  compagnie             Compagnie           @relation(fields: [compagnieId], references: [id], onDelete: Cascade)
+  compagnieId           String
+
+  // Type et statut
+  typeEvenement         TypeEvenementDSN    // Type d'événement (embauche, fin de contrat, etc.)
+  statut                StatutEvenementDSN  @default(BROUILLON)
+
+  // Dates
+  dateEvenement         DateTime            // Date effective de l'événement
+  dateDeclaration       DateTime?           // Date de déclaration DSN (si déjà déclaré)
+
+  // Informations spécifiques à l'événement
+  donneesSpecifiques    String?             // Données spécifiques selon le type (JSON)
+                                            // Ex pour FIN_CONTRAT: {"motif": "demission", "dernierJourTravaille": "2025-03-31"}
+                                            // Ex pour ARRET_MALADIE: {"dateDebut": "2025-03-15", "dateFin": "2025-03-25"}
+
+  // Motif et commentaires
+  motif                 String?             // Motif de l'événement (ex: démission, licenciement, fin de CDD)
+  commentaires          String?             // Commentaires libres pour usage interne
+
+  // Relation vers la déclaration DSN (si déjà transmise)
+  declaration           DSNDeclaration?     @relation(fields: [declarationId], references: [id])
+  declarationId         String?
+
+  dateCreation          DateTime            @default(now()) @map("createdAt")
+  dateModification      DateTime            @updatedAt @map("updatedAt")
+
+  @@index([employeId])
+  @@index([compagnieId])
+  @@index([typeEvenement])
+  @@index([statut])
+  @@index([dateEvenement])
+  @@map("dsn_events")
 }
