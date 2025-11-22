@@ -52,9 +52,7 @@ const t1Sal = tranches.find(t => t.code === 'RETRAITE_COMP_T1_SAL');
 if (t1Sal) {
   const plancherEuros = t1Sal.plancherPASS * PASS_MENSUEL;
   const plafondEuros = t1Sal.plafondPASS * PASS_MENSUEL;
-  const salaireMin = Math.max(salaireBrut, plancherEuros);
-  const salaireMax = Math.min(salaireBrut, plafondEuros);
-  const assietteTranche = Math.max(0, salaireMax - plancherEuros);
+  const assietteTranche = Math.min(salaireBrut, plafondEuros) - plancherEuros;
   const montant = assietteTranche * t1Sal.taux;
 
   console.log(`Tranche A (${t1Sal.code}):`);
@@ -70,9 +68,7 @@ const t2Sal = tranches.find(t => t.code === 'RETRAITE_COMP_T2_SAL');
 if (t2Sal) {
   const plancherEuros = t2Sal.plancherPASS * PASS_MENSUEL;
   const plafondEuros = t2Sal.plafondPASS * PASS_MENSUEL;
-  const salaireMin = Math.max(salaireBrut, plancherEuros);
-  const salaireMax = Math.min(salaireBrut, plafondEuros);
-  const assietteTranche = Math.max(0, salaireMax - plancherEuros);
+  const assietteTranche = Math.max(0, Math.min(salaireBrut, plafondEuros) - plancherEuros);
   const montant = assietteTranche * t2Sal.taux;
 
   console.log(`Tranche B (${t2Sal.code}):`);

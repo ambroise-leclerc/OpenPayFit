@@ -205,11 +205,11 @@ enum TypeAssiette {
 /// Tranche salariale pour le calcul des cotisations
 /// Basées sur le Plafond Annuel de la Sécurité Sociale (PASS)
 /// - TRANCHE_A (T1) : Jusqu'à 1 PASS (ex: jusqu'à 3 864€/mois en 2025)
-/// - TRANCHE_B (T2) : De 1 à 4 PASS (ex: de 3 864€ à 15 456€/mois en 2025)
+/// - TRANCHE_B (T2) : De 1 à 8 PASS (ex: de 3 864€ à 30 912€/mois en 2025)
 /// - TRANCHE_C : De 4 à 8 PASS (ex: de 15 456€ à 30 912€/mois en 2025)
 enum TrancheSalariale {
   TRANCHE_A  // Tranche 1 - Jusqu'à 1 PASS
-  TRANCHE_B  // Tranche 2 - De 1 à 4 PASS
+  TRANCHE_B  // Tranche 2 - De 1 à 8 PASS
   TRANCHE_C  // Tranche 3 - De 4 à 8 PASS
 }
 
@@ -365,7 +365,7 @@ model TauxCotisation {
 /// Le calcul par tranches fonctionne ainsi :
 /// - Pour un salaire de 5000€/mois avec PASS mensuel = 3864€
 /// - Tranche A (jusqu'à 1 PASS) : assiette = min(5000, 3864) = 3864€
-/// - Tranche B (de 1 à 4 PASS) : assiette = min(max(5000 - 3864, 0), 3*3864) = 1136€
+/// - Tranche B (de 1 à 8 PASS) : assiette = min(max(5000 - 3864, 0), 7*3864) = 1136€
 /// - Total cotisation = (3864 × taux_A) + (1136 × taux_B)
 model TrancheCotisation {
   id            String             @id @default(cuid())

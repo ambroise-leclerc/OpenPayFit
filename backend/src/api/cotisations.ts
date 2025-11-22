@@ -1009,13 +1009,11 @@ router.post('/simulation', async (req: Request, res: Response) => {
             const plancherEuros = tranche.plancherPASS * passMensuel;
             const plafondEuros = tranche.plafondPASS * passMensuel;
 
-            // Déterminer la portion du salaire dans cette tranche
-            const salaireMin = Math.max(salaireBrut, plancherEuros);
-            const salaireMax = Math.min(salaireBrut, plafondEuros);
+            // Calcul correct de l'assiette de la tranche
+            const assietteTranche = Math.max(0, Math.min(salaireBrut, plafondEuros) - plancherEuros);
 
-            // Si le salaire dépasse le plancher de la tranche
-            if (salaireMax > plancherEuros) {
-              const assietteTranche = salaireMax - plancherEuros;
+            // Si l'assiette de la tranche est positive
+            if (assietteTranche > 0) {
               const montantTranche = assietteTranche * tranche.taux;
               montant += montantTranche;
             }
