@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -19,11 +19,7 @@ function PayslipDetailPage() {
   const [error, setError] = useState<string>('');
   const [downloading, setDownloading] = useState<boolean>(false);
 
-  useEffect(() => {
-    loadPayslip();
-  }, [id]);
-
-  const loadPayslip = async () => {
+  const loadPayslip = useCallback(async () => {
     if (!token || !id) {
       setError('Identifiants manquants');
       setLoading(false);
@@ -47,7 +43,11 @@ function PayslipDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, id, logout]);
+
+  useEffect(() => {
+    loadPayslip();
+  }, [loadPayslip]);
 
   const handleDownloadPDF = async () => {
     if (!token || !id) return;

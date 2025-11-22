@@ -8,7 +8,7 @@
  * - Suppression d'organismes spécifiques (les globaux ne peuvent pas être supprimés)
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import * as api from '../services/api';
 import type {
@@ -65,11 +65,7 @@ function OrganismsPage() {
   const [editingOrganism, setEditingOrganism] = useState<OrganismeCotisation | null>(null);
 
   // Charger les données initiales
-  useEffect(() => {
-    loadData();
-  }, [token]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!token) return;
 
     setLoading(true);
@@ -88,7 +84,11 @@ function OrganismsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleOpenCreateForm = () => {
     setFormData(initialFormData);
