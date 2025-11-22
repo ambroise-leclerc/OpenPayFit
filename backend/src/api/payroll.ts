@@ -5,7 +5,7 @@
 import express, { Request, Response } from 'express';
 import { authenticateToken } from '../middleware/auth';
 import {
-  runPayroll,
+  runPayrollDetailed,
   getPayslipsByPeriod,
   getAllPayslips,
   getPayslipById,
@@ -52,7 +52,7 @@ function isCompanyOwner(companyId: string, userId: string): boolean {
  * POST /api/payroll/run
  * Lance le calcul de paie pour une entreprise et une période donnée
  */
-router.post('/run', authenticateToken, (req: Request, res: Response) => {
+router.post('/run', authenticateToken, async (req: Request, res: Response) => {
   const { companyId, period } = req.body;
   const userId = req.userId;
 
@@ -85,7 +85,7 @@ router.post('/run', authenticateToken, (req: Request, res: Response) => {
   }
 
   try {
-    const result = runPayroll(companyId, period);
+    const result = await runPayrollDetailed(companyId, period);
 
     if (result.status === 'error' && result.errors) {
       return res.status(400).json({
