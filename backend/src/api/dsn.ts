@@ -294,66 +294,98 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
     const messagesJSON = DSNValidator.formaterMessagesJSON(resultatValidation.messages);
 
     if (dsnExistante) {
-      // Récupérer le numéro de la dernière version
-      const derniereVersion = await prisma.dSNVersion.findFirst({
-        where: { declarationId: dsnExistante.id },
-        orderBy: { numeroVersion: 'desc' }
-      });
-      const numeroVersion = derniereVersion ? derniereVersion.numeroVersion + 1 : 1;
+      // Utiliser une transaction pour éviter les race conditions lors de la création de versions
+      const result = await prisma.$transaction(async (tx: any) => {
+        // Récupérer le numéro de la dernière version
+        const derniereVersion = await tx.dSNVersion.findFirst({
+          where: { declarationId: dsnExistante.id },
+          orderBy: { numeroVersion: 'desc' }
+        });
+        const numeroVersion = derniereVersion ? derniereVersion.numeroVersion + 1 : 1;
 
-      // Mettre à jour la DSN existante
-      declaration = await prisma.dSNDeclaration.update({
-        where: { id: dsnExistante.id },
-        data: {
-          contenuXml: contenuXml,
-          messagesValidation: messagesJSON,
-          statut: nouveauStatut,
-          dateGeneration: new Date()
-        }
+        // Mettre à jour la DSN existante
+        const dsnMiseAJour = await tx.dSNDeclaration.update({
+          where: { id: dsnExistante.id },
+          data: {
+            contenuXml: contenuXml,
+            messagesValidation: messagesJSON,
+            statut: nouveauStatut,
+            dateGeneration: new Date()
+          }
+        });
+
+        // Créer une nouvelle version dans l'historique
+        const nouvelleVersion = await tx.dSNVersion.create({
+          data: {
+            declarationId: dsnMiseAJour.id,
+            numeroVersion: numeroVersion,
+            typeModification: 'REGENERATION',
+            contenuXml: contenuXml,
+            messagesValidation: messagesJSON,
+            statut: nouveauStatut,
+            auteurId: userId!,
+            commentaire: `Régénération de la DSN pour la période ${periode}`
+          },
+          include: {
+            auteur: {
+              select: {
+                id: true,
+                nom: true,
+                email: true
+              }
+            }
+          }
+        });
+
+        return { declaration: dsnMiseAJour, version: nouvelleVersion };
       });
 
-      // Créer une nouvelle version dans l'historique
-      await prisma.dSNVersion.create({
-        data: {
-          declarationId: declaration.id,
-          numeroVersion: numeroVersion,
-          typeModification: 'REGENERATION',
-          contenuXml: contenuXml,
-          messagesValidation: messagesJSON,
-          statut: nouveauStatut,
-          auteurId: userId!,
-          commentaire: `Régénération de la DSN pour la période ${periode}`
-        }
-      });
+      declaration = result.declaration;
     } else {
-      // Créer une nouvelle DSN
-      const numeroDSN = `DSN-${periode}-${Date.now()}`;
-      declaration = await prisma.dSNDeclaration.create({
-        data: {
-          compagnieId: companyId,
-          periodeDeclaration: periode,
-          typeDeclaration: 'MENSUELLE',
-          statut: nouveauStatut,
-          contenuXml: contenuXml,
-          messagesValidation: messagesJSON,
-          numeroDeclaration: numeroDSN,
-          dateGeneration: new Date()
-        }
+      // Utiliser une transaction pour la création initiale
+      const result = await prisma.$transaction(async (tx: any) => {
+        // Créer une nouvelle DSN
+        const numeroDSN = `DSN-${periode}-${Date.now()}`;
+        const nouvelleDSN = await tx.dSNDeclaration.create({
+          data: {
+            compagnieId: companyId,
+            periodeDeclaration: periode,
+            typeDeclaration: 'MENSUELLE',
+            statut: nouveauStatut,
+            contenuXml: contenuXml,
+            messagesValidation: messagesJSON,
+            numeroDeclaration: numeroDSN,
+            dateGeneration: new Date()
+          }
+        });
+
+        // Créer la première version dans l'historique
+        const premiereVersion = await tx.dSNVersion.create({
+          data: {
+            declarationId: nouvelleDSN.id,
+            numeroVersion: 1,
+            typeModification: 'CREATION',
+            contenuXml: contenuXml,
+            messagesValidation: messagesJSON,
+            statut: nouveauStatut,
+            auteurId: userId!,
+            commentaire: `Création initiale de la DSN pour la période ${periode}`
+          },
+          include: {
+            auteur: {
+              select: {
+                id: true,
+                nom: true,
+                email: true
+              }
+            }
+          }
+        });
+
+        return { declaration: nouvelleDSN, version: premiereVersion };
       });
 
-      // Créer la première version dans l'historique
-      await prisma.dSNVersion.create({
-        data: {
-          declarationId: declaration.id,
-          numeroVersion: 1,
-          typeModification: 'CREATION',
-          contenuXml: contenuXml,
-          messagesValidation: messagesJSON,
-          statut: nouveauStatut,
-          auteurId: userId!,
-          commentaire: `Création initiale de la DSN pour la période ${periode}`
-        }
-      });
+      declaration = result.declaration;
     }
 
     res.status(201).json({
@@ -1617,42 +1649,56 @@ router.post('/:companyId/dsn/:dsnId/versions/:versionId/restore', authenticateTo
       return res.status(403).json({ error: 'Cette version n\'appartient pas à cette DSN' });
     }
 
-    // Récupérer le numéro de la dernière version
-    const derniereVersion = await prisma.dSNVersion.findFirst({
-      where: { declarationId: dsnId },
-      orderBy: { numeroVersion: 'desc' }
-    });
-    const nouveauNumeroVersion = derniereVersion ? derniereVersion.numeroVersion + 1 : 1;
+    // Utiliser une transaction pour éviter les race conditions
+    const result = await prisma.$transaction(async (tx: any) => {
+      // Récupérer le numéro de la dernière version
+      const derniereVersion = await tx.dSNVersion.findFirst({
+        where: { declarationId: dsnId },
+        orderBy: { numeroVersion: 'desc' }
+      });
+      const nouveauNumeroVersion = derniereVersion ? derniereVersion.numeroVersion + 1 : 1;
 
-    // Restaurer le contenu de la version dans la DSN principale
-    const dsnRestauree = await prisma.dSNDeclaration.update({
-      where: { id: dsnId },
-      data: {
-        contenuXml: versionARestaurer.contenuXml,
-        messagesValidation: versionARestaurer.messagesValidation,
-        statut: versionARestaurer.statut,
-        dateGeneration: new Date()
-      }
-    });
+      // Restaurer le contenu de la version dans la DSN principale
+      const dsnRestauree = await tx.dSNDeclaration.update({
+        where: { id: dsnId },
+        data: {
+          contenuXml: versionARestaurer.contenuXml,
+          messagesValidation: versionARestaurer.messagesValidation,
+          statut: versionARestaurer.statut,
+          dateGeneration: new Date()
+        }
+      });
 
-    // Créer une nouvelle version pour tracer la restauration
-    const nouvelleVersion = await prisma.dSNVersion.create({
-      data: {
-        declarationId: dsnId,
-        numeroVersion: nouveauNumeroVersion,
-        typeModification: 'RESTAURATION',
-        contenuXml: versionARestaurer.contenuXml,
-        messagesValidation: versionARestaurer.messagesValidation,
-        statut: versionARestaurer.statut,
-        auteurId: userId!,
-        commentaire: `Restauration de la version ${versionARestaurer.numeroVersion}`
-      }
+      // Créer une nouvelle version pour tracer la restauration
+      const nouvelleVersion = await tx.dSNVersion.create({
+        data: {
+          declarationId: dsnId,
+          numeroVersion: nouveauNumeroVersion,
+          typeModification: 'RESTAURATION',
+          contenuXml: versionARestaurer.contenuXml,
+          messagesValidation: versionARestaurer.messagesValidation,
+          statut: versionARestaurer.statut,
+          auteurId: userId!,
+          commentaire: `Restauration de la version ${versionARestaurer.numeroVersion}`
+        },
+        include: {
+          auteur: {
+            select: {
+              id: true,
+              nom: true,
+              email: true
+            }
+          }
+        }
+      });
+
+      return { dsnRestauree, nouvelleVersion };
     });
 
     res.json({
       message: 'Version restaurée avec succès',
-      declaration: dsnRestauree,
-      nouvelleVersion: nouvelleVersion
+      declaration: result.dsnRestauree,
+      nouvelleVersion: result.nouvelleVersion
     });
   } catch (error) {
     console.error('Erreur lors de la restauration de la version:', error);

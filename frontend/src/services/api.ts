@@ -2646,9 +2646,7 @@ export async function exportDSNHistory(
   const response = await fetch(
     `${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/export`,
     {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: getAuthHeaders(token),
     }
   );
 
@@ -2661,7 +2659,8 @@ export async function exportDSNHistory(
   let filename = 'dsn-historique.json';
 
   if (contentDisposition) {
-    const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+    // Pattern sécurisé : éviter le regex greedy, limiter aux caractères non-guillemets
+    const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
     if (filenameMatch) {
       filename = filenameMatch[1];
     }
