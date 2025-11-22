@@ -411,7 +411,7 @@ export async function calculerCotisations(
         orderBy: { numeroTranche: 'asc' }
       });
 
-      tranches = tranchesDB.map(t => ({
+      tranches = tranchesDB.map((t): TrancheCotisation => ({
         numeroTranche: t.numeroTranche,
         nomTranche: t.nomTranche,
         borneInferieure: t.borneInferieure,
