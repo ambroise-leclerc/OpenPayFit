@@ -1,0 +1,115 @@
+version: "1.0"
+date_creation: "2025-01-22"
+description: "Exemple de règles de cotisations avec calcul par tranches (1, 2, 3)"
+source: "Issue #44 - Système de tranches basé sur le PASS"
+
+# ====================================
+# CONSTANTES
+# ====================================
+constantes:
+  PASS_ANNUEL: 46368  # Plafond Annuel de la Sécurité Sociale 2025
+  PASS_MENSUEL: 3864  # PASS mensuel (46368 / 12)
+
+# ====================================
+# EXEMPLE: RETRAITE COMPLÉMENTAIRE PAR TRANCHES
+# ====================================
+# Ce système remplace l'ancien système AGIRC-ARRCO (tranches A, B, C)
+# Les tranches sont calculées en multiples du PASS :
+# - Tranche 1 : 0 à 1 PASS (0 à 46 368€ annuel)
+# - Tranche 2 : 1 à 8 PASS (46 368€ à 370 944€ annuel)
+# - Tranche 3 : Au-delà de 8 PASS (> 370 944€ annuel)
+#
+# Les tranches s'appliquent différemment selon le statut de l'employé :
+# - NON_CADRE : Tranche 1 uniquement
+# - CADRE : Tranches 1 et 2
+# - CADRE_DIRIGEANT : Tranches 1 et 3
+# - FORFAIT_JOURS : Tranches 1 et 2 (comme CADRE)
+
+cotisations:
+  # ====================================
+  # RETRAITE COMPLÉMENTAIRE
+  # ====================================
+
+  - code: RETRAITE_COMP_CADRES_NONCADRES
+    nom: "Retraite complémentaire avec tranches"
+    description: "Retraite complémentaire calculée par tranches selon le statut"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE  # Les taux salarial et patronal sont définis dans les tranches
+    actif: true
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+
+    # Définition des tranches
+    tranches:
+      # Tranche 1 : 0 à 1 PASS
+      # S'applique à tous les statuts (cadres et non-cadres)
+      - numero: 1
+        nom: "Tranche 1"
+        borne_inferieure: 0     # 0 PASS
+        borne_superieure: 1     # 1 PASS (46 368€ annuel)
+        taux_salarial: 0.0340   # 3,40%
+        taux_patronal: 0.0460   # 4,60%
+        applique_cadre: true
+        applique_non_cadre: true
+        applique_dirigeant: true
+        date_debut: "2024-01-01"
+        date_fin: null
+
+      # Tranche 2 : 1 à 8 PASS
+      # S'applique uniquement aux cadres et forfait jours
+      - numero: 2
+        nom: "Tranche 2"
+        borne_inferieure: 1     # 1 PASS (46 368€)
+        borne_superieure: 8     # 8 PASS (370 944€ annuel)
+        taux_salarial: 0.0860   # 8,60%
+        taux_patronal: 0.1290   # 12,90%
+        applique_cadre: true
+        applique_non_cadre: false
+        applique_dirigeant: false
+        date_debut: "2024-01-01"
+        date_fin: null
+
+      # Tranche 3 : Au-delà de 8 PASS
+      # S'applique uniquement aux cadres dirigeants
+      - numero: 3
+        nom: "Tranche 3"
+        borne_inferieure: 8     # 8 PASS (370 944€)
+        borne_superieure: null  # Pas de limite
+        taux_salarial: 0.0100   # 1,00%
+        taux_patronal: 0.0150   # 1,50%
+        applique_cadre: false
+        applique_non_cadre: false
+        applique_dirigeant: true
+        date_debut: "2024-01-01"
+        date_fin: null
+
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+# ====================================
+# EXEMPLES DE CALCUL
+# ====================================
+#
+# Exemple 1 : Non-cadre avec salaire de 2500€/mois (30000€/an)
+# - Tranche 1 : 30000€ * 3,40% = 1020€ (salarial) + 30000€ * 4,60% = 1380€ (patronal)
+# - Total annuel : 1020€ salarial + 1380€ patronal
+# - Total mensuel : 85€ salarial + 115€ patronal
+#
+# Exemple 2 : Cadre avec salaire de 6000€/mois (72000€/an)
+# - Tranche 1 : 46368€ * 3,40% = 1576,51€ (sal) + 46368€ * 4,60% = 2132,93€ (pat)
+# - Tranche 2 : 25632€ * 8,60% = 2204,35€ (sal) + 25632€ * 12,90% = 3306,53€ (pat)
+#   (72000 - 46368 = 25632€ dans la tranche 2)
+# - Total annuel : 3780,86€ salarial + 5439,46€ patronal
+# - Total mensuel : 315,07€ salarial + 453,29€ patronal
+#
+# Exemple 3 : Cadre dirigeant avec salaire de 50000€/mois (600000€/an)
+# - Tranche 1 : 46368€ * 3,40% = 1576,51€ (sal) + 46368€ * 4,60% = 2132,93€ (pat)
+# - Tranche 3 : 229056€ * 1,00% = 2290,56€ (sal) + 229056€ * 1,50% = 3435,84€ (pat)
+#   (600000 - 370944 = 229056€ dans la tranche 3)
+# - Total annuel : 3867,07€ salarial + 5568,77€ patronal
+# - Total mensuel : 322,26€ salarial + 464,06€ patronal

@@ -84,6 +84,9 @@ model Employe {
   poste                  String?      // Intitulé du poste occupé
   qualification          String?      // Qualification professionnelle ou coefficient
 
+  // Statut professionnel (pour calcul des cotisations par tranches)
+  statutEmploye          StatutEmploye @default(NON_CADRE) // Statut pour le calcul des cotisations
+
   // Relations
   compagnie        Compagnie      @relation(fields: [compagnieId], references: [id])
   compagnieId      String         @map("companyId") // Clé étrangère vers Compagnie
@@ -157,6 +160,15 @@ enum TypeContrat {
   APPRENTISSAGE         // Contrat d'apprentissage
   PROFESSIONNALISATION  // Contrat de professionnalisation
   STAGE                 // Convention de stage
+}
+
+/// Statut professionnel de l'employé (pour calcul des cotisations)
+/// Détermine quelles tranches de cotisations s'appliquent
+enum StatutEmploye {
+  NON_CADRE              // Employé, technicien, agent de maîtrise
+  CADRE                  // Cadre
+  CADRE_DIRIGEANT        // Cadre dirigeant (exonération de certaines cotisations)
+  FORFAIT_JOURS          // Cadre au forfait jours (régime spécifique)
 }
 
 // ========== Enums pour les règles de cotisations ==========
@@ -297,6 +309,7 @@ model RegleCotisation {
   plancher          Float?               // Montant minimum en euros (ex: 0 pour pas de plancher)
   plafond           Float?               // Montant maximum en euros (ex: PASS mensuel = 3864€)
   taux              TauxCotisation[]
+  tranches          TrancheCotisation[]  // Tranches pour calcul progressif (si typeCalcul = TRANCHES)
   reglesComptables  RegleComptable[]
   estActif          Boolean              @default(true)
   dateCreation         DateTime             @default(now()) @map("createdAt")
@@ -331,6 +344,52 @@ model TauxCotisation {
   @@unique([regleId, dateDebut])
   @@index([regleId, dateDebut])
   @@map("taux_cotisation")
+}
+
+/// Tranche de cotisation pour les calculs par tranches progressives
+/// Définit une tranche de salaire avec son taux spécifique
+/// Les tranches sont basées sur le PASS (Plafond Annuel de la Sécurité Sociale)
+///
+/// Système de tranches français standard :
+/// - Tranche 1 : 0 à 1 PASS - salaires jusqu'à 46 368€/an (3 864€/mois en 2025)
+/// - Tranche 2 : 1 à 8 PASS - salaires de 46 368€ à 370 944€/an
+/// - Tranche 3 : Au-delà de 8 PASS - salaires supérieurs à 370 944€/an
+model TrancheCotisation {
+  id              String           @id @default(cuid())
+  regle           RegleCotisation  @relation(fields: [regleId], references: [id], onDelete: Cascade)
+  regleId         String
+
+  // Définition de la tranche
+  numeroTranche   Int              // Numéro de la tranche (1, 2, 3, etc.)
+  nomTranche      String           // Nom de la tranche (ex: "Tranche 1", "Tranche A")
+
+  // Bornes de la tranche (en multiples du PASS)
+  // Ex: pour Tranche 1 : borneInferieure=0, borneSuperieure=1
+  // Ex: pour Tranche 2 : borneInferieure=1, borneSuperieure=8
+  // Ex: pour Tranche 3 : borneInferieure=8, borneSuperieure=null (sans limite)
+  borneInferieure Float            // Multiple du PASS (0, 1, 8, etc.)
+  borneSuperieure Float?           // Multiple du PASS (null = pas de limite supérieure)
+
+  // Taux de cotisation pour cette tranche
+  tauxSalarial    Float            @default(0) // Taux part salariale (ex: 0.0340 = 3,40%)
+  tauxPatronal    Float            @default(0) // Taux part patronale (ex: 0.0460 = 4,60%)
+
+  // Statuts d'employés concernés par cette tranche
+  // Certaines tranches ne s'appliquent qu'aux cadres
+  appliqueCadre       Boolean      @default(true)
+  appliqueNonCadre    Boolean      @default(true)
+  appliqueDirigeant   Boolean      @default(false)
+
+  // Période de validité
+  dateDebut       DateTime
+  dateFin         DateTime?
+
+  dateCreation    DateTime         @default(now()) @map("createdAt")
+  dateModification DateTime        @updatedAt @map("updatedAt")
+
+  @@unique([regleId, numeroTranche, dateDebut])
+  @@index([regleId, dateDebut])
+  @@map("tranches_cotisation")
 }
 
 /// Règle comptable associée à une cotisation

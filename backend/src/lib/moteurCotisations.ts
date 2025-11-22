@@ -20,6 +20,9 @@ export type TypeCalcul = 'POURCENTAGE' | 'MONTANT_FIXE' | 'TRANCHES';
 /** Type d'assiette de calcul */
 export type TypeAssiette = 'SALAIRE_BRUT' | 'SALAIRE_NET' | 'SALAIRE_PLAFONNE';
 
+/** Statut professionnel de l'employé (pour calcul des cotisations) */
+export type StatutEmploye = 'NON_CADRE' | 'CADRE' | 'CADRE_DIRIGEANT' | 'FORFAIT_JOURS';
+
 // ========== Constantes ==========
 
 /** Plafond Annuel de la Sécurité Sociale 2025 (en euros) */
@@ -45,6 +48,9 @@ export interface ParametresCalcul {
 
   /** Plafond mensuel de la sécurité sociale (optionnel, par défaut PASS_MENSUEL) */
   plafondMensuel?: number;
+
+  /** Statut professionnel de l'employé (optionnel, par défaut NON_CADRE) */
+  statutEmploye?: StatutEmploye;
 }
 
 /**
@@ -112,7 +118,22 @@ export interface ResultatCalcul {
 }
 
 /**
- * Règle de cotisation enrichie avec son taux applicable
+ * Tranche de cotisation avec ses taux
+ */
+interface TrancheCotisation {
+  numeroTranche: number;
+  nomTranche: string;
+  borneInferieure: number;
+  borneSuperieure: number | null;
+  tauxSalarial: number;
+  tauxPatronal: number;
+  appliqueCadre: boolean;
+  appliqueNonCadre: boolean;
+  appliqueDirigeant: boolean;
+}
+
+/**
+ * Règle de cotisation enrichie avec son taux applicable et ses tranches
  */
 interface RegleAvecTaux {
   id: string;
@@ -126,6 +147,7 @@ interface RegleAvecTaux {
   plancher: number | null;
   plafond: number | null;
   taux: number;
+  tranches: TrancheCotisation[];
 }
 
 // ========== Fonctions utilitaires ==========
@@ -226,6 +248,63 @@ function appliquerLimites(
 }
 
 /**
+ * Calcule le montant d'une cotisation par tranches progressives
+ *
+ * @param assiette - Assiette de calcul (salaire brut annuel en général)
+ * @param tranches - Liste des tranches de cotisation triées par numeroTranche
+ * @param plafondAnnuel - PASS annuel pour calculer les bornes de tranches
+ * @param statutEmploye - Statut de l'employé
+ * @returns Objet avec montantSalarial et montantPatronal
+ */
+function calculerMontantParTranches(
+  assiette: number,
+  tranches: TrancheCotisation[],
+  plafondAnnuel: number,
+  statutEmploye: StatutEmploye
+): { montantSalarial: number; montantPatronal: number } {
+  let montantSalarial = 0;
+  let montantPatronal = 0;
+
+  // Trier les tranches par borne inférieure
+  const tranchesTriees = tranches.sort((a, b) => a.borneInferieure - b.borneInferieure);
+
+  for (const tranche of tranchesTriees) {
+    // Vérifier si la tranche s'applique au statut de l'employé
+    const sApplique =
+      (statutEmploye === 'NON_CADRE' && tranche.appliqueNonCadre) ||
+      (statutEmploye === 'CADRE' && tranche.appliqueCadre) ||
+      (statutEmploye === 'FORFAIT_JOURS' && tranche.appliqueCadre) ||
+      (statutEmploye === 'CADRE_DIRIGEANT' && tranche.appliqueDirigeant);
+
+    if (!sApplique) {
+      continue;
+    }
+
+    // Calculer les bornes de la tranche en euros
+    const borneInf = tranche.borneInferieure * plafondAnnuel;
+    const borneSup = tranche.borneSuperieure !== null
+      ? tranche.borneSuperieure * plafondAnnuel
+      : Infinity;
+
+    // Calculer la portion de l'assiette dans cette tranche
+    if (assiette > borneInf) {
+      const assietteTrancheMax = Math.min(assiette, borneSup);
+      const assietteTranche = assietteTrancheMax - borneInf;
+
+      if (assietteTranche > 0) {
+        montantSalarial += assietteTranche * tranche.tauxSalarial;
+        montantPatronal += assietteTranche * tranche.tauxPatronal;
+      }
+    }
+  }
+
+  return {
+    montantSalarial: arrondir(montantSalarial),
+    montantPatronal: arrondir(montantPatronal)
+  };
+}
+
+/**
  * Calcule le montant d'une cotisation selon son type de calcul
  *
  * @param typeCalcul - Type de calcul (POURCENTAGE, MONTANT_FIXE, TRANCHES)
@@ -247,9 +326,8 @@ function calculerMontant(
       return taux;
 
     case 'TRANCHES':
-      // TODO: Implémenter le calcul par tranches
-      // Pour l'instant, on utilise un calcul simple par pourcentage
-      // Cette fonctionnalité sera ajoutée dans une version future
+      // Le calcul par tranches est géré séparément dans calculerMontantParTranches
+      // Si on arrive ici, c'est qu'il n'y a pas de tranches définies, on utilise le taux unique
       return assiette * taux;
 
     default:
@@ -287,7 +365,12 @@ function calculerMontant(
 export async function calculerCotisations(
   parametres: ParametresCalcul
 ): Promise<ResultatCalcul> {
-  const { salaireBrut, dateReference, plafondMensuel = PASS_MENSUEL } = parametres;
+  const {
+    salaireBrut,
+    dateReference,
+    plafondMensuel = PASS_MENSUEL,
+    statutEmploye = 'NON_CADRE'
+  } = parametres;
 
   // Validation des paramètres
   if (salaireBrut < 0) {
@@ -307,14 +390,42 @@ export async function calculerCotisations(
     }
   });
 
-  // Enrichir les règles avec leurs taux applicables
+  // Enrichir les règles avec leurs taux applicables et leurs tranches
   const reglesAvecTaux: RegleAvecTaux[] = [];
 
   for (const regle of regles) {
     const taux = await getTauxApplicable(regle.id, dateReference);
 
-    // Ignorer les règles sans taux applicable
-    if (taux !== null) {
+    // Récupérer les tranches si c'est un calcul par tranches
+    let tranches: TrancheCotisation[] = [];
+    if (regle.typeCalcul === 'TRANCHES') {
+      const tranchesDB = await prisma.trancheCotisation.findMany({
+        where: {
+          regleId: regle.id,
+          dateDebut: { lte: dateReference },
+          OR: [
+            { dateFin: null },
+            { dateFin: { gt: dateReference } }
+          ]
+        },
+        orderBy: { numeroTranche: 'asc' }
+      });
+
+      tranches = tranchesDB.map(t => ({
+        numeroTranche: t.numeroTranche,
+        nomTranche: t.nomTranche,
+        borneInferieure: t.borneInferieure,
+        borneSuperieure: t.borneSuperieure,
+        tauxSalarial: t.tauxSalarial,
+        tauxPatronal: t.tauxPatronal,
+        appliqueCadre: t.appliqueCadre,
+        appliqueNonCadre: t.appliqueNonCadre,
+        appliqueDirigeant: t.appliqueDirigeant
+      }));
+    }
+
+    // Ignorer les règles sans taux applicable (sauf si calcul par tranches avec des tranches définies)
+    if (taux !== null || tranches.length > 0) {
       reglesAvecTaux.push({
         id: regle.id,
         code: regle.code,
@@ -326,7 +437,8 @@ export async function calculerCotisations(
         typeAssiette: regle.typeAssiette,
         plancher: regle.plancher,
         plafond: regle.plafond,
-        taux
+        taux: taux || 0,
+        tranches
       });
     }
   }
@@ -371,31 +483,55 @@ export async function calculerCotisations(
         regle.plafond
       );
 
-      // Calculer le montant de la cotisation
-      const montantBrut = calculerMontant(
-        regle.typeCalcul,
-        assiette,
-        regle.taux
-      );
-
-      // Arrondir au centime
-      const montant = arrondir(montantBrut);
-
-      // Répartir entre salarial et patronal
       let montantSalarial = 0;
       let montantPatronal = 0;
+      let montantTotal = 0;
 
-      if (regle.typeCotisation === 'COTISATION_SALARIALE') {
-        montantSalarial = montant;
-        totalCotisationsSalariales += montant;
-      } else if (regle.typeCotisation === 'COTISATION_PATRONALE') {
-        montantPatronal = montant;
-        totalCotisationsPatronales += montant;
-      } else if (regle.typeCotisation === 'CHARGE_FISCALE') {
-        // Les charges fiscales sont généralement patronales
-        montantPatronal = montant;
-        totalCotisationsPatronales += montant;
+      // Calcul par tranches si la règle a des tranches définies
+      if (regle.typeCalcul === 'TRANCHES' && regle.tranches.length > 0) {
+        // Pour le calcul par tranches, on utilise l'assiette annuelle
+        const assietteAnnuelle = assiette * 12;
+        const montantsTranches = calculerMontantParTranches(
+          assietteAnnuelle,
+          regle.tranches,
+          PASS_ANNUEL,
+          statutEmploye
+        );
+
+        // Ramener au mensuel
+        montantSalarial = montantsTranches.montantSalarial / 12;
+        montantPatronal = montantsTranches.montantPatronal / 12;
+        montantTotal = montantSalarial + montantPatronal;
+      } else {
+        // Calcul classique (pourcentage ou montant fixe)
+        const montantBrut = calculerMontant(
+          regle.typeCalcul,
+          assiette,
+          regle.taux
+        );
+
+        // Arrondir au centime
+        montantTotal = arrondir(montantBrut);
+
+        // Répartir entre salarial et patronal selon le type de cotisation
+        if (regle.typeCotisation === 'COTISATION_SALARIALE') {
+          montantSalarial = montantTotal;
+        } else if (regle.typeCotisation === 'COTISATION_PATRONALE') {
+          montantPatronal = montantTotal;
+        } else if (regle.typeCotisation === 'CHARGE_FISCALE') {
+          // Les charges fiscales sont généralement patronales
+          montantPatronal = montantTotal;
+        }
       }
+
+      // Arrondir les montants au centime
+      montantSalarial = arrondir(montantSalarial);
+      montantPatronal = arrondir(montantPatronal);
+      montantTotal = arrondir(montantSalarial + montantPatronal);
+
+      // Ajouter aux totaux
+      totalCotisationsSalariales += montantSalarial;
+      totalCotisationsPatronales += montantPatronal;
 
       // Créer la ligne de cotisation
       lignesCotisations.push({
@@ -406,9 +542,9 @@ export async function calculerCotisations(
         typeCotisation: regle.typeCotisation,
         assiette: arrondir(assiette),
         taux: regle.taux,
-        montantSalarial: arrondir(montantSalarial),
-        montantPatronal: arrondir(montantPatronal),
-        montantTotal: arrondir(montant)
+        montantSalarial,
+        montantPatronal,
+        montantTotal
       });
     }
 
