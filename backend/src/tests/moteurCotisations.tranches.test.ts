@@ -95,7 +95,7 @@ describe('Moteur de calcul des cotisations - Calcul par tranches', () => {
       0.0460, // 4,60% patronal
       1, // applique cadre
       1, // applique non-cadre
-      0, // n'applique pas dirigeant
+      1, // applique dirigeant (tranche 1 s'applique à tous)
       '2024-01-01',
       null
     );
@@ -254,8 +254,8 @@ describe('Moteur de calcul des cotisations - Calcul par tranches', () => {
       // Tranche 1 : 0 à 46368€ (1 PASS)
       //   Salarial : 46368 * 0.034 = 1576.51€ annuel = 131.38€ mensuel
       //   Patronal : 46368 * 0.046 = 2132.93€ annuel = 177.74€ mensuel
-      expect(ligneRetraite!.montantSalarial).toBeCloseTo(131, 0);
-      expect(ligneRetraite!.montantPatronal).toBeCloseTo(178, 0);
+      expect(ligneRetraite!.montantSalarial).toBeCloseTo(131.38, 1);
+      expect(ligneRetraite!.montantPatronal).toBeCloseTo(177.74, 1);
     });
   });
 
@@ -315,8 +315,8 @@ describe('Moteur de calcul des cotisations - Calcul par tranches', () => {
       //   Salarial : 1576.51 + 27913.54 = 29490.05€ -> 2457.50€ mensuel
       //   Patronal : 2132.93 + 41870.30 = 44003.23€ -> 3666.94€ mensuel
 
-      expect(ligneRetraite!.montantSalarial).toBeCloseTo(2458, 0);
-      expect(ligneRetraite!.montantPatronal).toBeCloseTo(3667, 0);
+      expect(ligneRetraite!.montantSalarial).toBeCloseTo(2457.50, 1);
+      expect(ligneRetraite!.montantPatronal).toBeCloseTo(3666.94, 1);
     });
   });
 
