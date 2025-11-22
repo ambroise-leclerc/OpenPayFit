@@ -8,7 +8,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// eslint-disable-next-line react-refresh/only-export-components
 export { AuthContext };
 
 export function AuthProvider({ children }: { children: ReactNode }) {

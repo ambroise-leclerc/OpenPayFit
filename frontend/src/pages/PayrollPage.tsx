@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -25,19 +25,7 @@ function PayrollPage() {
   const [filterPeriod, setFilterPeriod] = useState<string>('');
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  // Charger les entreprises au montage du composant
-  useEffect(() => {
-    loadCompanies();
-  }, []);
-
-  // Charger les fiches de paie quand une entreprise est sélectionnée
-  useEffect(() => {
-    if (selectedCompanyId) {
-      loadPayslips();
-    }
-  }, [selectedCompanyId, filterPeriod]);
-
-  const loadCompanies = async () => {
+  const loadCompanies = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -54,9 +42,9 @@ function PayrollPage() {
         logout();
       }
     }
-  };
+  }, [token, selectedCompanyId, logout]);
 
-  const loadPayslips = async () => {
+  const loadPayslips = useCallback(async () => {
     if (!token || !selectedCompanyId) return;
 
     setLoading(true);
@@ -75,7 +63,19 @@ function PayrollPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, selectedCompanyId, filterPeriod, logout]);
+
+  // Charger les entreprises au montage du composant
+  useEffect(() => {
+    loadCompanies();
+  }, [loadCompanies]);
+
+  // Charger les fiches de paie quand une entreprise est sélectionnée
+  useEffect(() => {
+    if (selectedCompanyId) {
+      loadPayslips();
+    }
+  }, [selectedCompanyId, loadPayslips]);
 
   const handleRunPayroll = async (e: React.FormEvent) => {
     e.preventDefault();
