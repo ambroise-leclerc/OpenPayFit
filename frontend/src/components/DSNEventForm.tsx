@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { createDSNEvent, getEmployees, type Employee, type TypeEvenementDSN } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { DSN_EVENT_TYPES } from '../constants/dsn';
 import styles from './DSNEventForm.module.css';
 
 interface DSNEventFormProps {
@@ -62,7 +63,7 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
       // Préparer les données spécifiques selon le type d'événement
       let donneesSpecifiques: Record<string, unknown> | undefined;
 
-      if (typeEvenement === 'ARRET_MALADIE' && (dateDebut || dateFin)) {
+      if (typeEvenement === 'ARRET_MALADIE' && dateDebut && dateFin) {
         donneesSpecifiques = {
           dateDebut,
           dateFin,
@@ -133,13 +134,11 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
             required
             className={styles.input}
           >
-            <option value="EMBAUCHE">Embauche</option>
-            <option value="FIN_CONTRAT">Fin de contrat</option>
-            <option value="ARRET_MALADIE">Arrêt maladie</option>
-            <option value="CONGE_MATERNITE">Congé maternité</option>
-            <option value="CONGE_PATERNITE">Congé paternité</option>
-            <option value="CHANGEMENT_CONTRAT">Changement de contrat</option>
-            <option value="AUTRE">Autre</option>
+            {DSN_EVENT_TYPES.map((type) => (
+              <option key={type.value} value={type.value}>
+                {type.label}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -158,22 +157,24 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
         {typeEvenement === 'ARRET_MALADIE' && (
           <div className={styles.formRow}>
             <div className={styles.formGroup}>
-              <label htmlFor="dateDebut">Date de début</label>
+              <label htmlFor="dateDebut">Date de début *</label>
               <input
                 type="date"
                 id="dateDebut"
                 value={dateDebut}
                 onChange={(e) => setDateDebut(e.target.value)}
+                required
                 className={styles.input}
               />
             </div>
             <div className={styles.formGroup}>
-              <label htmlFor="dateFin">Date de fin</label>
+              <label htmlFor="dateFin">Date de fin *</label>
               <input
                 type="date"
                 id="dateFin"
                 value={dateFin}
                 onChange={(e) => setDateFin(e.target.value)}
+                required
                 className={styles.input}
               />
             </div>
@@ -181,12 +182,15 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
         )}
 
         <div className={styles.formGroup}>
-          <label htmlFor="motif">Motif</label>
+          <label htmlFor="motif">
+            Motif{typeEvenement === 'FIN_CONTRAT' && ' *'}
+          </label>
           <input
             type="text"
             id="motif"
             value={motif}
             onChange={(e) => setMotif(e.target.value)}
+            required={typeEvenement === 'FIN_CONTRAT'}
             placeholder={typeEvenement === 'FIN_CONTRAT' ? 'Obligatoire pour une fin de contrat' : 'Optionnel'}
             className={styles.input}
           />

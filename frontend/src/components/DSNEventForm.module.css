@@ -76,6 +76,11 @@
   background-color: #45a049;
 }
 
+.submitBtn:focus {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
 .submitBtn:disabled {
   background-color: #cccccc;
   cursor: not-allowed;

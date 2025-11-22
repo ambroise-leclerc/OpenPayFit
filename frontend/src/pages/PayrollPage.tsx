@@ -31,8 +31,9 @@ function PayrollPage() {
     try {
       const data = await getCompanies(token);
       setCompanies(data);
-      if (data.length > 0 && !selectedCompanyId) {
-        setSelectedCompanyId(data[0].id);
+      // Utiliser la forme callback de setState pour éviter la dépendance circulaire
+      if (data.length > 0) {
+        setSelectedCompanyId((currentId) => currentId || data[0].id);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erreur lors du chargement des entreprises';
@@ -42,7 +43,7 @@ function PayrollPage() {
         logout();
       }
     }
-  }, [token, selectedCompanyId, logout]);
+  }, [token, logout]);
 
   const loadPayslips = useCallback(async () => {
     if (!token || !selectedCompanyId) return;

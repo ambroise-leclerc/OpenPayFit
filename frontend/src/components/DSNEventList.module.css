@@ -67,6 +67,11 @@
   opacity: 0.9;
 }
 
+.validateBtn:focus {
+  outline: 2px solid #2e7d32;
+  outline-offset: 2px;
+}
+
 .deleteBtn {
   background-color: #f44336;
   color: white;
@@ -74,6 +79,11 @@
 
 .deleteBtn:hover {
   opacity: 0.9;
+}
+
+.deleteBtn:focus {
+  outline: 2px solid #c62828;
+  outline-offset: 2px;
 }
 
 .loading,

@@ -1,22 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getDSNEvents, deleteDSNEvent, validateDSNEvent, type DSNEvent } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { DSN_EVENT_TYPE_LABELS } from '../constants/dsn';
 import styles from './DSNEventList.module.css';
 
 interface DSNEventListProps {
   companyId: string;
   onEventCreated?: () => void;
 }
-
-const TYPE_EVENEMENT_LABELS: Record<string, string> = {
-  EMBAUCHE: 'Embauche',
-  FIN_CONTRAT: 'Fin de contrat',
-  ARRET_MALADIE: 'Arrêt maladie',
-  CONGE_MATERNITE: 'Congé maternité',
-  CONGE_PATERNITE: 'Congé paternité',
-  CHANGEMENT_CONTRAT: 'Changement de contrat',
-  AUTRE: 'Autre',
-};
 
 const STATUT_LABELS: Record<string, string> = {
   BROUILLON: 'Brouillon',
@@ -32,7 +23,7 @@ const STATUT_COLORS: Record<string, string> = {
   ERREUR: '#f44336',
 };
 
-export default function DSNEventList({ companyId, onEventCreated }: DSNEventListProps) {
+export default function DSNEventList({ companyId }: DSNEventListProps) {
   const [events, setEvents] = useState<DSNEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +46,7 @@ export default function DSNEventList({ companyId, onEventCreated }: DSNEventList
 
   useEffect(() => {
     loadEvents();
-  }, [loadEvents, onEventCreated]);
+  }, [loadEvents]);
 
   const handleDelete = async (eventId: string) => {
     if (!token) return;
@@ -124,7 +115,7 @@ export default function DSNEventList({ companyId, onEventCreated }: DSNEventList
         <tbody>
           {events.map((event) => (
             <tr key={event.id}>
-              <td>{TYPE_EVENEMENT_LABELS[event.typeEvenement] || event.typeEvenement}</td>
+              <td>{DSN_EVENT_TYPE_LABELS[event.typeEvenement] || event.typeEvenement}</td>
               <td>
                 {event.employe
                   ? `${event.employe.prenom} ${event.employe.nom}`
