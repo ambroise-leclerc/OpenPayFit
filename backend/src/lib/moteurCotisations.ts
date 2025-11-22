@@ -398,8 +398,8 @@ export async function calculerCotisations(
 
     // Récupérer les tranches si c'est un calcul par tranches
     let tranches: TrancheCotisation[] = [];
-    if (regle.typeCalcul === 'TRANCHES') {
-      const tranchesDB = await prisma.trancheCotisation.findMany({
+    if (regle.typeCalcul === 'TRANCHES' && (prisma as any).trancheCotisation) {
+      const tranchesDB = await (prisma as any).trancheCotisation.findMany({
         where: {
           regleId: regle.id,
           dateDebut: { lte: dateReference },
