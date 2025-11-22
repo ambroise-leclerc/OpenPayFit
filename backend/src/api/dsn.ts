@@ -290,15 +290,39 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
     });
 
     let declaration;
+    const nouveauStatut = resultatValidation.valide ? 'VALIDEE' : 'ERREUR';
+    const messagesJSON = DSNValidator.formaterMessagesJSON(resultatValidation.messages);
+
     if (dsnExistante) {
+      // Récupérer le numéro de la dernière version
+      const derniereVersion = await prisma.dSNVersion.findFirst({
+        where: { declarationId: dsnExistante.id },
+        orderBy: { numeroVersion: 'desc' }
+      });
+      const numeroVersion = derniereVersion ? derniereVersion.numeroVersion + 1 : 1;
+
       // Mettre à jour la DSN existante
       declaration = await prisma.dSNDeclaration.update({
         where: { id: dsnExistante.id },
         data: {
           contenuXml: contenuXml,
-          messagesValidation: DSNValidator.formaterMessagesJSON(resultatValidation.messages),
-          statut: resultatValidation.valide ? 'VALIDEE' : 'ERREUR',
+          messagesValidation: messagesJSON,
+          statut: nouveauStatut,
           dateGeneration: new Date()
+        }
+      });
+
+      // Créer une nouvelle version dans l'historique
+      await prisma.dSNVersion.create({
+        data: {
+          declarationId: declaration.id,
+          numeroVersion: numeroVersion,
+          typeModification: 'REGENERATION',
+          contenuXml: contenuXml,
+          messagesValidation: messagesJSON,
+          statut: nouveauStatut,
+          auteurId: userId!,
+          commentaire: `Régénération de la DSN pour la période ${periode}`
         }
       });
     } else {
@@ -309,11 +333,25 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
           compagnieId: companyId,
           periodeDeclaration: periode,
           typeDeclaration: 'MENSUELLE',
-          statut: resultatValidation.valide ? 'VALIDEE' : 'ERREUR',
+          statut: nouveauStatut,
           contenuXml: contenuXml,
-          messagesValidation: DSNValidator.formaterMessagesJSON(resultatValidation.messages),
+          messagesValidation: messagesJSON,
           numeroDeclaration: numeroDSN,
           dateGeneration: new Date()
+        }
+      });
+
+      // Créer la première version dans l'historique
+      await prisma.dSNVersion.create({
+        data: {
+          declarationId: declaration.id,
+          numeroVersion: 1,
+          typeModification: 'CREATION',
+          contenuXml: contenuXml,
+          messagesValidation: messagesJSON,
+          statut: nouveauStatut,
+          auteurId: userId!,
+          commentaire: `Création initiale de la DSN pour la période ${periode}`
         }
       });
     }
@@ -1337,6 +1375,371 @@ router.post('/:companyId/dsn-events/:eventId/validate', authenticateToken, verif
   } catch (error) {
     console.error('Erreur lors de la validation de l\'événement DSN:', error);
     res.status(500).json({ error: 'Erreur lors de la validation de l\'événement DSN' });
+  }
+});
+
+// ========== Routes pour l'historique des versions DSN ==========
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions
+ * Liste toutes les versions d'une déclaration DSN
+ */
+router.get('/:companyId/dsn/:dsnId/versions', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Récupérer toutes les versions de cette DSN
+    const versions = await prisma.dSNVersion.findMany({
+      where: { declarationId: dsnId },
+      include: {
+        auteur: {
+          select: {
+            id: true,
+            nom: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { numeroVersion: 'desc' }
+    });
+
+    res.json(versions);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'historique:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de l\'historique des versions' });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions/:versionId
+ * Récupère les détails d'une version spécifique
+ */
+router.get('/:companyId/dsn/:dsnId/versions/:versionId', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId, versionId } = req.params;
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Récupérer la version spécifique
+    const version = await prisma.dSNVersion.findUnique({
+      where: { id: versionId },
+      include: {
+        auteur: {
+          select: {
+            id: true,
+            nom: true,
+            email: true
+          }
+        },
+        declaration: {
+          select: {
+            id: true,
+            periodeDeclaration: true,
+            typeDeclaration: true,
+            numeroDeclaration: true
+          }
+        }
+      }
+    });
+
+    if (!version) {
+      return res.status(404).json({ error: 'Version non trouvée' });
+    }
+
+    if (version.declarationId !== dsnId) {
+      return res.status(403).json({ error: 'Cette version n\'appartient pas à cette DSN' });
+    }
+
+    res.json(version);
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la version:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de la version' });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions/compare
+ * Compare deux versions d'une DSN
+ * Query params: version1 (numero), version2 (numero)
+ */
+router.get('/:companyId/dsn/:dsnId/versions/compare', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+    const { version1, version2 } = req.query;
+
+    if (!version1 || !version2) {
+      return res.status(400).json({
+        error: 'Les paramètres version1 et version2 sont obligatoires'
+      });
+    }
+
+    const num1 = parseInt(version1 as string, 10);
+    const num2 = parseInt(version2 as string, 10);
+
+    if (isNaN(num1) || isNaN(num2)) {
+      return res.status(400).json({
+        error: 'Les numéros de version doivent être des nombres entiers'
+      });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Récupérer les deux versions
+    const versions = await prisma.dSNVersion.findMany({
+      where: {
+        declarationId: dsnId,
+        numeroVersion: { in: [num1, num2] }
+      },
+      include: {
+        auteur: {
+          select: {
+            id: true,
+            nom: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (versions.length !== 2) {
+      return res.status(404).json({
+        error: 'Une ou plusieurs versions n\'ont pas été trouvées'
+      });
+    }
+
+    const v1 = versions.find((v: any) => v.numeroVersion === num1);
+    const v2 = versions.find((v: any) => v.numeroVersion === num2);
+
+    // Comparer les champs importants
+    const differences = {
+      statut: v1!.statut !== v2!.statut,
+      contenuXml: v1!.contenuXml !== v2!.contenuXml,
+      messagesValidation: v1!.messagesValidation !== v2!.messagesValidation,
+      typeModification: {
+        version1: v1!.typeModification,
+        version2: v2!.typeModification
+      },
+      auteur: {
+        version1: v1!.auteur.nom,
+        version2: v2!.auteur.nom
+      },
+      dateCreation: {
+        version1: v1!.dateCreation,
+        version2: v2!.dateCreation
+      }
+    };
+
+    res.json({
+      version1: v1,
+      version2: v2,
+      differences: differences
+    });
+  } catch (error) {
+    console.error('Erreur lors de la comparaison des versions:', error);
+    res.status(500).json({ error: 'Erreur lors de la comparaison des versions' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/dsn/:dsnId/versions/:versionId/restore
+ * Restaure une version antérieure de la DSN
+ */
+router.post('/:companyId/dsn/:dsnId/versions/:versionId/restore', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId, versionId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Ne pas permettre la restauration si la DSN est déjà transmise
+    if (dsn.statut === 'TRANSMISE') {
+      return res.status(400).json({
+        error: 'Impossible de restaurer une DSN déjà transmise'
+      });
+    }
+
+    // Récupérer la version à restaurer
+    const versionARestaurer = await prisma.dSNVersion.findUnique({
+      where: { id: versionId }
+    });
+
+    if (!versionARestaurer) {
+      return res.status(404).json({ error: 'Version non trouvée' });
+    }
+
+    if (versionARestaurer.declarationId !== dsnId) {
+      return res.status(403).json({ error: 'Cette version n\'appartient pas à cette DSN' });
+    }
+
+    // Récupérer le numéro de la dernière version
+    const derniereVersion = await prisma.dSNVersion.findFirst({
+      where: { declarationId: dsnId },
+      orderBy: { numeroVersion: 'desc' }
+    });
+    const nouveauNumeroVersion = derniereVersion ? derniereVersion.numeroVersion + 1 : 1;
+
+    // Restaurer le contenu de la version dans la DSN principale
+    const dsnRestauree = await prisma.dSNDeclaration.update({
+      where: { id: dsnId },
+      data: {
+        contenuXml: versionARestaurer.contenuXml,
+        messagesValidation: versionARestaurer.messagesValidation,
+        statut: versionARestaurer.statut,
+        dateGeneration: new Date()
+      }
+    });
+
+    // Créer une nouvelle version pour tracer la restauration
+    const nouvelleVersion = await prisma.dSNVersion.create({
+      data: {
+        declarationId: dsnId,
+        numeroVersion: nouveauNumeroVersion,
+        typeModification: 'RESTAURATION',
+        contenuXml: versionARestaurer.contenuXml,
+        messagesValidation: versionARestaurer.messagesValidation,
+        statut: versionARestaurer.statut,
+        auteurId: userId!,
+        commentaire: `Restauration de la version ${versionARestaurer.numeroVersion}`
+      }
+    });
+
+    res.json({
+      message: 'Version restaurée avec succès',
+      declaration: dsnRestauree,
+      nouvelleVersion: nouvelleVersion
+    });
+  } catch (error) {
+    console.error('Erreur lors de la restauration de la version:', error);
+    res.status(500).json({ error: 'Erreur lors de la restauration de la version' });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions/export
+ * Exporte l'historique complet des versions au format JSON
+ */
+router.get('/:companyId/dsn/:dsnId/versions/export', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId },
+      include: {
+        compagnie: {
+          select: {
+            id: true,
+            nom: true,
+            siret: true
+          }
+        }
+      }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Récupérer toutes les versions
+    const versions = await prisma.dSNVersion.findMany({
+      where: { declarationId: dsnId },
+      include: {
+        auteur: {
+          select: {
+            id: true,
+            nom: true,
+            email: true
+          }
+        }
+      },
+      orderBy: { numeroVersion: 'asc' }
+    });
+
+    // Préparer l'export
+    const exportData = {
+      dsn: {
+        id: dsn.id,
+        periodeDeclaration: dsn.periodeDeclaration,
+        typeDeclaration: dsn.typeDeclaration,
+        numeroDeclaration: dsn.numeroDeclaration,
+        entreprise: dsn.compagnie
+      },
+      historique: versions.map((v: any) => ({
+        numeroVersion: v.numeroVersion,
+        typeModification: v.typeModification,
+        statut: v.statut,
+        auteur: v.auteur.nom,
+        email: v.auteur.email,
+        commentaire: v.commentaire,
+        dateCreation: v.dateCreation,
+        // Ne pas inclure le contenu XML complet pour réduire la taille
+        aContenuXml: !!v.contenuXml
+      })),
+      dateExport: new Date(),
+      nombreVersions: versions.length
+    };
+
+    // Sécuriser le nom de fichier
+    const siretSecurise = dsn.compagnie.siret?.replace(/[^0-9]/g, '') || 'XXXXXXXXXXXXXXX';
+    const periodeSecurisee = dsn.periodeDeclaration.replace(/[^0-9-]/g, '');
+    const nomFichier = `DSN_Historique_${siretSecurise}_${periodeSecurisee}.json`;
+
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${nomFichier}"`);
+    res.json(exportData);
+  } catch (error) {
+    console.error('Erreur lors de l\'export de l\'historique:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'export de l\'historique' });
   }
 });
 
