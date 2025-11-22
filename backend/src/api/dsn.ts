@@ -3,10 +3,11 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { authenticateToken } from '../middleware/auth';
+import { authenticateToken, verifyCompanyOwnership } from '../middleware/auth';
 import prisma from '../lib/db';
 import { DSNGenerator, DonneesDSN, FichePaieDSN, CotisationDSN } from '../services/dsn/dsnGenerator';
 import { DSNValidator } from '../services/dsn/dsnValidator';
+import { TYPES_EVENEMENTS_DSN, estTypeEvenementValide } from '../constants/dsn';
 
 /**
  * Interface pour un employé (modèle Prisma de base)
@@ -971,23 +972,9 @@ router.patch('/:companyId/net-entreprises/config/toggle', authenticateToken, asy
  * GET /api/companies/:companyId/dsn-events
  * Liste tous les événements DSN d'une entreprise
  */
-router.get('/:companyId/dsn-events', authenticateToken, async (req: Request, res: Response) => {
+router.get('/:companyId/dsn-events', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
   try {
     const { companyId } = req.params;
-    const userId = req.userId;
-
-    // Vérifier que l'utilisateur est propriétaire de l'entreprise
-    const company = await prisma.compagnie.findUnique({
-      where: { id: companyId }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Entreprise non trouvée' });
-    }
-
-    if (company.proprietaireId !== userId) {
-      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
-    }
 
     // Récupérer tous les événements DSN de l'entreprise
     const evenements = await prisma.dSNEvent.findMany({
@@ -1025,11 +1012,10 @@ router.get('/:companyId/dsn-events', authenticateToken, async (req: Request, res
  *   donneesSpecifiques?: object
  * }
  */
-router.post('/:companyId/dsn-events', authenticateToken, async (req: Request, res: Response) => {
+router.post('/:companyId/dsn-events', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
   try {
     const { companyId } = req.params;
     const { employeId, typeEvenement, dateEvenement, motif, commentaires, donneesSpecifiques } = req.body;
-    const userId = req.userId;
 
     // Validation des paramètres obligatoires
     if (!employeId || !typeEvenement || !dateEvenement) {
@@ -1039,24 +1025,10 @@ router.post('/:companyId/dsn-events', authenticateToken, async (req: Request, re
     }
 
     // Valider le type d'événement
-    const typesValides = ['EMBAUCHE', 'FIN_CONTRAT', 'ARRET_MALADIE', 'CONGE_MATERNITE', 'CONGE_PATERNITE', 'CHANGEMENT_CONTRAT', 'AUTRE'];
-    if (!typesValides.includes(typeEvenement)) {
+    if (!estTypeEvenementValide(typeEvenement)) {
       return res.status(400).json({
-        error: `Le type d'événement doit être l'un des suivants: ${typesValides.join(', ')}`
+        error: `Le type d'événement doit être l'un des suivants: ${TYPES_EVENEMENTS_DSN.join(', ')}`
       });
-    }
-
-    // Vérifier que l'utilisateur est propriétaire de l'entreprise
-    const company = await prisma.compagnie.findUnique({
-      where: { id: companyId }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Entreprise non trouvée' });
-    }
-
-    if (company.proprietaireId !== userId) {
-      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
     }
 
     // Vérifier que l'employé existe et appartient à cette entreprise
@@ -1107,23 +1079,9 @@ router.post('/:companyId/dsn-events', authenticateToken, async (req: Request, re
  * GET /api/companies/:companyId/dsn-events/:eventId
  * Récupère les détails d'un événement DSN
  */
-router.get('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Request, res: Response) => {
+router.get('/:companyId/dsn-events/:eventId', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
   try {
     const { companyId, eventId } = req.params;
-    const userId = req.userId;
-
-    // Vérifier que l'utilisateur est propriétaire de l'entreprise
-    const company = await prisma.compagnie.findUnique({
-      where: { id: companyId }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Entreprise non trouvée' });
-    }
-
-    if (company.proprietaireId !== userId) {
-      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
-    }
 
     // Récupérer l'événement DSN
     const evenement = await prisma.dSNEvent.findUnique({
@@ -1171,24 +1129,10 @@ router.get('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Req
  * PUT /api/companies/:companyId/dsn-events/:eventId
  * Modifie un événement DSN (uniquement si statut = BROUILLON)
  */
-router.put('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Request, res: Response) => {
+router.put('/:companyId/dsn-events/:eventId', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
   try {
     const { companyId, eventId } = req.params;
     const { typeEvenement, dateEvenement, motif, commentaires, donneesSpecifiques } = req.body;
-    const userId = req.userId;
-
-    // Vérifier que l'utilisateur est propriétaire de l'entreprise
-    const company = await prisma.compagnie.findUnique({
-      where: { id: companyId }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Entreprise non trouvée' });
-    }
-
-    if (company.proprietaireId !== userId) {
-      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
-    }
 
     // Récupérer l'événement DSN
     const evenement = await prisma.dSNEvent.findUnique({
@@ -1213,10 +1157,9 @@ router.put('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Req
     // Préparer les données de mise à jour
     const dataToUpdate: any = {};
     if (typeEvenement) {
-      const typesValides = ['EMBAUCHE', 'FIN_CONTRAT', 'ARRET_MALADIE', 'CONGE_MATERNITE', 'CONGE_PATERNITE', 'CHANGEMENT_CONTRAT', 'AUTRE'];
-      if (!typesValides.includes(typeEvenement)) {
+      if (!estTypeEvenementValide(typeEvenement)) {
         return res.status(400).json({
-          error: `Le type d'événement doit être l'un des suivants: ${typesValides.join(', ')}`
+          error: `Le type d'événement doit être l'un des suivants: ${TYPES_EVENEMENTS_DSN.join(', ')}`
         });
       }
       dataToUpdate.typeEvenement = typeEvenement;
@@ -1255,23 +1198,9 @@ router.put('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Req
  * DELETE /api/companies/:companyId/dsn-events/:eventId
  * Supprime un événement DSN (uniquement si statut = BROUILLON ou ERREUR)
  */
-router.delete('/:companyId/dsn-events/:eventId', authenticateToken, async (req: Request, res: Response) => {
+router.delete('/:companyId/dsn-events/:eventId', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
   try {
     const { companyId, eventId } = req.params;
-    const userId = req.userId;
-
-    // Vérifier que l'utilisateur est propriétaire de l'entreprise
-    const company = await prisma.compagnie.findUnique({
-      where: { id: companyId }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Entreprise non trouvée' });
-    }
-
-    if (company.proprietaireId !== userId) {
-      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
-    }
 
     // Récupérer l'événement DSN
     const evenement = await prisma.dSNEvent.findUnique({
@@ -1309,23 +1238,9 @@ router.delete('/:companyId/dsn-events/:eventId', authenticateToken, async (req: 
  * POST /api/companies/:companyId/dsn-events/:eventId/validate
  * Valide un événement DSN (passe de BROUILLON à VALIDE)
  */
-router.post('/:companyId/dsn-events/:eventId/validate', authenticateToken, async (req: Request, res: Response) => {
+router.post('/:companyId/dsn-events/:eventId/validate', authenticateToken, verifyCompanyOwnership, async (req: Request, res: Response) => {
   try {
     const { companyId, eventId } = req.params;
-    const userId = req.userId;
-
-    // Vérifier que l'utilisateur est propriétaire de l'entreprise
-    const company = await prisma.compagnie.findUnique({
-      where: { id: companyId }
-    });
-
-    if (!company) {
-      return res.status(404).json({ error: 'Entreprise non trouvée' });
-    }
-
-    if (company.proprietaireId !== userId) {
-      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
-    }
 
     // Récupérer l'événement DSN
     const evenement = await prisma.dSNEvent.findUnique({

@@ -13,8 +13,8 @@ PRAGMA foreign_keys=OFF;
 
 CREATE TABLE "dsn_events" (
     "id" TEXT NOT NULL PRIMARY KEY,
-    "employeeId" TEXT NOT NULL,
-    "companyId" TEXT NOT NULL,
+    "employeId" TEXT NOT NULL,
+    "compagnieId" TEXT NOT NULL,
     "typeEvenement" TEXT NOT NULL,
     "statut" TEXT NOT NULL DEFAULT 'BROUILLON',
     "dateEvenement" DATETIME NOT NULL,
@@ -25,14 +25,14 @@ CREATE TABLE "dsn_events" (
     "declarationId" TEXT,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" DATETIME NOT NULL,
-    CONSTRAINT "dsn_events_employeeId_fkey" FOREIGN KEY ("employeeId") REFERENCES "Employee" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT "dsn_events_companyId_fkey" FOREIGN KEY ("companyId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "dsn_events_employeId_fkey" FOREIGN KEY ("employeId") REFERENCES "Employee" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "dsn_events_compagnieId_fkey" FOREIGN KEY ("compagnieId") REFERENCES "Company" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "dsn_events_declarationId_fkey" FOREIGN KEY ("declarationId") REFERENCES "dsn_declarations" ("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 -- Créer les index pour dsn_events
-CREATE INDEX "dsn_events_employeeId_idx" ON "dsn_events"("employeeId");
-CREATE INDEX "dsn_events_companyId_idx" ON "dsn_events"("companyId");
+CREATE INDEX "dsn_events_employeId_idx" ON "dsn_events"("employeId");
+CREATE INDEX "dsn_events_compagnieId_idx" ON "dsn_events"("compagnieId");
 CREATE INDEX "dsn_events_typeEvenement_idx" ON "dsn_events"("typeEvenement");
 CREATE INDEX "dsn_events_statut_idx" ON "dsn_events"("statut");
 CREATE INDEX "dsn_events_dateEvenement_idx" ON "dsn_events"("dateEvenement");

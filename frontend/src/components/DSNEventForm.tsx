@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { createDSNEvent, getEmployees, type Employee, type TypeEvenementDSN } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import styles from './DSNEventForm.module.css';
@@ -24,11 +24,7 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
 
-  useEffect(() => {
-    loadEmployees();
-  }, [companyId, token]);
-
-  const loadEmployees = async () => {
+  const loadEmployees = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -37,12 +33,27 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
     } catch (err) {
       console.error('Erreur lors du chargement des employés:', err);
     }
-  };
+  }, [companyId, token]);
+
+  useEffect(() => {
+    loadEmployees();
+  }, [loadEmployees]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
     if (!token) return;
+
+    // Validation côté client
+    if (typeEvenement === 'FIN_CONTRAT' && !motif.trim()) {
+      setError('Le motif est obligatoire pour une fin de contrat');
+      return;
+    }
+
+    if (typeEvenement === 'ARRET_MALADIE' && (!dateDebut || !dateFin)) {
+      setError('Les dates de début et fin sont obligatoires pour un arrêt maladie');
+      return;
+    }
 
     setLoading(true);
     setError(null);
