@@ -31,20 +31,55 @@ if (!prisma || shouldUseBetterSqlite) {
     'User',
     'Company',
     'Employee',
+    'Payslip',
+    'lignes_cotisation_fiche_paie',
     'regles_cotisation',
     'taux_cotisation',
     'categories_cotisation',
     'organismes_cotisation',
     'regles_comptables',
     'accounting_integrations',
-    'accounting_export_logs'
+    'accounting_export_logs',
+    'dsn_declarations',
+    'transmissions_dsn',
+    'configurations_net_entreprises',
+    'dsn_events',
+    'leaves',
+    'leave_balances',
+    'expenses',
+    'expense_reports',
+    'expense_items',
+    'tranches_cotisation'
   ]);
 
   // Mapping des noms de champs Prisma (français) vers les noms de colonnes SQL (anglais)
   const FIELD_MAPPINGS: Record<string, Record<string, string>> = {
+    User: {
+      nom: 'name',
+      motDePasse: 'password',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
     Company: {
       nom: 'name',
       proprietaireId: 'ownerId',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    Employee: {
+      prenom: 'firstName',
+      nom: 'lastName',
+      salaireBrut: 'grossSalary',
+      compagnieId: 'companyId',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    Payslip: {
+      periodeVersement: 'payPeriod',
+      salaireBrut: 'grossSalary',
+      prelevements: 'deductions',
+      salaireNet: 'netSalary',
+      employeId: 'employeeId',
       dateCreation: 'createdAt',
       dateModification: 'updatedAt'
     },
@@ -64,6 +99,68 @@ if (!prisma || shouldUseBetterSqlite) {
       cheminFichier: 'filePath',
       messageErreur: 'errorMessage',
       nombreTentatives: 'retryCount',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    dsn_declarations: {
+      compagnieId: 'companyId',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    dsn_events: {
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    transmissions_dsn: {
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    configurations_net_entreprises: {
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    leaves: {
+      employeId: 'employeeId',
+      typeDemande: 'type',
+      statut: 'status',
+      dateDebut: 'startDate',
+      dateFin: 'endDate',
+      nombreJours: 'days',
+      motif: 'reason',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    leave_balances: {
+      employeId: 'employeeId',
+      typeDemande: 'type',
+      annee: 'year',
+      joursTotal: 'totalDays',
+      joursUtilises: 'usedDays',
+      joursRestants: 'remainingDays',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    expenses: {
+      employeId: 'employeeId',
+      categorie: 'category',
+      statut: 'status',
+      montant: 'amount',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    expense_reports: {
+      employeId: 'employeeId',
+      titre: 'title',
+      statut: 'status',
+      montantTotal: 'totalAmount',
+      dateCreation: 'createdAt',
+      dateModification: 'updatedAt'
+    },
+    expense_items: {
+      rapportId: 'reportId',
+      categorie: 'category',
+      montant: 'amount',
+      cheminRecu: 'receiptPath',
       dateCreation: 'createdAt',
       dateModification: 'updatedAt'
     }
@@ -113,11 +210,22 @@ if (!prisma || shouldUseBetterSqlite) {
           data.updatedAt = new Date().toISOString();
         }
 
+        // Gestion spéciale pour Payslip : le champ deductions est legacy et requis
+        // mais peut être calculé depuis totalCotisationsSalariales
+        if (tableName === 'Payslip' && !data.deductions && !data.prelevements) {
+          data.deductions = data.totalCotisationsSalariales || 0;
+        }
+
         const fields = Object.keys(data);
         const mappedFields = fields.map(f => mapFieldName(tableName, f));
-        const values = Object.values(data).map(v =>
-          typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
-        );
+        const values = Object.values(data).map(v => {
+          if (v instanceof Date) {
+            return v.toISOString();
+          } else if (typeof v === 'object' && v !== null) {
+            return JSON.stringify(v);
+          }
+          return v;
+        });
         const placeholders = mappedFields.map(() => '?').join(', ');
         const query = `INSERT INTO ${tableName} (${mappedFields.join(', ')}) VALUES (${placeholders})`;
 
@@ -186,6 +294,9 @@ if (!prisma || shouldUseBetterSqlite) {
         if (args?.where) {
           const conditions: string[] = [];
           for (const [key, value] of Object.entries(args.where)) {
+            // Skip OR key as it's handled separately
+            if (key === 'OR') continue;
+
             const mappedKey = mapFieldName(tableName, key);
             if (typeof value === 'boolean') {
               conditions.push(`${mappedKey} = ?`);
@@ -195,6 +306,46 @@ if (!prisma || shouldUseBetterSqlite) {
               params.push(value);
             }
           }
+
+          // Support pour OR
+          if ((args.where as any).OR) {
+            const orConditions: string[] = [];
+            for (const orClause of (args.where as any).OR) {
+              for (const [key, value] of Object.entries(orClause)) {
+                const mappedKey = mapFieldName(tableName, key);
+                if (value === null) {
+                  orConditions.push(`${mappedKey} IS NULL`);
+                } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+                  for (const [op, opValue] of Object.entries(value)) {
+                    const paramValue = opValue instanceof Date ? opValue.toISOString() : opValue;
+                    if (op === 'gt') {
+                      orConditions.push(`${mappedKey} > ?`);
+                      params.push(paramValue);
+                    } else if (op === 'gte') {
+                      orConditions.push(`${mappedKey} >= ?`);
+                      params.push(paramValue);
+                    } else if (op === 'lt') {
+                      orConditions.push(`${mappedKey} < ?`);
+                      params.push(paramValue);
+                    } else if (op === 'lte') {
+                      orConditions.push(`${mappedKey} <= ?`);
+                      params.push(paramValue);
+                    }
+                  }
+                } else if (typeof value === 'boolean') {
+                  orConditions.push(`${mappedKey} = ?`);
+                  params.push(value ? 1 : 0);
+                } else {
+                  orConditions.push(`${mappedKey} = ?`);
+                  params.push(value);
+                }
+              }
+            }
+            if (orConditions.length > 0) {
+              conditions.push(`(${orConditions.join(' OR ')})`);
+            }
+          }
+
           if (conditions.length > 0) {
             query += ` WHERE ${conditions.join(' AND ')}`;
           }
@@ -216,7 +367,14 @@ if (!prisma || shouldUseBetterSqlite) {
                   const tableMapping: Record<string, string> = {
                     categorie: 'categories_cotisation',
                     organisme: 'organismes_cotisation',
-                    regle: 'regles_cotisation'
+                    regle: 'regles_cotisation',
+                    employe: 'Employee',
+                    employee: 'Employee',
+                    compagnie: 'Company',
+                    company: 'Company',
+                    declaration: 'dsn_declarations',
+                    auteur: 'User',
+                    lignesCotisations: 'lignes_cotisation_fiche_paie'
                   };
 
                   const relationTable = tableMapping[relationName] || relationName;
@@ -253,8 +411,11 @@ if (!prisma || shouldUseBetterSqlite) {
         // Appliquer le reverse mapping à tous les résultats
         const mappedRows = rows.map((row: any) => reverseMapRow(tableName, row));
         return Promise.resolve(mappedRows);
-      } catch (e) {
-        console.error(`Erreur dans findMany pour ${tableName}:`, e);
+      } catch (e: any) {
+        console.error(`Erreur dans findMany pour ${tableName}:`);
+        console.error(`  Message: ${e.message}`);
+        console.error(`  Code: ${e.code}`);
+        console.error(`  Full error:`, e);
         return Promise.resolve([]);
       }
     },
@@ -371,9 +532,14 @@ if (!prisma || shouldUseBetterSqlite) {
 
         const setFields = Object.keys(data);
         const mappedSetFields = setFields.map(f => mapFieldName(tableName, f));
-        const setValues = Object.values(data).map(v =>
-          typeof v === 'object' && v !== null && !(v instanceof Date) ? JSON.stringify(v) : v
-        );
+        const setValues = Object.values(data).map(v => {
+          if (v instanceof Date) {
+            return v.toISOString();
+          } else if (typeof v === 'object' && v !== null) {
+            return JSON.stringify(v);
+          }
+          return v;
+        });
 
         const setClause = mappedSetFields.map(f => `${f} = ?`).join(', ');
         const whereConditions: string[] = [];
@@ -454,16 +620,30 @@ if (!prisma || shouldUseBetterSqlite) {
 
   prisma = {
     user: createModelWrapper('User'),
+    utilisateur: createModelWrapper('User'), // Alias français pour User
     company: createModelWrapper('Company'),
     compagnie: createModelWrapper('Company'), // Alias français pour Company
     employee: createModelWrapper('Employee'),
+    employe: createModelWrapper('Employee'), // Alias français pour Employee
+    fichePaie: createModelWrapper('Payslip'),
+    ligneCotisationFichePaie: createModelWrapper('lignes_cotisation_fiche_paie'),
     regleCotisation: createModelWrapper('regles_cotisation'),
     tauxCotisation: createModelWrapper('taux_cotisation'),
+    trancheCotisation: createModelWrapper('tranches_cotisation'),
     categorieCotisation: createModelWrapper('categories_cotisation'),
     organismeCotisation: createModelWrapper('organismes_cotisation'),
     regleComptable: createModelWrapper('regles_comptables'),
     accountingIntegration: createModelWrapper('accounting_integrations'),
     accountingExportLog: createModelWrapper('accounting_export_logs'),
+    dSNDeclaration: createModelWrapper('dsn_declarations'),
+    transmissionDSN: createModelWrapper('transmissions_dsn'),
+    configurationNetEntreprises: createModelWrapper('configurations_net_entreprises'),
+    dSNEvent: createModelWrapper('dsn_events'),
+    leave: createModelWrapper('leaves'),
+    leaveBalance: createModelWrapper('leave_balances'),
+    expense: createModelWrapper('expenses'),
+    expenseReport: createModelWrapper('expense_reports'),
+    expenseItem: createModelWrapper('expense_items'),
     $disconnect: () => { db.close(); return Promise.resolve(); },
     $connect: () => Promise.resolve(),
   };
