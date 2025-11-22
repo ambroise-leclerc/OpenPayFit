@@ -287,9 +287,9 @@ if (!prisma || shouldUseBetterSqlite) {
     },
     findMany: (args?: any) => {
       // Implémentation basique pour findMany (utilisé par le moteur de cotisations)
+      let query = `SELECT * FROM ${tableName}`;
+      const params: any[] = [];
       try {
-        let query = `SELECT * FROM ${tableName}`;
-        const params: any[] = [];
 
         if (args?.where) {
           const conditions: string[] = [];
@@ -301,6 +301,33 @@ if (!prisma || shouldUseBetterSqlite) {
             if (typeof value === 'boolean') {
               conditions.push(`${mappedKey} = ?`);
               params.push(value ? 1 : 0);
+            } else if (typeof value === 'object' && value !== null && !(value instanceof Date) && !(value instanceof RegExp)) {
+              // Support pour les opérateurs (in, gt, gte, lt, lte, etc.)
+              for (const [op, opValue] of Object.entries(value)) {
+                if (op === 'in') {
+                  if (Array.isArray(opValue)) {
+                    if (opValue.length === 0) {
+                      conditions.push('1 = 0');
+                    } else {
+                      const placeholders = opValue.map(() => '?').join(', ');
+                      conditions.push(`${mappedKey} IN (${placeholders})`);
+                      params.push(...opValue);
+                    }
+                  }
+                } else if (op === 'gt') {
+                  conditions.push(`${mappedKey} > ?`);
+                  params.push(opValue);
+                } else if (op === 'gte') {
+                  conditions.push(`${mappedKey} >= ?`);
+                  params.push(opValue);
+                } else if (op === 'lt') {
+                  conditions.push(`${mappedKey} < ?`);
+                  params.push(opValue);
+                } else if (op === 'lte') {
+                  conditions.push(`${mappedKey} <= ?`);
+                  params.push(opValue);
+                }
+              }
             } else if (value !== null && value !== undefined) {
               conditions.push(`${mappedKey} = ?`);
               params.push(value);
@@ -335,9 +362,14 @@ if (!prisma || shouldUseBetterSqlite) {
                     } else if (op === 'in') {
                       // Support de l'opérateur 'in'
                       if (Array.isArray(opValue)) {
-                        const placeholders = opValue.map(() => '?').join(', ');
-                        andConditions.push(`${mappedKey} IN (${placeholders})`);
-                        params.push(...opValue);
+                        if (opValue.length === 0) {
+                          // Tableau vide -> aucun résultat ne correspondra
+                          andConditions.push('1 = 0');
+                        } else {
+                          const placeholders = opValue.map(() => '?').join(', ');
+                          andConditions.push(`${mappedKey} IN (${placeholders})`);
+                          params.push(...opValue);
+                        }
                       }
                     }
                   }
@@ -428,9 +460,11 @@ if (!prisma || shouldUseBetterSqlite) {
         return Promise.resolve(mappedRows);
       } catch (e: any) {
         console.error(`Erreur dans findMany pour ${tableName}:`);
-        console.error(`  Message: ${e.message}`);
-        console.error(`  Code: ${e.code}`);
-        console.error(`  Full error:`, e);
+        console.error(`  Message: ${e?.message ?? String(e)}`);
+        console.error(`  Code: ${e?.code ?? 'N/A'}`);
+        console.error('  Full error:', e);
+        console.error('  Query:', query);
+        console.error('  Params:', params);
         return Promise.resolve([]);
       }
     },

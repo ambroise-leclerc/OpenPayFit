@@ -196,10 +196,17 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
     }
 
     // Récupérer les fiches de paie de la période
+    const employes = company.employes ?? [];
+    if (employes.length === 0) {
+      return res.status(400).json({
+        error: 'Aucun employé trouvé dans l\'entreprise. Veuillez ajouter des employés avant de générer une DSN.'
+      });
+    }
+
     const fichesPaie = await prisma.fichePaie.findMany({
       where: {
         employeId: {
-          in: company.employes.map((e: Employe) => e.id)
+          in: employes.map((e: Employe) => e.id)
         },
         periodeVersement: periode
       },
