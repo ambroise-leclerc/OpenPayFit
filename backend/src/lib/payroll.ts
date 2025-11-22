@@ -517,7 +517,6 @@ export async function runPayrollDetailed(
  * Calcule les cotisations sociales à partir du salaire brut (système simplifié 25%)
  */
 export function calculateDeductions(grossSalary: number): number {
-  console.warn('calculateDeductions() est déprécié. Utilisez calculerDetailsFichePaie() pour un calcul détaillé.');
   return Math.round(grossSalary * DEDUCTION_RATE * 100) / 100;
 }
 
@@ -526,7 +525,6 @@ export function calculateDeductions(grossSalary: number): number {
  * Calcule le salaire net à partir du salaire brut (système simplifié 25%)
  */
 export function calculateNetSalary(grossSalary: number): number {
-  console.warn('calculateNetSalary() est déprécié. Utilisez calculerDetailsFichePaie() pour un calcul détaillé.');
   const deductions = calculateDeductions(grossSalary);
   return Math.round((grossSalary - deductions) * 100) / 100;
 }
@@ -540,7 +538,6 @@ export function createPayslip(
   payPeriod: string,
   grossSalary: number
 ): Payslip {
-  console.warn('createPayslip() est déprécié. Utilisez creerFichePaie() pour un calcul détaillé des cotisations.');
   const db = getDatabase();
 
   const id = randomUUID();
@@ -576,8 +573,6 @@ export function createPayslip(
  * Lance le calcul de paie avec le système simplifié (25%)
  */
 export function runPayroll(companyId: string, payPeriod: string): PayrollRunResult {
-  console.warn('runPayroll() est déprécié. Utilisez runPayrollDetailed() pour un calcul détaillé des cotisations.');
-
   // Validation de la période
   if (!validatePayPeriod(payPeriod)) {
     return {
