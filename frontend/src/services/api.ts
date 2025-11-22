@@ -2284,7 +2284,7 @@ export interface CreateDSNEventData {
   dateEvenement: string;
   motif?: string;
   commentaires?: string;
-  donneesSpecifiques?: Record<string, any>;
+  donneesSpecifiques?: Record<string, unknown>;
 }
 
 export interface UpdateDSNEventData {
@@ -2292,7 +2292,7 @@ export interface UpdateDSNEventData {
   dateEvenement?: string;
   motif?: string;
   commentaires?: string;
-  donneesSpecifiques?: Record<string, any>;
+  donneesSpecifiques?: Record<string, unknown>;
 }
 
 export interface ValidateDSNEventResult {

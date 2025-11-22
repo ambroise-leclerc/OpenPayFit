@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { getDSNEvents, deleteDSNEvent, validateDSNEvent, type DSNEvent } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import styles from './DSNEventList.module.css';
@@ -38,7 +38,7 @@ export default function DSNEventList({ companyId, onEventCreated }: DSNEventList
   const [error, setError] = useState<string | null>(null);
   const { token } = useAuth();
 
-  const loadEvents = async () => {
+  const loadEvents = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -51,11 +51,11 @@ export default function DSNEventList({ companyId, onEventCreated }: DSNEventList
     } finally {
       setLoading(false);
     }
-  };
+  }, [companyId, token]);
 
   useEffect(() => {
     loadEvents();
-  }, [companyId, token, onEventCreated]);
+  }, [loadEvents, onEventCreated]);
 
   const handleDelete = async (eventId: string) => {
     if (!token) return;

@@ -60,7 +60,7 @@ export default function DSNEventForm({ companyId, onEventCreated }: DSNEventForm
 
     try {
       // Préparer les données spécifiques selon le type d'événement
-      let donneesSpecifiques: Record<string, any> | undefined;
+      let donneesSpecifiques: Record<string, unknown> | undefined;
 
       if (typeEvenement === 'ARRET_MALADIE' && (dateDebut || dateFin)) {
         donneesSpecifiques = {
