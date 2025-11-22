@@ -311,34 +311,47 @@ if (!prisma || shouldUseBetterSqlite) {
           if ((args.where as any).OR) {
             const orConditions: string[] = [];
             for (const orClause of (args.where as any).OR) {
+              // Chaque orClause peut contenir plusieurs conditions qui doivent être AND-ées ensemble
+              const andConditions: string[] = [];
               for (const [key, value] of Object.entries(orClause)) {
                 const mappedKey = mapFieldName(tableName, key);
                 if (value === null) {
-                  orConditions.push(`${mappedKey} IS NULL`);
-                } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
+                  andConditions.push(`${mappedKey} IS NULL`);
+                } else if (typeof value === 'object' && value !== null && !(value instanceof Date) && !(value instanceof RegExp)) {
                   for (const [op, opValue] of Object.entries(value)) {
                     const paramValue = opValue instanceof Date ? opValue.toISOString() : opValue;
                     if (op === 'gt') {
-                      orConditions.push(`${mappedKey} > ?`);
+                      andConditions.push(`${mappedKey} > ?`);
                       params.push(paramValue);
                     } else if (op === 'gte') {
-                      orConditions.push(`${mappedKey} >= ?`);
+                      andConditions.push(`${mappedKey} >= ?`);
                       params.push(paramValue);
                     } else if (op === 'lt') {
-                      orConditions.push(`${mappedKey} < ?`);
+                      andConditions.push(`${mappedKey} < ?`);
                       params.push(paramValue);
                     } else if (op === 'lte') {
-                      orConditions.push(`${mappedKey} <= ?`);
+                      andConditions.push(`${mappedKey} <= ?`);
                       params.push(paramValue);
+                    } else if (op === 'in') {
+                      // Support de l'opérateur 'in'
+                      if (Array.isArray(opValue)) {
+                        const placeholders = opValue.map(() => '?').join(', ');
+                        andConditions.push(`${mappedKey} IN (${placeholders})`);
+                        params.push(...opValue);
+                      }
                     }
                   }
                 } else if (typeof value === 'boolean') {
-                  orConditions.push(`${mappedKey} = ?`);
+                  andConditions.push(`${mappedKey} = ?`);
                   params.push(value ? 1 : 0);
                 } else {
-                  orConditions.push(`${mappedKey} = ?`);
+                  andConditions.push(`${mappedKey} = ?`);
                   params.push(value);
                 }
+              }
+              // Grouper les conditions AND d'un même orClause
+              if (andConditions.length > 0) {
+                orConditions.push(andConditions.length > 1 ? `(${andConditions.join(' AND ')})` : andConditions[0]);
               }
             }
             if (orConditions.length > 0) {
@@ -361,8 +374,10 @@ if (!prisma || shouldUseBetterSqlite) {
               if (relationConfig === true || (typeof relationConfig === 'object' && relationConfig !== null)) {
                 // Déterminer la table et le champ de la relation
                 const relationIdField = relationName + 'Id';
+                // Appliquer le mapping de champ AVANT d'accéder à la ligne SQL
+                const mappedRelationIdField = mapFieldName(tableName, relationIdField);
 
-                if (row[relationIdField]) {
+                if (row[mappedRelationIdField]) {
                   // Mapping des relations vers les noms de tables
                   const tableMapping: Record<string, string> = {
                     categorie: 'categories_cotisation',
@@ -382,10 +397,10 @@ if (!prisma || shouldUseBetterSqlite) {
 
                   try {
                     const relStmt = db.prepare(relQuery);
-                    const relRow = relStmt.get(row[relationIdField]);
+                    const relRow = relStmt.get(row[mappedRelationIdField]);
 
                     if (process.env.DEBUG_DB) {
-                      console.log(`[DB] Relation ${relationName}: table=${relationTable}, id=${row[relationIdField]}, found=${!!relRow}`);
+                      console.log(`[DB] Relation ${relationName}: table=${relationTable}, id=${row[mappedRelationIdField]}, found=${!!relRow}`);
                     }
 
                     // Si select est spécifié, ne garder que les champs demandés
