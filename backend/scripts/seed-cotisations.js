@@ -273,7 +273,9 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
       UPDATE regles_cotisation
       SET nom = ?, description = ?, categorieId = ?, organismeId = ?,
           typeCotisation = ?, typeCalcul = ?, typeAssiette = ?,
-          plancher = ?, plafond = ?, estActif = ?, updatedAt = datetime('now')
+          plancher = ?, plafond = ?, estActif = ?,
+          applicableACadre = ?, applicableANonCadre = ?, applicableAForfaitJours = ?,
+          updatedAt = datetime('now')
       WHERE id = ?
     `);
 
@@ -288,6 +290,9 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
       cotisation.calcul.plancher,
       cotisation.calcul.plafond,
       cotisation.actif ? 1 : 0,
+      cotisation.applicableACadre !== undefined ? (cotisation.applicableACadre ? 1 : 0) : null,
+      cotisation.applicableANonCadre !== undefined ? (cotisation.applicableANonCadre ? 1 : 0) : null,
+      cotisation.applicableAForfaitJours !== undefined ? (cotisation.applicableAForfaitJours ? 1 : 0) : null,
       regleId
     );
   } else {
@@ -296,8 +301,9 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
       INSERT INTO regles_cotisation (
         id, code, nom, description, categorieId, organismeId,
         typeCotisation, typeCalcul, typeAssiette, plancher, plafond,
-        estActif, createdAt, updatedAt
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        estActif, applicableACadre, applicableANonCadre, applicableAForfaitJours,
+        createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
     `);
 
     insertRegle.run(
@@ -312,7 +318,10 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
       TYPE_ASSIETTE_MAP[cotisation.calcul.assiette],
       cotisation.calcul.plancher,
       cotisation.calcul.plafond,
-      cotisation.actif ? 1 : 0
+      cotisation.actif ? 1 : 0,
+      cotisation.applicableACadre !== undefined ? (cotisation.applicableACadre ? 1 : 0) : null,
+      cotisation.applicableANonCadre !== undefined ? (cotisation.applicableANonCadre ? 1 : 0) : null,
+      cotisation.applicableAForfaitJours !== undefined ? (cotisation.applicableAForfaitJours ? 1 : 0) : null
     );
   }
 
@@ -320,27 +329,57 @@ function syncRegleCotisation(cotisation, categorieId, organismeId) {
   const deleteTaux = db.prepare('DELETE FROM taux_cotisation WHERE regleId = ?');
   deleteTaux.run(regleId);
 
-  // 3. Créer les nouveaux taux
-  const insertTaux = db.prepare(`
-    INSERT INTO taux_cotisation (id, regleId, taux, dateDebut, dateFin, createdAt, updatedAt)
-    VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-  `);
+  // 3. Créer les nouveaux taux (si présents)
+  if (cotisation.taux && cotisation.taux.length > 0) {
+    const insertTaux = db.prepare(`
+      INSERT INTO taux_cotisation (id, regleId, taux, dateDebut, dateFin, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
 
-  for (const tauxData of cotisation.taux) {
-    insertTaux.run(
-      randomUUID(),
-      regleId,
-      tauxData.taux,
-      tauxData.date_debut,
-      tauxData.date_fin || null
-    );
+    for (const tauxData of cotisation.taux) {
+      insertTaux.run(
+        randomUUID(),
+        regleId,
+        tauxData.taux,
+        tauxData.date_debut,
+        tauxData.date_fin || null
+      );
+    }
   }
 
-  // 4. Supprimer les anciennes règles comptables
+  // 4. Supprimer les anciennes tranches
+  const deleteTranches = db.prepare('DELETE FROM tranches_cotisation WHERE regleId = ?');
+  deleteTranches.run(regleId);
+
+  // 5. Créer les nouvelles tranches (si présentes)
+  if (cotisation.tranches && cotisation.tranches.length > 0) {
+    const insertTranche = db.prepare(`
+      INSERT INTO tranches_cotisation (
+        id, regleId, tranche, taux, plancherPASS, plafondPASS, ordre,
+        dateDebut, dateFin, createdAt, updatedAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `);
+
+    for (const trancheData of cotisation.tranches) {
+      insertTranche.run(
+        randomUUID(),
+        regleId,
+        trancheData.tranche,
+        trancheData.taux,
+        trancheData.plancher_pass !== undefined ? trancheData.plancher_pass : 0,
+        trancheData.plafond_pass,
+        trancheData.ordre,
+        trancheData.date_debut,
+        trancheData.date_fin || null
+      );
+    }
+  }
+
+  // 6. Supprimer les anciennes règles comptables
   const deleteCompta = db.prepare('DELETE FROM regles_comptables WHERE regleId = ?');
   deleteCompta.run(regleId);
 
-  // 5. Créer la nouvelle règle comptable
+  // 7. Créer la nouvelle règle comptable
   const insertCompta = db.prepare(`
     INSERT INTO regles_comptables (id, regleId, compteDebit, compteCredit, description, createdAt, updatedAt)
     VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))
@@ -390,12 +429,14 @@ function afficherRecapitulatif() {
   const countOrganismes = db.prepare('SELECT COUNT(*) as count FROM organismes_cotisation').get();
   const countRegles = db.prepare('SELECT COUNT(*) as count FROM regles_cotisation').get();
   const countTaux = db.prepare('SELECT COUNT(*) as count FROM taux_cotisation').get();
+  const countTranches = db.prepare('SELECT COUNT(*) as count FROM tranches_cotisation').get();
   const countCompta = db.prepare('SELECT COUNT(*) as count FROM regles_comptables').get();
 
   console.log(`   • Catégories: ${countCategories.count}`);
   console.log(`   • Organismes: ${countOrganismes.count}`);
   console.log(`   • Règles de cotisations: ${countRegles.count}`);
   console.log(`   • Taux historiques: ${countTaux.count}`);
+  console.log(`   • Tranches de cotisation: ${countTranches.count}`);
   console.log(`   • Règles comptables: ${countCompta.count}`);
 
   // Détail par type de cotisation

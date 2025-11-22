@@ -904,7 +904,7 @@ router.get('/export', async (req: Request, res: Response) => {
 
 // POST /api/cotisations/simulation - Simuler le calcul de paie
 router.post('/simulation', async (req: Request, res: Response) => {
-  const { salaireBrut, date } = req.body;
+  const { salaireBrut, date, statutEmploye } = req.body;
 
   // Validation des champs requis
   if (salaireBrut === undefined || salaireBrut === null) {
@@ -915,6 +915,14 @@ router.post('/simulation', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Le salaireBrut doit être un nombre positif' });
   }
 
+  // Valider le statut de l'employé (optionnel, par défaut NON_CADRE)
+  const statut = statutEmploye || 'NON_CADRE';
+  if (!['NON_CADRE', 'CADRE', 'FORFAIT_JOURS'].includes(statut)) {
+    return res.status(400).json({
+      error: 'Statut d\'employé invalide. Valeurs acceptées : NON_CADRE, CADRE, FORFAIT_JOURS'
+    });
+  }
+
   // Valider la date
   const dateSimulation = date ? new Date(date) : new Date();
   if (isNaN(dateSimulation.getTime())) {
@@ -922,9 +930,24 @@ router.post('/simulation', async (req: Request, res: Response) => {
   }
 
   try {
-    // Récupérer toutes les règles actives
+    // Récupérer toutes les règles actives avec filtrage par statut d'employé
     const regles = await prisma.regleCotisation.findMany({
-      where: { estActif: true },
+      where: {
+        estActif: true,
+        // Filtrer selon le statut de l'employé
+        OR: [
+          // Règles sans restrictions de statut
+          {
+            applicableACadre: null,
+            applicableANonCadre: null,
+            applicableAForfaitJours: null,
+          },
+          // Règles applicables selon le statut
+          ...(statut === 'CADRE' ? [{ applicableACadre: true }] : []),
+          ...(statut === 'NON_CADRE' ? [{ applicableANonCadre: true }] : []),
+          ...(statut === 'FORFAIT_JOURS' ? [{ applicableAForfaitJours: true }] : []),
+        ],
+      },
       include: {
         categorie: true,
         organisme: true,
@@ -935,6 +958,13 @@ router.post('/simulation', async (req: Request, res: Response) => {
           },
           orderBy: { dateDebut: 'desc' },
           take: 1,
+        },
+        tranches: {
+          where: {
+            dateDebut: { lte: dateSimulation },
+            OR: [{ dateFin: null }, { dateFin: { gt: dateSimulation } }],
+          },
+          orderBy: { ordre: 'asc' },
         },
       },
     });
@@ -970,8 +1000,27 @@ router.post('/simulation', async (req: Request, res: Response) => {
           montant = assiette * tauxApplicable.taux;
         } else if (regle.typeCalcul === 'MONTANT_FIXE') {
           montant = tauxApplicable.taux;
+        } else if (regle.typeCalcul === 'TRANCHES' && regle.tranches && regle.tranches.length > 0) {
+          // Calcul par tranches A, B, C
+          const passMensuel = getPassMensuel();
+
+          for (const tranche of regle.tranches) {
+            // Calculer les limites de la tranche en euros
+            const plancherEuros = tranche.plancherPASS * passMensuel;
+            const plafondEuros = tranche.plafondPASS * passMensuel;
+
+            // Déterminer la portion du salaire dans cette tranche
+            const salaireMin = Math.max(salaireBrut, plancherEuros);
+            const salaireMax = Math.min(salaireBrut, plafondEuros);
+
+            // Si le salaire dépasse le plancher de la tranche
+            if (salaireMax > plancherEuros) {
+              const assietteTranche = salaireMax - plancherEuros;
+              const montantTranche = assietteTranche * tranche.taux;
+              montant += montantTranche;
+            }
+          }
         }
-        // Pour les TRANCHES, on simplifie pour le moment (nécessiterait une logique plus complexe)
 
         // Arrondir à 2 décimales
         montant = Math.round(montant * 100) / 100;

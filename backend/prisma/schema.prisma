@@ -83,6 +83,7 @@ model Employe {
   numeroMatricule        String?      // Numéro de matricule interne de l'employé
   poste                  String?      // Intitulé du poste occupé
   qualification          String?      // Qualification professionnelle ou coefficient
+  statut                 StatutEmploye @default(NON_CADRE) // Statut (cadre, non-cadre, forfait jours)
 
   // Relations
   compagnie        Compagnie      @relation(fields: [compagnieId], references: [id])
@@ -93,6 +94,7 @@ model Employe {
   frais            Expense[]      // Un employé peut avoir plusieurs notes de frais (ancien modèle)
   rapportsFrais    ExpenseReport[] // Un employé peut avoir plusieurs rapports de notes de frais
   evenementsDSN    DSNEvent[]     // Un employé peut avoir plusieurs événements DSN
+  exonerations     ExonerationEmploye[] // Exonérations applicables à cet employé (ACCRE, ZRR, etc.)
   dateCreation     DateTime       @default(now()) @map("createdAt")
   dateModification DateTime       @updatedAt @map("updatedAt")
 
@@ -159,6 +161,14 @@ enum TypeContrat {
   STAGE                 // Convention de stage
 }
 
+/// Statut de l'employé (cadre, non-cadre, etc.)
+/// Détermine certaines cotisations spécifiques et les tranches applicables
+enum StatutEmploye {
+  NON_CADRE       // Employé ou technicien - Tranche 1 uniquement pour retraite complémentaire
+  CADRE           // Cadre - Tranches 1 et 2 pour retraite complémentaire + CET
+  FORFAIT_JOURS   // Cadre au forfait jours - Cotisations spécifiques
+}
+
 // ========== Enums pour les règles de cotisations ==========
 
 /// Type de cotisation : définit qui supporte la charge
@@ -190,6 +200,17 @@ enum TypeAssiette {
   SALAIRE_BRUT
   SALAIRE_NET
   SALAIRE_PLAFONNE
+}
+
+/// Tranche salariale pour le calcul des cotisations
+/// Basées sur le Plafond Annuel de la Sécurité Sociale (PASS)
+/// - TRANCHE_A (T1) : Jusqu'à 1 PASS (ex: jusqu'à 3 864€/mois en 2025)
+/// - TRANCHE_B (T2) : De 1 à 4 PASS (ex: de 3 864€ à 15 456€/mois en 2025)
+/// - TRANCHE_C : De 4 à 8 PASS (ex: de 15 456€ à 30 912€/mois en 2025)
+enum TrancheSalariale {
+  TRANCHE_A  // Tranche 1 - Jusqu'à 1 PASS
+  TRANCHE_B  // Tranche 2 - De 1 à 4 PASS
+  TRANCHE_C  // Tranche 3 - De 4 à 8 PASS
 }
 
 // ========== Modèles pour les règles de cotisations ==========
@@ -297,7 +318,11 @@ model RegleCotisation {
   plancher          Float?               // Montant minimum en euros (ex: 0 pour pas de plancher)
   plafond           Float?               // Montant maximum en euros (ex: PASS mensuel = 3864€)
   taux              TauxCotisation[]
+  tranches          TrancheCotisation[]  // Tranches pour calcul par tranches (TRANCHE_A, TRANCHE_B, TRANCHE_C)
   reglesComptables  RegleComptable[]
+  applicableACadre      Boolean?         // Si true, applicable uniquement aux cadres
+  applicableANonCadre   Boolean?         // Si true, applicable uniquement aux non-cadres
+  applicableAForfaitJours Boolean?       // Si true, applicable uniquement aux forfaits jours
   estActif          Boolean              @default(true)
   dateCreation         DateTime             @default(now()) @map("createdAt")
   dateModification         DateTime             @updatedAt @map("updatedAt")
@@ -333,6 +358,34 @@ model TauxCotisation {
   @@map("taux_cotisation")
 }
 
+/// Tranche de cotisation pour calcul par tranches
+/// Utilisé pour les cotisations qui s'appliquent différemment selon le niveau de rémunération
+/// Exemple : Retraite complémentaire AGIRC-ARRCO avec Tranche 1 (jusqu'à 1 PASS) et Tranche 2 (de 1 à 8 PASS)
+///
+/// Le calcul par tranches fonctionne ainsi :
+/// - Pour un salaire de 5000€/mois avec PASS mensuel = 3864€
+/// - Tranche A (jusqu'à 1 PASS) : assiette = min(5000, 3864) = 3864€
+/// - Tranche B (de 1 à 4 PASS) : assiette = min(max(5000 - 3864, 0), 3*3864) = 1136€
+/// - Total cotisation = (3864 × taux_A) + (1136 × taux_B)
+model TrancheCotisation {
+  id            String             @id @default(cuid())
+  regle         RegleCotisation    @relation(fields: [regleId], references: [id], onDelete: Cascade)
+  regleId       String
+  tranche       TrancheSalariale   // Type de tranche (TRANCHE_A, TRANCHE_B, TRANCHE_C)
+  taux          Float              // Taux applicable à cette tranche (ex: 0.0787 = 7,87%)
+  plancherPASS  Float              @default(0) // Plancher en multiples de PASS (ex: 0 pour Tranche A, 1 pour Tranche B)
+  plafondPASS   Float              // Plafond en multiples de PASS (ex: 1 pour Tranche A, 4 pour Tranche B, 8 pour Tranche C)
+  ordre         Int                // Ordre d'application (1, 2, 3...) pour le calcul séquentiel
+  dateDebut     DateTime           // Date de début d'application
+  dateFin       DateTime?          // Date de fin d'application (NULL = toujours actif)
+  dateCreation     DateTime           @default(now()) @map("createdAt")
+  dateModification DateTime           @updatedAt @map("updatedAt")
+
+  @@unique([regleId, tranche, dateDebut])
+  @@index([regleId, dateDebut])
+  @@map("tranches_cotisation")
+}
+
 /// Règle comptable associée à une cotisation
 /// Définit l'écriture comptable générée lors du calcul de la paie.
 ///
@@ -357,6 +410,73 @@ model RegleComptable {
   dateModification    DateTime        @updatedAt @map("updatedAt")
 
   @@map("regles_comptables")
+}
+
+// ========== Modèles pour les exonérations de cotisations ==========
+
+/// Type d'exonération de cotisations sociales
+/// Les exonérations permettent de réduire ou supprimer certaines cotisations
+/// dans des contextes spécifiques (création d'entreprise, zones géographiques, etc.)
+///
+/// Exemples :
+/// - ACCRE (devenue ACRE) : Aide aux Créateurs et Repreneurs d'Entreprise
+/// - ZRR : Zone de Revitalisation Rurale
+/// - ZFU : Zone Franche Urbaine
+/// - BER : Bassin d'Emploi à Redynamiser
+/// - ZRD : Zone de Restructuration de la Défense
+enum TypeExoneration {
+  ACCRE_ACRE       // Aide aux Créateurs et Repreneurs d'Entreprise
+  ZRR              // Zone de Revitalisation Rurale
+  ZFU              // Zone Franche Urbaine
+  BER              // Bassin d'Emploi à Redynamiser
+  ZRD              // Zone de Restructuration de la Défense
+  APPRENTI         // Exonération pour contrat d'apprentissage
+  PROFESSIONNALISATION // Exonération pour contrat de professionnalisation
+  AUTRE            // Autre type d'exonération
+}
+
+/// Définition d'un type d'exonération
+/// Décrit les caractéristiques générales d'une exonération (conditions, taux, etc.)
+model DefinitionExoneration {
+  id                String              @id @default(cuid())
+  code              String              @unique // Code de l'exonération (ex: "ACCRE_2024")
+  nom               String              // Nom de l'exonération
+  typeExoneration   TypeExoneration     // Type d'exonération
+  description       String?             // Description détaillée
+  tauxReduction     Float?              // Taux de réduction (ex: 0.5 pour 50% de réduction, NULL pour exonération totale)
+  plafondSalarial   Float?              // Plafond salarial d'application (en PASS, ex: 1.5 pour 1,5 PASS)
+  dateDebut         DateTime            // Date de début de validité de cette exonération
+  dateFin           DateTime?           // Date de fin de validité (NULL = pas de fin)
+
+  // Relations
+  exonerations      ExonerationEmploye[] // Employés bénéficiant de cette exonération
+
+  dateCreation      DateTime            @default(now()) @map("createdAt")
+  dateModification  DateTime            @updatedAt @map("updatedAt")
+
+  @@index([typeExoneration])
+  @@map("definitions_exoneration")
+}
+
+/// Exonération appliquée à un employé spécifique
+/// Lie un employé à une exonération pour une période donnée
+model ExonerationEmploye {
+  id                      String                 @id @default(cuid())
+  employe                 Employe                @relation(fields: [employeId], references: [id], onDelete: Cascade)
+  employeId               String
+  definitionExoneration   DefinitionExoneration  @relation(fields: [definitionExonerationId], references: [id], onDelete: Cascade)
+  definitionExonerationId String
+  dateDebut               DateTime               // Date de début d'application pour cet employé
+  dateFin                 DateTime?              // Date de fin d'application (NULL = toujours actif)
+  commentaires            String?                // Commentaires ou justificatifs
+
+  dateCreation            DateTime               @default(now()) @map("createdAt")
+  dateModification        DateTime               @updatedAt @map("updatedAt")
+
+  @@index([employeId])
+  @@index([definitionExonerationId])
+  @@index([dateDebut, dateFin])
+  @@map("exonerations_employe")
 }
 
 // ========== Modèles pour les analytics RH ==========

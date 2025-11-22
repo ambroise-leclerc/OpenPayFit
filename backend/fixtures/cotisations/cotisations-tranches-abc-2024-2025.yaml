@@ -1,0 +1,319 @@
+version: "1.0"
+date_creation: "2025-11-22"
+description: "Règles de cotisations sociales avec tranches A, B, C pour la retraite complémentaire AGIRC-ARRCO"
+source: "AGIRC-ARRCO, URSSAF"
+
+# ====================================
+# CONSTANTES OFFICIELLES 2025
+# ====================================
+constantes:
+  PASS_ANNUEL: 46368  # Plafond Annuel de la Sécurité Sociale 2025
+  PASS_MENSUEL: 3864  # PASS mensuel (46368 / 12)
+
+# ====================================
+# COTISATIONS PAR TRANCHES (AGIRC-ARRCO)
+# ====================================
+# Tranches de salaire :
+# - Tranche A (T1) : jusqu'à 1 PASS (3 864 €/mois en 2025)
+# - Tranche B (T2) : de 1 à 8 PASS (de 3 864 € à 30 912 €/mois en 2025)
+# - Tranche C : de 4 à 8 PASS (de 15 456 € à 30 912 €/mois en 2025) - pour cadres uniquement
+
+cotisations:
+  # ====================================
+  # RETRAITE COMPLÉMENTAIRE AGIRC-ARRCO - TRANCHE 1 (TRANCHE A)
+  # Applicable à tous les salariés (cadres et non-cadres)
+  # ====================================
+
+  - code: RETRAITE_COMP_T1_SAL
+    nom: "Retraite complémentaire AGIRC-ARRCO Tranche 1 - Part salariale"
+    description: "Retraite complémentaire sur la tranche A (jusqu'à 1 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_A
+        taux: 0.0402  # 4,02% (part salariale)
+        plancher_pass: 0    # De 0 PASS
+        plafond_pass: 1     # Jusqu'à 1 PASS
+        ordre: 1
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_T1_PAT
+    nom: "Retraite complémentaire AGIRC-ARRCO Tranche 1 - Part patronale"
+    description: "Retraite complémentaire patronale sur la tranche A (jusqu'à 1 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_A
+        taux: 0.0601  # 6,01% (part patronale)
+        plancher_pass: 0    # De 0 PASS
+        plafond_pass: 1     # Jusqu'à 1 PASS
+        ordre: 1
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  # ====================================
+  # RETRAITE COMPLÉMENTAIRE AGIRC-ARRCO - TRANCHE 2 (TRANCHE B)
+  # Applicable à tous les salariés ayant un salaire > 1 PASS
+  # ====================================
+
+  - code: RETRAITE_COMP_T2_SAL
+    nom: "Retraite complémentaire AGIRC-ARRCO Tranche 2 - Part salariale"
+    description: "Retraite complémentaire sur la tranche B (de 1 à 8 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_B
+        taux: 0.1026  # 10,26% (part salariale)
+        plancher_pass: 1    # De 1 PASS
+        plafond_pass: 8     # Jusqu'à 8 PASS
+        ordre: 2
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_T2_PAT
+    nom: "Retraite complémentaire AGIRC-ARRCO Tranche 2 - Part patronale"
+    description: "Retraite complémentaire patronale sur la tranche B (de 1 à 8 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_B
+        taux: 0.1538  # 15,38% (part patronale)
+        plancher_pass: 1    # De 1 PASS
+        plafond_pass: 8     # Jusqu'à 8 PASS
+        ordre: 2
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  # ====================================
+  # CONTRIBUTION D'ÉQUILIBRE GÉNÉRAL (CEG)
+  # Applicable sur les tranches A et B
+  # ====================================
+
+  - code: RETRAITE_COMP_CEG_T1_SAL
+    nom: "Contribution d'équilibre général (CEG) Tranche 1 - Part salariale"
+    description: "CEG sur la tranche A (jusqu'à 1 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_A
+        taux: 0.0086  # 0,86% (part salariale)
+        plancher_pass: 0
+        plafond_pass: 1
+        ordre: 1
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_CEG_T1_PAT
+    nom: "Contribution d'équilibre général (CEG) Tranche 1 - Part patronale"
+    description: "CEG patronale sur la tranche A (jusqu'à 1 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_A
+        taux: 0.0129  # 1,29% (part patronale)
+        plancher_pass: 0
+        plafond_pass: 1
+        ordre: 1
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_CEG_T2_SAL
+    nom: "Contribution d'équilibre général (CEG) Tranche 2 - Part salariale"
+    description: "CEG sur la tranche B (de 1 à 8 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_B
+        taux: 0.0086  # 0,86% (part salariale)
+        plancher_pass: 1
+        plafond_pass: 8
+        ordre: 2
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_CEG_T2_PAT
+    nom: "Contribution d'équilibre général (CEG) Tranche 2 - Part patronale"
+    description: "CEG patronale sur la tranche B (de 1 à 8 PASS)"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    applicableACadre: null
+    applicableANonCadre: null
+    applicableAForfaitJours: null
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_B
+        taux: 0.0129  # 1,29% (part patronale)
+        plancher_pass: 1
+        plafond_pass: 8
+        ordre: 2
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+  # ====================================
+  # CONTRIBUTION EXCEPTIONNELLE TEMPORAIRE (CET) - CADRES UNIQUEMENT
+  # Applicable uniquement aux cadres
+  # ====================================
+
+  - code: RETRAITE_COMP_CET_SAL
+    nom: "Contribution exceptionnelle temporaire (CET) - Part salariale"
+    description: "CET sur la tranche B (de 1 à 8 PASS) - Cadres uniquement"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_SALARIALE
+    actif: true
+    applicableACadre: true
+    applicableANonCadre: null
+    applicableAForfaitJours: true
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_B
+        taux: 0.0014  # 0,14% (part salariale)
+        plancher_pass: 1
+        plafond_pass: 8
+        ordre: 2
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6411"
+      compte_credit: "437"
+
+  - code: RETRAITE_COMP_CET_PAT
+    nom: "Contribution exceptionnelle temporaire (CET) - Part patronale"
+    description: "CET patronale sur la tranche B (de 1 à 8 PASS) - Cadres uniquement"
+    categorie: RETRAITE_COMPLEMENTAIRE
+    organisme: AGIRC_ARRCO
+    type: COTISATION_PATRONALE
+    actif: true
+    applicableACadre: true
+    applicableANonCadre: null
+    applicableAForfaitJours: true
+    calcul:
+      type: TRANCHES
+      assiette: SALAIRE_BRUT
+      plafond: null
+      plancher: null
+    tranches:
+      - tranche: TRANCHE_B
+        taux: 0.0021  # 0,21% (part patronale)
+        plancher_pass: 1
+        plafond_pass: 8
+        ordre: 2
+        date_debut: "2024-01-01"
+        date_fin: null
+    comptabilite:
+      compte_debit: "6451"
+      compte_credit: "437"
+
+# ====================================
+# NOTES IMPORTANTES
+# ====================================
+# 1. Les taux indiqués sont les taux officiels AGIRC-ARRCO 2024-2025
+# 2. La tranche A (T1) correspond aux salaires jusqu'à 1 PASS
+# 3. La tranche B (T2) correspond aux salaires de 1 à 8 PASS
+# 4. La CET est applicable uniquement aux cadres
+# 5. Les taux sont exprimés en décimales (ex: 0.0787 = 7,87%)
