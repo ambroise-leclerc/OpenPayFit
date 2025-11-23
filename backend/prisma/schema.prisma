@@ -25,6 +25,7 @@ model Utilisateur {
   motDePasse       String      @map("password")
   role             Role        @default(USER) // Rôle de l'utilisateur (USER ou ADMIN)
   compagnies       Compagnie[] // Un utilisateur peut posséder plusieurs entreprises
+  versionsDSN      DSNVersion[] // Versions de DSN créées par cet utilisateur
   dateCreation     DateTime    @default(now()) @map("createdAt")
   dateModification DateTime    @updatedAt @map("updatedAt")
 
@@ -661,6 +662,7 @@ model DSNDeclaration {
   // Relations
   transmissions    TransmissionDSN[] // Historique des transmissions de cette DSN
   evenements       DSNEvent[]        // Événements DSN inclus dans cette déclaration
+  versions         DSNVersion[]      // Historique des versions de cette DSN
 }
 
 // ========== Modèles pour la transmission automatique DSN via net-entreprises.fr ==========
@@ -807,4 +809,46 @@ model DSNEvent {
   @@index([statut])
   @@index([dateEvenement])
   @@map("dsn_events")
+}
+
+// ========== Modèles pour l'historique des versions DSN ==========
+
+/// Type de modification apportée à une DSN
+enum TypeModificationDSN {
+  CREATION         // Création initiale de la DSN
+  MODIFICATION     // Modification du contenu
+  REGENERATION     // Régénération complète de la DSN
+  RESTAURATION     // Restauration d'une version antérieure
+}
+
+/// Version d'une DSN - Historique des modifications
+/// Stocke toutes les versions successives d'une déclaration DSN pour traçabilité et audit
+/// Chaque modification (création, mise à jour, régénération) crée une nouvelle version
+model DSNVersion {
+  id                    String                @id @default(cuid())
+  declaration           DSNDeclaration        @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+  declarationId         String
+
+  // Informations de versioning
+  numeroVersion         Int                   // Numéro de version séquentiel (1, 2, 3, etc.)
+  typeModification      TypeModificationDSN   @default(MODIFICATION) // Type de modification
+
+  // Snapshot complet de la version
+  contenuXml            String?               // Contenu XML de la DSN à cette version (snapshot complet)
+  messagesValidation    String?               // Messages de validation (JSON) à cette version
+  statut                StatutDSN             // Statut de la DSN à cette version
+
+  // Métadonnées de la modification
+  auteur                Utilisateur           @relation(fields: [auteurId], references: [id])
+  auteurId              String                // Utilisateur ayant créé cette version
+  commentaire           String?               // Commentaire décrivant la modification
+
+  // Dates
+  dateCreation          DateTime              @default(now()) @map("createdAt") // Date de création de cette version
+
+  @@unique([declarationId, numeroVersion]) // Une seule version N par déclaration
+  @@index([declarationId])
+  @@index([auteurId])
+  @@index([dateCreation])
+  @@map("dsn_versions")
 }

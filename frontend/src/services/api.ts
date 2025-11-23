@@ -2436,3 +2436,248 @@ export async function validateDSNEvent(
 
   return response.json();
 }
+
+// ========== Historique des versions DSN ==========
+
+// Types pour l'historique DSN
+export type TypeModificationDSN = 'CREATION' | 'MODIFICATION' | 'REGENERATION' | 'RESTAURATION';
+
+// Interfaces pour les versions DSN
+export interface DSNVersion {
+  id: string;
+  declarationId: string;
+  numeroVersion: number;
+  typeModification: TypeModificationDSN;
+  contenuXml?: string;
+  messagesValidation?: string;
+  statut: StatutDSN;
+  auteurId: string;
+  commentaire?: string;
+  dateCreation: string;
+  auteur: {
+    id: string;
+    nom: string | null;
+    email: string;
+  };
+  declaration?: {
+    id: string;
+    periodeDeclaration: string;
+    typeDeclaration: string;
+    numeroDeclaration?: string;
+  };
+}
+
+export interface VersionComparison {
+  version1: DSNVersion;
+  version2: DSNVersion;
+  differences: {
+    statut: boolean;
+    contenuXml: boolean;
+    messagesValidation: boolean;
+    typeModification: {
+      version1: string;
+      version2: string;
+    };
+    auteur: {
+      version1: string | null;
+      version2: string | null;
+    };
+    dateCreation: {
+      version1: string;
+      version2: string;
+    };
+  };
+}
+
+export interface RestoreVersionResult {
+  message: string;
+  declaration: DSNDeclaration;
+  nouvelleVersion: DSNVersion;
+}
+
+export interface HistoriqueExport {
+  dsn: {
+    id: string;
+    periodeDeclaration: string;
+    typeDeclaration: string;
+    numeroDeclaration?: string;
+    entreprise: {
+      id: string;
+      nom: string;
+      siret?: string;
+    };
+  };
+  historique: Array<{
+    numeroVersion: number;
+    typeModification: string;
+    statut: string;
+    auteur: string | null;
+    email: string;
+    commentaire?: string;
+    dateCreation: string;
+    aContenuXml: boolean;
+  }>;
+  dateExport: string;
+  nombreVersions: number;
+}
+
+// --- Fonctions API de l'historique des versions DSN ---
+
+/**
+ * Récupère toutes les versions d'une déclaration DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ */
+export async function getDSNVersions(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<DSNVersion[]> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/versions`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de l\'historique des versions');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère les détails d'une version spécifique
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param versionId - ID de la version
+ * @param token - Token d'authentification
+ */
+export async function getDSNVersion(
+  companyId: string,
+  dsnId: string,
+  versionId: string,
+  token: string
+): Promise<DSNVersion> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/${versionId}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de la version');
+  }
+
+  return response.json();
+}
+
+/**
+ * Compare deux versions d'une DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param version1 - Numéro de la première version
+ * @param version2 - Numéro de la deuxième version
+ * @param token - Token d'authentification
+ */
+export async function compareDSNVersions(
+  companyId: string,
+  dsnId: string,
+  version1: number,
+  version2: number,
+  token: string
+): Promise<VersionComparison> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/compare?version1=${version1}&version2=${version2}`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la comparaison des versions');
+  }
+
+  return response.json();
+}
+
+/**
+ * Restaure une version antérieure de la DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param versionId - ID de la version à restaurer
+ * @param token - Token d'authentification
+ */
+export async function restoreDSNVersion(
+  companyId: string,
+  dsnId: string,
+  versionId: string,
+  token: string
+): Promise<RestoreVersionResult> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/${versionId}/restore`,
+    {
+      method: 'POST',
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la restauration de la version');
+  }
+
+  return response.json();
+}
+
+/**
+ * Exporte l'historique complet des versions au format JSON
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ */
+export async function exportDSNHistory(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/export`,
+    {
+      headers: getAuthHeaders(token),
+    }
+  );
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'export de l\'historique');
+  }
+
+  // Récupérer le nom du fichier depuis les headers
+  const contentDisposition = response.headers.get('Content-Disposition');
+  let filename = 'dsn-historique.json';
+
+  if (contentDisposition) {
+    // Pattern sécurisé : éviter le regex greedy, limiter aux caractères non-guillemets
+    const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+    if (filenameMatch) {
+      filename = filenameMatch[1];
+    }
+  }
+
+  // Créer un blob à partir de la réponse
+  const blob = await response.blob();
+
+  // Créer un lien de téléchargement et le déclencher
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+
+  // Nettoyer
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+}
