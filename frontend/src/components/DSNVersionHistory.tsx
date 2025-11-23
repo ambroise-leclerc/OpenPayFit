@@ -229,21 +229,25 @@ export default function DSNVersionHistory({ companyId, dsnId, periode }: DSNVers
                     </tr>
                   </thead>
                   <tbody>
-                    {comparison.differences.map((diff, index) => (
-                      <tr key={index}>
-                        <td className={styles.diffField}>{diff.champ}</td>
-                        <td className={styles.diffOld}>
-                          {typeof diff.ancienneValeur === 'object'
-                            ? JSON.stringify(diff.ancienneValeur, null, 2)
-                            : diff.ancienneValeur || '-'}
-                        </td>
-                        <td className={styles.diffNew}>
-                          {typeof diff.nouvelleValeur === 'object'
-                            ? JSON.stringify(diff.nouvelleValeur, null, 2)
-                            : diff.nouvelleValeur || '-'}
-                        </td>
-                      </tr>
-                    ))}
+                    {comparison.differences.map((diff, index) => {
+                      const formatValue = (value: unknown): string => {
+                        if (value === null || value === undefined) return '-';
+                        if (typeof value === 'object') return JSON.stringify(value, null, 2);
+                        return String(value);
+                      };
+
+                      return (
+                        <tr key={index}>
+                          <td className={styles.diffField}>{diff.champ}</td>
+                          <td className={styles.diffOld}>
+                            {formatValue(diff.ancienneValeur)}
+                          </td>
+                          <td className={styles.diffNew}>
+                            {formatValue(diff.nouvelleValeur)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
