@@ -10,7 +10,6 @@ import {
   compareDSNVersions,
   restoreDSNVersion,
   exportDSNVersionHistory,
-  type DSNVersion,
   type DSNVersionHistorique,
   type ComparisonResult
 } from '../services/api';
