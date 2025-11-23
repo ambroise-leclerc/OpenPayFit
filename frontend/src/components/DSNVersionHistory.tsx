@@ -3,7 +3,7 @@
  * Permet de visualiser, comparer et restaurer les versions précédentes
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import {
   getDSNVersions,
@@ -31,11 +31,7 @@ export default function DSNVersionHistory({ companyId, dsnId, periode }: DSNVers
   const [comparison, setComparison] = useState<ComparisonResult | null>(null);
   const [showComparison, setShowComparison] = useState(false);
 
-  useEffect(() => {
-    chargerHistorique();
-  }, [dsnId]);
-
-  const chargerHistorique = async () => {
+  const chargerHistorique = useCallback(async () => {
     if (!token) return;
 
     try {
@@ -48,7 +44,11 @@ export default function DSNVersionHistory({ companyId, dsnId, periode }: DSNVers
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, companyId, dsnId]);
+
+  useEffect(() => {
+    chargerHistorique();
+  }, [chargerHistorique]);
 
   const handleComparer = async () => {
     if (!token || selectedVersion1 === null || selectedVersion2 === null) return;

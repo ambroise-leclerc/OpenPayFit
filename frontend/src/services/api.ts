@@ -2257,8 +2257,8 @@ export interface DSNVersionHistorique {
 
 export interface VersionDiff {
   champ: string;
-  ancienneValeur: any;
-  nouvelleValeur: any;
+  ancienneValeur: unknown;
+  nouvelleValeur: unknown;
 }
 
 export interface ComparisonResult {
