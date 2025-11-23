@@ -8,6 +8,7 @@ import prisma from '../lib/db';
 import { DSNGenerator, DonneesDSN, FichePaieDSN, CotisationDSN } from '../services/dsn/dsnGenerator';
 import { DSNValidator } from '../services/dsn/dsnValidator';
 import { TYPES_EVENEMENTS_DSN, estTypeEvenementValide } from '../constants/dsn';
+import { DSNVersionService } from '../services/dsn/dsnVersionService';
 
 /**
  * Interface pour un employé (modèle Prisma de base)
@@ -289,15 +290,44 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
       }
     });
 
+    const versionService = new DSNVersionService();
     let declaration;
+
     if (dsnExistante) {
+      // Détecter les changements
+      const nouveauStatut = resultatValidation.valide ? 'VALIDEE' : 'ERREUR';
+      const nouveauxMessages = DSNValidator.formaterMessagesJSON(resultatValidation.messages);
+
+      const champsModifies = await versionService.detecterChangements(
+        dsnExistante.id,
+        {
+          contenuXml: contenuXml,
+          messagesValidation: nouveauxMessages,
+          statut: nouveauStatut
+        }
+      );
+
+      // Créer une nouvelle version avant la mise à jour
+      if (champsModifies.length > 0) {
+        await versionService.creerVersion({
+          declarationId: dsnExistante.id,
+          contenuXml: contenuXml,
+          messagesValidation: nouveauxMessages,
+          statut: nouveauStatut,
+          modifiePar: userId,
+          raisonModification: 'Régénération de la DSN',
+          commentaire: `Mise à jour automatique : ${champsModifies.join(', ')}`,
+          champsModifies: champsModifies
+        });
+      }
+
       // Mettre à jour la DSN existante
       declaration = await prisma.dSNDeclaration.update({
         where: { id: dsnExistante.id },
         data: {
           contenuXml: contenuXml,
-          messagesValidation: DSNValidator.formaterMessagesJSON(resultatValidation.messages),
-          statut: resultatValidation.valide ? 'VALIDEE' : 'ERREUR',
+          messagesValidation: nouveauxMessages,
+          statut: nouveauStatut,
           dateGeneration: new Date()
         }
       });
@@ -315,6 +345,18 @@ router.post('/:companyId/dsn/generate', authenticateToken, async (req: Request, 
           numeroDeclaration: numeroDSN,
           dateGeneration: new Date()
         }
+      });
+
+      // Créer la version initiale
+      await versionService.creerVersion({
+        declarationId: declaration.id,
+        contenuXml: contenuXml,
+        messagesValidation: declaration.messagesValidation,
+        statut: declaration.statut,
+        modifiePar: userId,
+        raisonModification: 'Création initiale',
+        commentaire: 'Version initiale de la DSN',
+        champsModifies: ['contenuXml', 'messagesValidation', 'statut']
       });
     }
 
@@ -1231,6 +1273,314 @@ router.delete('/:companyId/dsn-events/:eventId', authenticateToken, verifyCompan
   } catch (error) {
     console.error('Erreur lors de la suppression de l\'événement DSN:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression de l\'événement DSN' });
+  }
+});
+
+// ========== Routes pour l'historique des versions DSN ==========
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions
+ * Récupère l'historique complet des versions d'une DSN
+ */
+router.get('/:companyId/dsn/:dsnId/versions', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Récupérer l'historique
+    const versionService = new DSNVersionService();
+    const versions = await versionService.obtenirHistorique(dsnId);
+
+    res.json({
+      dsnId: dsnId,
+      periodeDeclaration: dsn.periodeDeclaration,
+      nombreVersions: versions.length,
+      versions: versions
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération de l\'historique:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de l\'historique des versions' });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions/:numeroVersion
+ * Récupère une version spécifique d'une DSN
+ */
+router.get('/:companyId/dsn/:dsnId/versions/:numeroVersion', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId, numeroVersion } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Récupérer la version
+    const versionService = new DSNVersionService();
+    const version = await versionService.obtenirVersion(dsnId, parseInt(numeroVersion, 10));
+
+    if (!version) {
+      return res.status(404).json({ error: 'Version non trouvée' });
+    }
+
+    res.json(version);
+
+  } catch (error) {
+    console.error('Erreur lors de la récupération de la version:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de la version' });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/dsn/:dsnId/versions/compare
+ * Compare deux versions d'une DSN
+ *
+ * Body: {
+ *   version1: number,
+ *   version2: number
+ * }
+ */
+router.post('/:companyId/dsn/:dsnId/versions/compare', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+    const { version1, version2 } = req.body;
+    const userId = req.userId;
+
+    // Validation des paramètres
+    if (!version1 || !version2) {
+      return res.status(400).json({
+        error: 'Les numéros de versions sont obligatoires'
+      });
+    }
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Comparer les versions
+    const versionService = new DSNVersionService();
+    const comparaison = await versionService.comparerVersions(
+      dsnId,
+      parseInt(version1, 10),
+      parseInt(version2, 10)
+    );
+
+    res.json(comparaison);
+
+  } catch (error) {
+    console.error('Erreur lors de la comparaison:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la comparaison des versions',
+      message: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * POST /api/companies/:companyId/dsn/:dsnId/versions/:numeroVersion/restore
+ * Restaure une version précédente d'une DSN
+ */
+router.post('/:companyId/dsn/:dsnId/versions/:numeroVersion/restore', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId, numeroVersion } = req.params;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    // Ne permettre la restauration que si la DSN n'est pas transmise
+    if (dsn.statut === 'TRANSMISE') {
+      return res.status(400).json({
+        error: 'Impossible de restaurer une DSN déjà transmise'
+      });
+    }
+
+    // Restaurer la version
+    const versionService = new DSNVersionService();
+    const nouvelleVersion = await versionService.restaurerVersion(
+      dsnId,
+      parseInt(numeroVersion, 10),
+      userId!
+    );
+
+    res.json({
+      message: `Version ${numeroVersion} restaurée avec succès`,
+      nouvelleVersion: nouvelleVersion
+    });
+
+  } catch (error) {
+    console.error('Erreur lors de la restauration:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la restauration de la version',
+      message: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
+  }
+});
+
+/**
+ * GET /api/companies/:companyId/dsn/:dsnId/versions/export
+ * Exporte l'historique des versions au format JSON ou CSV
+ *
+ * Query params:
+ *   format: 'json' | 'csv' (défaut: 'json')
+ */
+router.get('/:companyId/dsn/:dsnId/versions/export', authenticateToken, async (req: Request, res: Response) => {
+  try {
+    const { companyId, dsnId } = req.params;
+    const { format = 'json' } = req.query;
+    const userId = req.userId;
+
+    // Vérifier que l'utilisateur est propriétaire de l'entreprise
+    const company = await prisma.compagnie.findUnique({
+      where: { id: companyId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Entreprise non trouvée' });
+    }
+
+    if (company.proprietaireId !== userId) {
+      return res.status(403).json({ error: 'Accès non autorisé à cette entreprise' });
+    }
+
+    // Vérifier que la DSN existe et appartient à cette entreprise
+    const dsn = await prisma.dSNDeclaration.findUnique({
+      where: { id: dsnId }
+    });
+
+    if (!dsn) {
+      return res.status(404).json({ error: 'DSN non trouvée' });
+    }
+
+    if (dsn.compagnieId !== companyId) {
+      return res.status(403).json({ error: 'Cette DSN n\'appartient pas à cette entreprise' });
+    }
+
+    const versionService = new DSNVersionService();
+
+    if (format === 'csv') {
+      // Export CSV
+      const csvData = await versionService.exporterHistoriqueCSV(dsnId);
+      const siretSecurise = company.siret?.replace(/[^0-9]/g, '') || 'XXXXXXXXXXXXXXX';
+      const periodeSecurisee = dsn.periodeDeclaration.replace(/[^0-9-]/g, '');
+      const nomFichier = `DSN_Historique_${siretSecurise}_${periodeSecurisee}.csv`;
+
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${nomFichier}"`);
+      res.send('\uFEFF' + csvData); // Ajout du BOM pour Excel
+    } else {
+      // Export JSON (par défaut)
+      const jsonData = await versionService.exporterHistorique(dsnId);
+      const siretSecurise = company.siret?.replace(/[^0-9]/g, '') || 'XXXXXXXXXXXXXXX';
+      const periodeSecurisee = dsn.periodeDeclaration.replace(/[^0-9-]/g, '');
+      const nomFichier = `DSN_Historique_${siretSecurise}_${periodeSecurisee}.json`;
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="${nomFichier}"`);
+      res.send(jsonData);
+    }
+
+  } catch (error) {
+    console.error('Erreur lors de l\'export:', error);
+    res.status(500).json({
+      error: 'Erreur lors de l\'export de l\'historique',
+      message: error instanceof Error ? error.message : 'Erreur inconnue'
+    });
   }
 });
 

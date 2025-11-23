@@ -661,6 +661,39 @@ model DSNDeclaration {
   // Relations
   transmissions    TransmissionDSN[] // Historique des transmissions de cette DSN
   evenements       DSNEvent[]        // Événements DSN inclus dans cette déclaration
+  versions         DSNVersion[]      // Historique des versions de cette DSN
+}
+
+/// Version d'une déclaration DSN
+/// Stocke l'historique complet des modifications d'une déclaration DSN
+/// Chaque modification crée une nouvelle version pour traçabilité et audit
+model DSNVersion {
+  id                    String              @id @default(cuid())
+  declaration           DSNDeclaration      @relation(fields: [declarationId], references: [id], onDelete: Cascade)
+  declarationId         String
+
+  // Numéro de version séquentiel
+  numeroVersion         Int                 // 1, 2, 3, etc. (incrémenté automatiquement)
+
+  // Snapshot complet de la version
+  contenuXml            String?             // Contenu XML de cette version
+  messagesValidation    String?             // Messages de validation (JSON) à ce moment
+  statut                StatutDSN           // Statut de la DSN à ce moment
+
+  // Informations d'audit
+  modifiePar            String?             // ID de l'utilisateur qui a créé cette version
+  raisonModification    String?             // Raison de la modification (optionnel)
+  commentaire           String?             // Commentaire libre sur cette version
+
+  // Métadonnées de changement
+  champsModifies        String?             // Liste des champs modifiés par rapport à la version précédente (JSON array)
+
+  dateCreation          DateTime            @default(now()) @map("createdAt")
+
+  @@unique([declarationId, numeroVersion]) // Une seule version N pour une déclaration donnée
+  @@index([declarationId])
+  @@index([dateCreation])
+  @@map("dsn_versions")
 }
 
 // ========== Modèles pour la transmission automatique DSN via net-entreprises.fr ==========

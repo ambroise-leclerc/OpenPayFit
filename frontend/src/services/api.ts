@@ -2231,6 +2231,171 @@ export async function toggleNetEntreprisesConfig(
   return response.json();
 }
 
+// ========== Historique des versions DSN ==========
+
+// Interfaces pour les versions DSN
+export interface DSNVersion {
+  id: string;
+  declarationId: string;
+  numeroVersion: number;
+  contenuXml?: string;
+  messagesValidation?: string;
+  statut: string;
+  modifiePar?: string;
+  raisonModification?: string;
+  commentaire?: string;
+  champsModifies?: string;
+  createdAt: string;
+}
+
+export interface DSNVersionHistorique {
+  dsnId: string;
+  periodeDeclaration: string;
+  nombreVersions: number;
+  versions: DSNVersion[];
+}
+
+export interface VersionDiff {
+  champ: string;
+  ancienneValeur: any;
+  nouvelleValeur: any;
+}
+
+export interface ComparisonResult {
+  version1: number;
+  version2: number;
+  differences: VersionDiff[];
+  nombreChangements: number;
+}
+
+/**
+ * Récupère l'historique complet des versions d'une DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param token - Token d'authentification
+ * @returns Historique des versions
+ */
+export async function getDSNVersions(
+  companyId: string,
+  dsnId: string,
+  token: string
+): Promise<DSNVersionHistorique> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/versions`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de l\'historique des versions');
+  }
+
+  return response.json();
+}
+
+/**
+ * Récupère une version spécifique d'une DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param numeroVersion - Numéro de la version
+ * @param token - Token d'authentification
+ * @returns La version demandée
+ */
+export async function getDSNVersion(
+  companyId: string,
+  dsnId: string,
+  numeroVersion: number,
+  token: string
+): Promise<DSNVersion> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/${numeroVersion}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la récupération de la version');
+  }
+
+  return response.json();
+}
+
+/**
+ * Compare deux versions d'une DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param version1 - Numéro de la première version
+ * @param version2 - Numéro de la deuxième version
+ * @param token - Token d'authentification
+ * @returns Résultat de la comparaison
+ */
+export async function compareDSNVersions(
+  companyId: string,
+  dsnId: string,
+  version1: number,
+  version2: number,
+  token: string
+): Promise<ComparisonResult> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/compare`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+    body: JSON.stringify({ version1, version2 }),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la comparaison des versions');
+  }
+
+  return response.json();
+}
+
+/**
+ * Restaure une version précédente d'une DSN
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param numeroVersion - Numéro de la version à restaurer
+ * @param token - Token d'authentification
+ * @returns Résultat de la restauration
+ */
+export async function restoreDSNVersion(
+  companyId: string,
+  dsnId: string,
+  numeroVersion: number,
+  token: string
+): Promise<{ message: string; nouvelleVersion: DSNVersion }> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/${numeroVersion}/restore`, {
+    method: 'POST',
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de la restauration de la version');
+  }
+
+  return response.json();
+}
+
+/**
+ * Exporte l'historique des versions au format JSON ou CSV
+ * @param companyId - ID de l'entreprise
+ * @param dsnId - ID de la déclaration DSN
+ * @param format - Format de l'export ('json' ou 'csv')
+ * @param token - Token d'authentification
+ * @returns Blob du fichier à télécharger
+ */
+export async function exportDSNVersionHistory(
+  companyId: string,
+  dsnId: string,
+  format: 'json' | 'csv',
+  token: string
+): Promise<Blob> {
+  const response = await fetch(`${API_URL}/companies/${companyId}/dsn/${dsnId}/versions/export?format=${format}`, {
+    headers: getAuthHeaders(token),
+  });
+
+  if (!response.ok) {
+    await handleErrorResponse(response, 'Échec de l\'export de l\'historique');
+  }
+
+  return response.blob();
+}
+
 // ========== Événements DSN ==========
 
 // Types pour les événements DSN
