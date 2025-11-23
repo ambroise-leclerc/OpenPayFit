@@ -83,12 +83,6 @@ export interface PayrollRunResult {
 }
 
 /**
- * Taux de cotisations sociales pour le MVP (25% du salaire brut)
- * @deprecated Ce taux est conservé uniquement pour compatibilité avec l'ancien système
- */
-const DEDUCTION_RATE = 0.25;
-
-/**
  * Valide le format de la période de paie (YYYY-MM)
  */
 export function validatePayPeriod(period: string): boolean {
@@ -495,114 +489,6 @@ export async function runPayrollDetailed(
   for (const employee of employees) {
     try {
       await creerFichePaie(employee.id, payPeriod, employee.grossSalary);
-      generated++;
-    } catch (error) {
-      errors.push(
-        `${employee.firstName} ${employee.lastName}: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
-      );
-    }
-  }
-
-  return {
-    status: errors.length === 0 ? 'success' : 'error',
-    payslipsGenerated: generated,
-    errors: errors.length > 0 ? errors : undefined
-  };
-}
-
-// ========== FONCTIONS DÉPRÉCIÉES (LEGACY) ==========
-
-/**
- * @deprecated Utiliser creerFichePaie() à la place
- * Calcule les cotisations sociales à partir du salaire brut (système simplifié 25%)
- */
-export function calculateDeductions(grossSalary: number): number {
-  console.warn('calculateDeductions() est déprécié. Utilisez calculerDetailsFichePaie() pour un calcul détaillé.');
-  return Math.round(grossSalary * DEDUCTION_RATE * 100) / 100;
-}
-
-/**
- * @deprecated Utiliser creerFichePaie() à la place
- * Calcule le salaire net à partir du salaire brut (système simplifié 25%)
- */
-export function calculateNetSalary(grossSalary: number): number {
-  console.warn('calculateNetSalary() est déprécié. Utilisez calculerDetailsFichePaie() pour un calcul détaillé.');
-  const deductions = calculateDeductions(grossSalary);
-  return Math.round((grossSalary - deductions) * 100) / 100;
-}
-
-/**
- * @deprecated Utiliser creerFichePaie() à la place
- * Crée une fiche de paie avec le système simplifié (25%)
- */
-export function createPayslip(
-  employeeId: string,
-  payPeriod: string,
-  grossSalary: number
-): Payslip {
-  console.warn('createPayslip() est déprécié. Utilisez creerFichePaie() pour un calcul détaillé des cotisations.');
-  const db = getDatabase();
-
-  const id = randomUUID();
-  const deductions = calculateDeductions(grossSalary);
-  const netSalary = calculateNetSalary(grossSalary);
-  const createdAt = new Date().toISOString();
-
-  try {
-    db.prepare(`
-      INSERT INTO Payslip (id, payPeriod, grossSalary, deductions, netSalary, employeeId, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(id, payPeriod, grossSalary, deductions, netSalary, employeeId, createdAt, createdAt);
-
-    return {
-      id,
-      payPeriod,
-      grossSalary,
-      deductions,
-      netSalary,
-      employeeId,
-      createdAt
-    };
-  } catch (error: any) {
-    if (error.code === 'SQLITE_CONSTRAINT' || error.message.includes('UNIQUE constraint failed')) {
-      throw new Error(`Une fiche de paie existe déjà pour l'employé ${employeeId} pour la période ${payPeriod}`);
-    }
-    throw error;
-  }
-}
-
-/**
- * @deprecated Utiliser runPayrollDetailed() à la place
- * Lance le calcul de paie avec le système simplifié (25%)
- */
-export function runPayroll(companyId: string, payPeriod: string): PayrollRunResult {
-  console.warn('runPayroll() est déprécié. Utilisez runPayrollDetailed() pour un calcul détaillé des cotisations.');
-
-  // Validation de la période
-  if (!validatePayPeriod(payPeriod)) {
-    return {
-      status: 'error',
-      payslipsGenerated: 0,
-      errors: [`Format de période invalide: ${payPeriod}. Attendu: YYYY-MM`]
-    };
-  }
-
-  const employees = getCompanyEmployees(companyId);
-
-  if (employees.length === 0) {
-    return {
-      status: 'success',
-      payslipsGenerated: 0,
-      errors: ['Aucun employé trouvé pour cette entreprise']
-    };
-  }
-
-  const errors: string[] = [];
-  let generated = 0;
-
-  for (const employee of employees) {
-    try {
-      createPayslip(employee.id, payPeriod, employee.grossSalary);
       generated++;
     } catch (error) {
       errors.push(
